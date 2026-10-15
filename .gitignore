@@ -9,3 +9,7 @@ local.properties
 .env
 .env.*
 !.env.example
+
+node_modules/
+.dmrvn-journal/
+.dmrvn-test-secrets/

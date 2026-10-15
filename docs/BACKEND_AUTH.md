@@ -8,10 +8,13 @@
 | --- | --- | --- |
 | 서버 → Privy API | app ID + app secret | 공식 SDK에 위임, `verifyAppCredentials()`로 명시적 확인 |
 | 요청자 → 우리 backend | Privy access JWT의 서명·claim | `PrivyTokenVerifier`, `verifyAccessToken()`, `authenticateAuthorizationHeader()` |
-| 서버 → 백엔드 소유 wallet 등록/판별 | 등록된 public key와 wallet public key | `registerBackendWallet()`, `isBackendWallet()`; private key는 API 요청에 보내지 않음 |
+| 서버 → 백엔드 소유 wallet 등록/판별 | 등록된 public key와 wallet public key | `registerBackendWallet()`, `isBackendWallet()`, `listWalletsByAuthorizationKey()`; private key는 API 요청에 보내지 않음 |
+| 서버 → wallet private key export | authorization private key 서명 + Privy 정책 | `exportWalletPrivateKey()`; 초기 설정 시에만 `exportWalletPrivateKeyAndLog()` 사용 |
 | 서버 → 소유자가 있는 wallet/policy 작업 | owner의 authorization signature | wallet 작업 API에서 공식 `AuthorizationContext` 사용 |
 
 서버 app secret은 사용자 로그인 토큰이 아니며, access token은 app secret의 대체물이 아니다. Backend에서 정상 사용자를 판별하는 것과 특정 wallet 작업의 소유자 승인을 검증하는 것도 다른 단계다. 백엔드 지갑은 Privy에 public key owner로 등록하고, 이후 wallet metadata의 public key와 비교한다. private key는 서버 애플리케이션이 별도로 안전하게 보관하며 등록 요청에는 포함하지 않는다.
+
+`BackendWalletKeyPair.generate()`는 Java 표준 암호화 API로 P-256(`secp256r1`) 키쌍을 생성한다. 생성된 private key는 로그나 예외에 포함하지 않고 secret manager에 저장해야 한다.
 
 ## 공식 문서에서 확인한 내용
 

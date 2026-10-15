@@ -1,0 +1,21 @@
+{
+  "network": "Greenfield Testnet",
+  "chainId": "5600",
+  "activityId": 1003,
+  "methodology": { "id": 2003, "version": 1 },
+  "status": "ACTIVE",
+  "methodologyHash": "0xdcc09ee621f2e388dd858f8f7399dbf2725cbec3526d52b0dd06909da892ff77",
+  "wasmHash": "0x60265f20ca003ae4b20f0bca18f73d0d4e9bb7c9497627d7f680113dac4c91d9",
+  "manifestPointer": {
+    "bucketName": "tumbler2",
+    "objectName": "dmrvn/v4/methodologies/2003-1/dcc09ee621f2e388dd858f8f7399dbf2725cbec3526d52b0dd06909da892ff77/manifest.json"
+  },
+  "wasmPointer": {
+    "bucketName": "tumbler2",
+    "objectName": "dmrvn/v4/methodologies/2003-1/dcc09ee621f2e388dd858f8f7399dbf2725cbec3526d52b0dd06909da892ff77/methodology.wasm"
+  },
+  "sourceCommit": "a450d56b95cf1fd26f8434b10a4b8c2da938e021",
+  "buildCommit": "25a1e6f",
+  "ciUrl": "https://github.com/RecycleFarm/dmrvn-methodologies/actions/runs/37586551652",
+  "ciConclusion": "success"
+}

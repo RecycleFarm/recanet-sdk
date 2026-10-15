@@ -101,6 +101,17 @@ class PrivyBackendAuthenticationTest {
     }
 
     @Test
+    void generatesP256BackendWalletKeysWithoutExposingPrivateKeyInToString() {
+        var keys = BackendWalletKeyPair.generate();
+        assertTrue(keys.publicKey().contains("BEGIN PUBLIC KEY"));
+        assertTrue(keys.privateKey().contains("BEGIN PRIVATE KEY"));
+        assertEquals(keys.publicKey(), keys.registration().publicKey());
+        assertEquals(keys.privateKey(), keys.registration().privateKey());
+        assertTrue(keys.toString().contains("[REDACTED]"));
+        assertFalse(keys.toString().contains(keys.privateKey()));
+    }
+
+    @Test
     void registersBackendWalletWithPublicKeyOnlyAndVerifiesOwnership() throws Exception {
         var createBody = new AtomicReference<String>();
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);

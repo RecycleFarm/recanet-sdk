@@ -21,9 +21,91 @@ var key = new BackendWalletRegistration(
     System.getenv("BACKEND_WALLET_PRIVATE_KEY"));
 var wallet = client.registerBackendWallet(key, new BackendWalletCreateRequest("ethereum"));
 boolean backendOwned = client.isBackendWallet(wallet.id(), key);
+var wallets = client.listWalletsByAuthorizationKey(key.publicKey());
+```
+
+운영 환경에서는 키를 로그로 출력하지 말고 secret manager 또는 환경변수로 주입합니다.
+
+```java
+var key = BackendWalletRegistration.fromEnvironment();
+```
+
+SDK에서 Privy authorization용 P-256 키쌍을 생성할 수도 있습니다. 생성 결과의 private key는 즉시 secret manager에 저장하고 로그에 출력하지 않습니다.
+
+```java
+var generated = BackendWalletKeyPair.generate();
+var registration = generated.registration();
+// generated.privateKey()를 안전한 secret manager에 저장한 뒤 Privy에 public key를 등록합니다.
+```
+
+초기 파트너 설정 단계에서 로그 출력을 명시적으로 허용하려면 `BackendWalletKeyPair.generateAndLog()`를 사용합니다. 이 메서드는 private key도 로그에 출력하므로 운영 환경의 일반 시작 코드에서 호출하면 안 됩니다.
+
+환경설정이 비어 있을 때 자동 초기화하려면 다음 메서드를 사용합니다. 설정값이 있으면 authorization key로 기존 wallet을 조회하고, 없으면 키쌍 생성 및 wallet 생성을 수행합니다.
+
+```java
+var wallet = client.ensureBackendWallet(new BackendWalletCreateRequest("ethereum"));
+```
+
+wallet private key export도 authorization private key로 서명해 요청할 수 있습니다. 반환값은 실제 blockchain wallet private key이므로 로그에 남기지 말고 즉시 안전한 저장소로 전달해야 합니다.
+
+```java
+String walletPrivateKey = client.exportWalletPrivateKey(wallet.id(), registration);
+```
+
+초기 파트너 설정 단계에서만 다음 메서드로 실제 wallet private key를 로그에 출력할 수 있습니다.
+
+```java
+client.exportWalletPrivateKeyAndLog(wallet.id(), registration);
 ```
 
 Privy app secret은 실행 환경의 환경변수 또는 secret manager에서 주입합니다.
+
+## Transaction 조회
+
+`EvmTransactionClient`는 DMRVN 작업 여부와 무관하게 EVM 트랜잭션을 조회합니다.
+체인 ID와 해당 체인의 RPC를 지정하며, Privy app secret이나 wallet private key는 필요하지 않습니다.
+TX 입력은 **블록체인 transaction hash**, 지갑 입력은 **블록체인 주소**입니다.
+Privy transaction ID 또는 wallet ID를 넣는 API가 아닙니다.
+
+| 기능 | 메서드 | 반환값 |
+| --- | --- | --- |
+| 특정 TX 상세 | `getTransaction(txHash)` | `Optional<EvmTransaction>` |
+| 특정 TX 상태 | `getTransactionStatus(txHash)` | `EvmTransactionStatus` |
+| TX를 발생시킨 지갑 기준 목록 | `listTransactions(walletAddress, query)` | `EvmTransactionPage` |
+
+```java
+import com.youngminkim.recanet.EvmTransactionClient;
+import com.youngminkim.recanet.EvmTransactionQuery;
+import java.net.URI;
+
+var transactions = new EvmTransactionClient(
+    421614L, URI.create("https://sepolia-rollup.arbitrum.io/rpc"));
+// 기존 DMRVN 설정을 사용하는 경우:
+// var transactions = new EvmTransactionClient(config.chainId(), rpc);
+
+var detail = transactions.getTransaction(txHash);
+var status = transactions.getTransactionStatus(txHash);
+
+// earliestBlock: 조회를 시작할 최초 블록 번호(예: 지갑 사용을 시작한 블록).
+// 종료 블록 null: 첫 페이지에서 최신 블록을 고정하고 이후 페이지에서도 유지.
+var query = new EvmTransactionQuery(earliestBlock, null, 20);
+var page = transactions.listTransactions(walletAddress, query);
+var items = page.transactions();
+if (page.nextCursor() != null) {
+    var nextPage = transactions.listTransactions(
+        walletAddress, query.withCursor(page.nextCursor()));
+}
+```
+
+- 상세에는 발신자·수신자, 정확한 `BigInteger` 금액(wei), nonce, calldata, 가스·수수료 필드, 블록 정보, 상태, 원본 transaction/receipt가 포함됩니다. receipt의 로그와 체인별 추가 수수료 필드도 보존합니다. 반환 데이터는 중첩 컬렉션까지 수정할 수 없습니다.
+- 상태는 `NOT_FOUND`(해당 RPC에서 미발견), `PENDING`(블록 미포함), `MINED`(블록에 포함됐으나 실행 결과 미확인), `SUCCEEDED`(receipt status=1), `REVERTED`(receipt status=0)입니다. 조회 오류는 예외로 구분합니다. `NOT_FOUND`를 실패·취소·대체로 해석하지 않습니다.
+- `confirmations`는 현재 RPC head 기준 블록 확인 수입니다. `SUCCEEDED`나 confirmations는 합의 최종성 또는 L2의 L1 확정을 의미하지 않습니다. 수신자가 null이면 컨트랙트 생성이며, pending TX의 블록 정보와 receipt는 null입니다.
+- 목록은 **최상위 TX의 `from`이 지갑 주소와 일치하는, 블록에 포함된 거래**를 블록 번호·TX index 역순으로 반환합니다. 일반 송금, 컨트랙트 호출, 컨트랙트 생성, 실행 실패 거래가 포함됩니다. 입금, 내부 호출, pending 전체 목록, 다른 지갑이 대신 보낸 UserOperation은 포함하지 않습니다. DMRVN 대납 거래는 Relay 주소로 조회합니다.
+- 목록은 인덱서가 아닌 **RPC 블록 탐색** 방식입니다. 한 페이지에서 최대 100개 블록, 최대 `limit`개 거래(1~100)를 반환하므로, **빈 페이지라도 nextCursor가 있으면 계속 조회**해야 합니다. 커서는 동일한 체인·주소·블록 범위에서 사용합니다. 전체 검색 종료는 nextCursor=null로 판단합니다. 새 블록을 포함하려면 cursor 없이 새 조회를 시작합니다.
+- 과거 이력이 길거나 거래가 드문 지갑은 블록 탐색에 많은 RPC 호출이 필요합니다. 실제 사용 구간을 지정하고, 대규모 서비스에서 장기간의 거래 내역을 빠르게 표시하려면 별도 인덱스가 필요합니다. 과거 블록을 제공하지 못하는 RPC의 응답을 빈 내역으로 처리하지 않습니다.
+- `TransactionQueryException.code()`는 `WRONG_CHAIN`, `CHAIN_CHANGED`, `RPC_UNAVAILABLE`, `INVALID_RESPONSE`, `INTERRUPTED`를 구분합니다. 페이지 사이 체인 재구성 또는 서로 맞지 않는 TX/receipt/block 응답은 `CHAIN_CHANGED`로 알리며 첫 페이지부터 다시 조회합니다. 잘못된 주소·해시·커서·범위는 `IllegalArgumentException`입니다.
+
+조회 프로토콜은 [Ethereum JSON-RPC 명세](https://ethereum.org/en/developers/docs/apis/json-rpc/)의 `eth_getTransactionByHash`, `eth_getTransactionReceipt`, `eth_getBlockByNumber`를 따릅니다.
 
 ## 빌드
 
@@ -140,3 +222,11 @@ JWKS cache TTL 안에 이미 확보된 키는 네트워크 호출 없이 사용�
 - [AuthorizationContext 사용](https://docs.privy.io/controls/authorization-keys/using-owners/sign/signing-on-the-server)
 - [Access token 검증](https://docs.privy.io/authentication/user-authentication/access-tokens)
 - [통합 최적화](https://docs.privy.io/recipes/dashboard/optimizing)
+
+## DMRVN 연동 (PET 시험 방법론)
+
+`com.youngminkim.recanet.dmrvn`에 원본 Greenfield 저장·봉인, Claim v7 승인, Relay 대납/사용자 직접 납부, 영속 작업 기록, 거래 복구와 최종 Report 검증을 추가했습니다. EVM 승인자/Relay는 `PrivyEvmSigner`를 사용하며 사용자 서명은 앱에서 받습니다. PET 3개는 DMRVN 노드의 예상 결과가 60 gCO2e이고 SDK에서 탄소량을 계산하지 않습니다.
+
+공유 명세 `341809a` 기준으로 신규 대상은 테스트넷 proxy `0x5984B6C7773031497AcA9BF0C7C1155bdeAEd24e`입니다. 구현 `1.0.1`과 서명 domain `7`을 구분하며 승인 manifest/ERC1967/code hash 검증, 호환 upgrade 후 기존 서명 재사용, 과거 direct 조회와 배포 간 Claim ID 충돌 방지를 지원합니다. DB journal adapter는 `findOperationsByClaimId`를 구현해야 합니다.
+
+Greenfield 쓰기 어댑터는 Node 22+와 `tools/greenfield`의 공식 JS SDK 설치가 필요합니다. 저장 위치, Java API와 실행 방법은 [DMRVN 연동 안내](docs/DMRVN.md), 실제 실행/미실행 범위는 [검증 기록](docs/DMRVN_VALIDATION.md)을 참고하세요.
