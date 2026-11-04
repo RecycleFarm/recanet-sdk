@@ -2,17 +2,19 @@
 
 현재 구현은 Claim v7과 PET `activityId=1003`, `methodologyId=2003`, `version=1`을 사용한다. 신고 입력 `petBottleCount=3`의 예상 노드 계산 결과는 `estimated_co2e={value:"60",unit:"gCO2e",scale:0}`이다. Java SDK는 계산하거나 노드 합의를 대신하지 않는다. 승인 WASM의 실행은 오프라인 테스트에서만 한다.
 
-반영 기준은 [공유 명세 `341809a`](https://github.com/RecycleFarm/specifications/tree/341809a6255786b225317a60017173abcfe7b531/dmrvn/backend-sdk)다. 2026-10-09 proxy/upgrade 요구사항과 2026-10-12 QA 근거 보완을 적용한다. 10월 12일 갱신은 프로토콜·계산 규칙 변경이 아니다.
+반영 기준은 [공유 명세 `6da7d02`](https://github.com/RecycleFarm/specifications/tree/6da7d029ca9a9dad71e5b2928de0f3c06cc5b499/dmrvn/backend-sdk)의 2026-11-04 파트너 단일 요청 계약이다. `source.kind` 제거, 파트너 입력 보존, journal 선택화, 수혜자 지갑 생성·서명, 단일 운영 지갑, 단일 요청을 반영한다. Claim ABI/domain 및 WASM ABI는 유지한다.
+
+공유 명세의 새 Evidence 버전·정확한 wire 규격, Privy 매핑/권한 정책, 결과 미확인 재시도 규칙은 아직 미결이다. 구현은 기존 공통 필드와 JCS/provenance 결속을 바탕으로 하며 새 버전을 임의로 정하지 않는다. 신규 고수준 API와 preflight는 명시한 `evidenceSchemaVersion`이 없으면 `EVIDENCE_CONTRACT_UNCONFIGURED`로 중단한다. 운영자가 합의한 공통 필드·JCS·버전 및 검증자 지원을 확인하고 설정해야 한다. 버전 설정만으로 새 wire 규격이나 실제 DMRVN 공동 인수가 완료되지는 않는다. 4인자 `DeclaredMethodology`는 기존 버전 값 3의 호환 경로이며 신규 고수준 API에는 사용할 수 없다. 과거 fixture·서명·저장 객체는 다시 쓰거나 재해시하지 않는다.
 
 ## 어디에 무엇을 저장하는가
 
 | 위치/역할 | 저장하거나 수행하는 내용 |
 | --- | --- |
-| Greenfield Evidence | schemaVersion, sourceEventId, partner/activity/methodology, inputs, ownerHash, 발급자 provenance 서명을 포함한 전체 원본. 제한형 JCS UTF-8 bytes를 private 객체로 저장한다. |
+| Greenfield Evidence | schemaVersion, sourceEventId, partner/activity/methodology, inputs, ownerHash, 발급자 provenance 서명을 포함한 전체 원본. JCS UTF-8 bytes를 private 객체로 저장한다. |
 | Claim Contract v7 | beneficiary, approver, 활동/방법론, evidenceHash, methodologyHash, **전체 evidenceLocation**, location struct hash, 상태 및 최종 outputHash/reportHash를 보관한다. outputs 수치는 Final Report에 있다. |
-| Relay 지갑 | 대납 EOA다. 원본이나 Claim을 저장하는 장소가 아니다. 사용자가 서명한 요청을 `Forwarder.execute`로 전송하고 EVM 가스를 낸다. |
+| 운영 지갑 | provenance·Claim 승인과 Relay 대납에 동일한 EOA를 사용한다. 원본이나 Claim을 저장하는 장소가 아니다. 사용자가 서명한 요청을 `Forwarder.execute`로 전송하고 EVM 가스를 낸다. |
 | Forwarder Contract | 사용자 ForwardRequest 서명·nonce·deadline을 검사한 뒤 Claim `submitClaim`을 호출한다. 서명에는 nonce가 있지만 execute tuple에는 nonce가 없다. |
-| 파트너 journal | operationId, 입력/config fingerprint, 원본/서명/hash/전체 경로, CreateObject txHash, Claim 승인, 사용자 요청/서명, 전송 의도/시작 블록/txHash/receipt, 보고 거래와 조회 결과. |
+| 선택적 파트너 journal | operationId, 입력/config fingerprint, 원본/서명/hash/전체 경로, CreateObject txHash, Claim 승인, 사용자 요청/서명, 전송 의도/시작 블록/txHash/receipt, 보고 거래와 조회 결과. |
 
 `objectPrefix="partners/101/"`는 SDK가 파일 경로를 제한하는 설정이다. 실제 경로는 예를 들어 `partners/101/activities/1003/<sourceEventId>/evidence.json`이다. `prepareEvidence`에는 **전체 objectName**을 전달한다. prefix를 설정하는 행위가 Greenfield 권한을 부여하지 않으며, Claim에는 prefix만이 아니라 전체 경로가 들어간다.
 
@@ -80,9 +82,11 @@ var storage = new NodeGreenfieldStorage(
 
 // 승인된 public package bytes를 읽고 manifest hash와 WASM hash를 검증한다.
 // registry는 운영자의 현재 ACTIVE 확인을 제공하는 파트너 어댑터다.
-var methodology = new DeclaredMethodology(manifestBytes, wasmBytes, DeclaredMethodology.PET_HASH, registry);
-var journal = new FileOperationJournal(Path.of(".dmrvn-journal"));
-var sdk = new DmrvnClient(config, rpc, signer, signer, storage, methodology, journal);
+// 운영자와 확인한 새 Evidence 버전. SDK가 기본값으로 추정하지 않는다.
+var methodology = new DeclaredMethodology(
+    manifestBytes, wasmBytes, DeclaredMethodology.PET_HASH, registry, confirmedEvidenceSchemaVersion);
+var sdk = new DmrvnClient(config, rpc, signer, storage, methodology); // journal 불필요
+// 필요하면 마지막 인자에 소비자 소유 OperationJournal을 명시적으로 추가한다.
 var readiness = sdk.preflight();
 
 var body = methodology.evidenceBody(101, beneficiary, sourceEventId, Map.of("petBottleCount", 3));
@@ -90,13 +94,46 @@ var prepared = sdk.prepareEvidence(operationId, claimId, beneficiary, objectName
 var approved = sdk.approveClaim(operationId);
 ```
 
-`claimId`는 호출자가 정하는 bytes32이고 `sourceEventId`는 실제 행위별 고유 ID다. PET 입력은 정확히 `petBottleCount` 하나만 허용하며 JSON 정수 1..100000이어야 한다. 기기 인증서·counter는 요구하지 않는다. 새 방법론도 `DECLARED_INPUTS_V1` manifest/inputSchema에 맞으면 같은 검증 경로를 쓸 수 있다. 다른 evidence 검증 종류는 지원하지 않는다.
+단계별 API의 `claimId`는 호출자가 정하는 bytes32이고 `sourceEventId`는 실제 행위별 고유 ID다. SDK는 `inputs` 객체의 필드·값 타입·배열 순서를 보존한다. `inputSchema`/`evidenceValidation.kind`로 입력 프로필을 강제하지 않으며 PET 수량 범위나 기기 인증서의 의미를 판단하지 않는다. 입력의 형식·값은 파트너 책임이며 승인 방법론에 따른 검증은 DMRVN 노드가 담당한다. `source`에는 beneficiary에 결속된 `ownerHash`만 넣고 `kind`는 받지 않는다.
+
+공통 JSON 직렬화·크기·배포·활동/방법론·ownerHash·서명·hash·저장 bytes 결속 검사는 유지한다. 중첩 객체·배열·문자열·boolean·null·소수 입력을 허용한다. JSON 정수는 안전 정수 범위, 소수는 IEEE-754 JCS로 값 손실 없이 왕복 가능한 수를 사용하고 NaN/Infinity·잘못된 Unicode·중복 JSON 키는 거부한다. 고정밀 수치는 파트너가 처음부터 문자열 등으로 표현해야 하며 SDK가 문자열/수치를 바꾸지 않는다.
 
 원본 준비 순서는 입력 snapshot → provenance 서명 → journal 저장 → CreateObject 의도 기록 → CreateObject hash 저장 → upload → SEALED 조회 → 실제 저장 bytes 일치 확인이다. 이후 승인에서는 저장 bytes·ownerHash·방법론·승인자 role·Claim nonce를 다시 확인한다. 읽기 전용 preflight는 실제 private 쓰기/검증자 읽기까지 통과했다고 표시하지 않는다.
 
 `DeclaredMethodology.Registry`는 배포마다 주입한다. handoff에는 공개 Registry 조회 API가 없으므로 현재 상태를 SDK가 Firebase로 직접 조회하지 않는다. 실행 예제만 제공된 **2026-10-07 ACTIVE 스냅샷**을 명시적으로 사용한다. manifest/WASM public bytes는 실시간 조회·검증하지만 현재 Registry ACTIVE 및 5개 노드 준비는 RCF 확인 대상이다.
 
-## 대납 / 직접 납부
+## 회원 지갑 생성·자동 서명과 단일 호출
+
+```java
+var memberWallets = new UserWalletClient(privyClient, keys, "recanet-prod");
+// 애플리케이션의 인증된 파트너 자격·범위와 회원 동의/철회를 확인하는 정책.
+// userId만으로 true를 반환해서는 안 된다. 검증 실패 시 false 또는 예외로 거부한다.
+var beneficiaries = memberWallets.forPartner(101, (partnerId, userId) ->
+    accessPolicy.isWalletUseAuthorized(authenticatedPartnerCredentials, partnerId, userId));
+
+var submission = sdk.submitActivity(beneficiaries,
+    new ActivityRequest(memberId, sourceEventId, Map.of("petBottleCount", 3)));
+```
+
+한 번의 호출로 **권한 확인 → 수혜자 지갑 조회/생성 → Evidence 생성·provenance 서명 → Greenfield 생성·봉인·실제 bytes 재조회 → Claim 승인 → 수혜자 서명 → 운영 지갑 Relay 제출 → 성공 receipt/Claim 확인**을 수행한다. 사전 지갑 생성, Evidence body 조립, 사용자 서명 전달은 필요 없다. `BeneficiaryWallets`를 구현하면 파트너가 확정한 기존 지갑 매핑/권한 시스템을 사용할 수 있다. 반환 signer도 실제 서명 직전에 권한을 확인해야 한다.
+
+`UserWalletClient.forPartner`는 서비스 namespace + partnerId + memberId의 명시적 Privy external ID 매핑을 선택하는 어댑터다. 같은 memberId도 partnerId가 다르면 별도 지갑이다. 기존 비파트너 매핑의 지갑을 자동 채택하지 않는다. 파트너 요청이 다른 partnerId를 지정하면 지갑 조회 전에 거부하고, 지갑 준비 시점과 각 서명/전송 직전에 파트너 정책을 재확인한다. 실제 자격 검증·동의/철회는 위 정책으로 연결하며 Privy wallet 소유 권한은 Privy 어댑터가 확인한다. 이 매핑은 공유 명세의 미결 사항을 확정한 표준이 아니다.
+
+기본 `ActivityRequest`는 호출마다 새 내부 operationId·claimId·objectName을 만들고, receipt 확인을 최대 60초 동안 1초 간격으로 조회한다. 전체 생성자는 선택적 claimId·objectName, 서명할 inner gas, confirmationTimeout/pollInterval을 받는다. 대기 한도는 제출 후 확인 조회의 한도이며 전체 Greenfield/Privy/RPC 처리 시간 제한은 각 어댑터에 적용된다. gas 기본값은 `900000`이고 서명 후 변경하지 않는다. 새 호출은 새 작업이므로 같은 sourceEventId로 재호출해도 복구·중복 방지·경로 재사용을 보장하지 않는다. 여러 프로세스의 같은 운영 지갑 사용과 nonce 직렬화는 소비자가 관리한다.
+
+반환은 `outcome`, `lastConfirmedStage`, `confirmed`, `requested` 및 오류 시 `errorCode`다.
+
+| outcome | 의미 |
+| --- | --- |
+| `CONFIRMED` | 성공 receipt·발신 운영 지갑·Forwarder 실행 이벤트·Claim 결속을 확인했다. `confirmed.chainStatus=PENDING`은 최종 VALID가 아니다. |
+| `FAILED` | 확인한 단계에서 다음 처리를 중단했다. 봉인 후 실패라면 저장 객체는 남을 수 있다. |
+| `UNKNOWN` | 저장/전송 결과 또는 receipt 확인이 미확인이다. 실패·미전송·안전한 재시도의 뜻이 아니다. |
+
+`confirmed`에는 실제 확인한 evidenceHash, createTxHash, evidenceLocation, storageStatus, submissionFromBlock, txHash, receipt/chainStatus만 해당 시점에 포함한다. 요청 식별자와 배포도 보존한다. `requested.evidenceLocation`은 생성 응답 유실 시 조사할 **의도한 경로**이며 저장 성공 증거가 아니다. 외부 어댑터의 원문 오류·키·토큰·재사용 서명은 반환하지 않는다. 소비자가 응답과 필요한 기록을 보존하고 장애 조사·복구를 수행한다. 결과 조회는 반환된 claimId·submissionFromBlock과 `DmrvnReader`로 journal 없이 진행할 수 있다.
+
+기존 `submitActivity(UserWalletClient, ... evidenceBody ...)`와 `submitActivity(EvmSigner, ...)`는 사전 준비한 지갑/body를 쓰는 조합 경로로 남는다. 새 연동은 위 `BeneficiaryWallets`/`ActivityRequest` 경로를 사용한다. `prepare(...)`와 사용자 직접 가스비 납부용 단계별 API도 유지한다.
+
+## 대납 / 직접 납부 (단계별 API)
 
 대납에서는:
 
@@ -117,7 +154,7 @@ var transaction = sdk.prepareSelfPaid(operationId);
 var confirmed = sdk.resolveSubmission(operationId, appTransactionHash);
 ```
 
-`prepareSelfPaid`는 앱이 전송하기 전에 시작 블록과 전송 의도를 저장한다. operation당 제출 방식을 하나 선택한다. 대납/직접 납부 시험에는 **서로 다른 sourceEventId·claimId·operationId**가 필요하다. SDK는 사용자의 지갑을 대신 서명하지 않고 ETH를 자동 충전하지 않는다.
+`prepareSelfPaid`는 앱이 전송하기 전에 시작 블록과 전송 의도를 저장한다. operation당 제출 방식을 하나 선택한다. 대납/직접 납부 시험에는 **서로 다른 sourceEventId·claimId·operationId**가 필요하다. 이 단계별 경로에서는 앱이 사용자 거래를 서명하며 SDK는 ETH를 자동 충전하지 않는다.
 
 receipt 조회는 sender/to/value/calldata, Claim 생성 이벤트와 nonce, approver·beneficiary·방법론·원본/location을 대조한다. 대납은 `ExecutedForwardRequest` signer/nonce/success도 검증한다. 단순 txHash 수신이나 nonce 증가를 성공으로 보지 않는다.
 
@@ -146,7 +183,9 @@ var result = sdk.readResult(operationId, reader, submissionStartBlock, reportTxH
 - `fileHash`는 다운로드 bytes checksum이며 protocol reportHash와 다르다.
 - 외부 파일 commitment가 없으면 `fileHashVerification=DOWNLOAD_CHECKSUM_ONLY`, `metadataIndependentlyVerified=false`다. 설명 메타데이터나 실제 재활용 행위를 검증했다고 표시하지 않는다.
 
-## 영속화와 재시도
+## 선택적 영속화와 소비자 복구
+
+기본 초기화 및 신규 단일 요청에 durable journal은 필요 없다. 기본 상태는 메모리에만 존재하며 새 단일 요청마다 격리된다. SDK는 자동 복구·정확히 한 번 제출·중복 방지를 보장하지 않는다. 아래 내용은 소비자가 선택적으로 journal과 기존 단계별 조사 API를 사용하는 경우의 어댑터 계약이다. 오류의 `retryable()`/`action()`은 해당 단계별 경로의 분류이며 새 요청을 안전하게 재전송하라는 지시가 아니다.
 
 `OperationJournal`은 파트너 DB로 교체하는 인터페이스다. `withLock/load/store/findOperationsByClaimId`를 제공하며 operation·source event·사용자 Claim nonce·Relay nonce 예약을 함께 보관한다. `store`는 전체 snapshot을 교체하고, load는 사본을 반환해야 한다. 분산 환경은 모든 SDK 인스턴스가 공유하는 트랜잭션/잠금과 fencing을 구현해야 한다.
 
@@ -162,6 +201,8 @@ var result = sdk.readResult(operationId, reader, submissionStartBlock, reportTxH
 - 별도 서비스/사용자가 같은 Relay를 동시에 쓰면 SDK journal이 제어할 수 없다. Relay를 전용으로 사용한다.
 
 ## 실행 예제
+
+아래 testnet 실행기는 과거 단계별 대납/직접 납부 경로의 진단용이다. 새 단일 요청의 Privy·DMRVN 공동 인수 증거가 아니다. `DMRVN_EVIDENCE_SCHEMA_VERSION`은 운영자가 확인한 값으로 명시해야 하며 새 Evidence를 기존 노드가 지원하는지 확인하기 전에 쓰기 시험을 수행하지 않는다. 과거 operation/객체를 새 형식으로 재작성하지 않는다.
 
 ```bash
 ./gradlew clean build compileExamplesJava

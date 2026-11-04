@@ -1,5 +1,16 @@
 # DMRVN 검증 기록
 
+## 2026-11-04 파트너 단일 요청 계약: 오프라인 검증 PASS
+
+기준 명세: `RecycleFarm/specifications@6da7d029ca9a9dad71e5b2928de0f3c06cc5b499`. 검증 대상은 현재 Java 작업 트리이며 기존 미커밋 회원 지갑/활동 처리 기능을 포함한다.
+
+- `./gradlew build compileExamplesJava`: PASS. JUnit **126개**, failures=0/errors=0/skipped=0. 라이브 태그는 기본 시험에서 제외된다. Javadoc은 생성되며 누락된 문서 주석 경고는 남아 있다.
+- `DmrvnActivityTest` 13개: journal 없는 단일 요청, 수혜자 signer 준비, Evidence 생성·봉인·승인·자동 서명·Relay receipt/Claim 확인, 임의 중첩 입력/다른 방법론, ownerHash 결속, 운영 지갑 불일치, 권한 거부, 봉인 후 실패, 저장·전송 응답 유실, receipt 발신자 변조, optional journal 장애와 신규 요청의 격리 검증.
+- `UserWalletClientTest` 9개: 로컬 HTTP 기반 Privy 어댑터 시험. 회원 지갑 조회·생성/서명, 생성 충돌, 파트너별 동일 회원 ID 분리, 다른 파트너 거부, 서명 직전 동의 철회, 기존 비파트너 매핑과의 분리를 검증한다.
+- 역사적 Evidence/Claim/Forwarder fixture 및 보고서/직접 납부 회귀 시험은 원래 bytes/hash를 유지한다. 새 입력의 소수 JCS 직렬화 및 정밀도 손실 거부도 확인한다.
+
+실제 Privy 계정·Greenfield·EVM 쓰기/가스 사용·DMRVN 노드는 이번 변경에서 실행하지 않았다. 새 계약의 실환경 및 TC-C10 공동 인수는 **NOT_RUN/BLOCKED**다. 명세가 미결로 둔 새 Evidence wire 버전·공통 필드/직렬화 지원, 파트너 자격/권한 정책과 Privy 매핑은 운영자와 확정해야 한다. 신규 API는 버전을 명시하지 않으면 `EVIDENCE_CONTRACT_UNCONFIGURED`로 중단한다. 합성 버전 999와 로컬 signer/RPC를 쓴 시험은 배포된 버전/권한 모델의 증거가 아니다. 아래 과거 E2E 기록은 이전 계약의 증거로 보존한다.
+
 ## 2026-10-12 신규 Proxy PET 대납 E2E: PASS
 
 사용자의 실환경 재시험 요청에 따라 `DMRVN_LIVE_RUN_ID=proxy-20261012-1104 DMRVN_LIVE_WAIT_MINUTES=45 python3 tools/run-dmrvn-live-test.py`를 실행했다. 이전 direct Claim을 재사용하지 않고 새 sourceEventId·원본·Claim으로 시험했다. 실제 Greenfield 저장, 테스트 사용자 EIP-712 서명, 실제 Privy Relay 제출, 최종 DMRVN 보고서까지 통과했다. 아래 명세 반영 단계에서 NOT_RUN이었던 **신규 proxy 대납 경로**의 후속 검증이다.

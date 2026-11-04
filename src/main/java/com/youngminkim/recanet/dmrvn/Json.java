@@ -5,18 +5,21 @@ import static com.youngminkim.recanet.dmrvn.DmrvnException.*;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 
 import java.math.BigInteger;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/** Restricted JCS used by DMRVN. JSON numbers must be exact safe integers. */
+/** JCS JSON; integers must be safe, decimals must round-trip without value loss. */
 public final class Json {
     private static final ObjectMapper MAPPER =
             new ObjectMapper(
                     JsonFactory.builder()
                             .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
-                            .build());
+                            .build())
+                    .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     private static final BigInteger MAX = BigInteger.valueOf(9007199254740991L);
 
     private Json() {}
@@ -98,6 +101,18 @@ public final class Json {
             }
             try {
                 return MAPPER.writeValueAsString(s);
+            } catch (Exception e) {
+                throw new DmrvnException(Code.INVALID_INPUT);
+            }
+        }
+        if (value instanceof Double || value instanceof Float || value instanceof BigDecimal) {
+            try {
+                double number = Double.parseDouble(value.toString());
+                require(Double.isFinite(number), Code.INVALID_INPUT);
+                String encoded = org.erdtman.jcs.NumberToJSON.serializeNumber(number);
+                require(new BigDecimal(value.toString()).compareTo(new BigDecimal(encoded)) == 0,
+                        Code.INVALID_INPUT);
+                return encoded;
             } catch (Exception e) {
                 throw new DmrvnException(Code.INVALID_INPUT);
             }

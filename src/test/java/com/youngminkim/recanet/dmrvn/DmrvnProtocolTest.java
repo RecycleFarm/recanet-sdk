@@ -42,8 +42,18 @@ class DmrvnProtocolTest {
     @Test
     void rejectsUnsafeJsonAndDuplicateKeys() {
         for (Object value :
-                Arrays.asList(1.2, -0.0, Double.NaN, 9007199254740992L, "\ud800", new Object()))
+                Arrays.asList(Double.NaN, Double.POSITIVE_INFINITY, 9007199254740992L, "\ud800", new Object()))
             assertThrows(DmrvnException.class, () -> Json.canonical(value));
+        assertEquals("1.2", Json.canonical(1.2));
+        assertEquals("0", Json.canonical(-0.0));
+        assertEquals("0.000001", Json.canonical(1e-6));
+        assertEquals("1e-7", Json.canonical(1e-7));
+        assertThrows(DmrvnException.class,
+                () -> Json.canonical(new java.math.BigDecimal("0.123456789012345678901")));
+        assertThrows(DmrvnException.class,
+                () -> Json.parse("{\"reading\":0.123456789012345678901}".getBytes()));
+        assertEquals("{\"reading\":1.25}",
+                Json.canonical(Json.parse("{\"reading\":1.25}".getBytes())));
         assertThrows(DmrvnException.class, () -> Json.parse("{\"x\":1,\"x\":2}".getBytes()));
         assertThrows(DmrvnException.class, () -> Json.parse("{} {}".getBytes()));
         assertThrows(DmrvnException.class, () -> Json.parse("{\"count\":-0}".getBytes()));

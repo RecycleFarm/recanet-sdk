@@ -5,10 +5,12 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * Durable partner-owned journal. Return detached JSON snapshots; writes must be durable before
+ * Optional partner-owned journal for the step APIs. Return detached JSON snapshots; durable writes
+ * are the adapter's responsibility. The SDK does not guarantee recovery or exactly-once execution.
+ * For durable adapters, writes must be durable before
  * returning. withLock must serialize across workers and fence writes/side effects when ownership is
- * lost. Keys include operation, source-event, beneficiary and Relay reservations. No private keys
- * belong here.
+ * lost. Keys include activity workflow, operation, source-event, beneficiary and Relay reservations.
+ * No private keys belong here.
  */
 public interface OperationJournal {
     <T> T withLock(String key, Supplier<T> action);

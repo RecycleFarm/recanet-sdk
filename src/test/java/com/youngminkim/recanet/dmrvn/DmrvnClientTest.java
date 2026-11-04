@@ -23,7 +23,7 @@ class DmrvnClientTest {
         rpc = new TestSupport.Rpc(TestSupport.proxyConfig());
         user = new TestSupport.Signer(1);
         approver = new TestSupport.Signer(2);
-        relay = new TestSupport.Signer(8);
+        relay = approver;
         storage = new TestSupport.Storage();
         methodology = TestSupport.methodology();
         journal = new FileOperationJournal(dir);
@@ -31,7 +31,7 @@ class DmrvnClientTest {
     }
 
     DmrvnClient make(OperationJournal j) {
-        return new DmrvnClient(rpc.config, rpc, approver, relay, storage, methodology, j);
+        return new DmrvnClient(rpc.config, rpc, approver, storage, methodology, j);
     }
 
     Map<String, Object> body(String event) {
@@ -45,6 +45,131 @@ class DmrvnClientTest {
     Map<String, Object> prepare(String op) {
         return client.prepare(
                 op, id(op), user.address(), "partners/101/" + op + "/evidence.json", body(op));
+    }
+
+    Map<String, Object> submitActivity(String op) {
+        return client.submitActivity(
+                user, op, id(op), "partners/101/" + op + "/evidence.json", body(op), "900000");
+    }
+
+    @Test
+    void activityUploadsSignsAndSubmitsThenRecoversAfterExpiryWithoutResigning() {
+        assertEquals("BROADCAST", submitActivity("activity").get("status"));
+        var state = client.operation("activity");
+        assertEquals(user.address(), state.get("beneficiary"));
+        assertEquals("SEALED", Json.map(state.get("upload")).get("status"));
+        rpc.confirm(Json.map(state.get("approved")), Json.map(state.get("sponsored")),
+                Json.str(state.get("userSignature")), relay.address());
+        rpc.timestamp += 1000;
+        client = make(new FileOperationJournal(dir));
+        assertEquals("CONFIRMED", submitActivity("activity").get("status"));
+        assertEquals(state.get("userSignature"), client.operation("activity").get("userSignature"));
+        assertEquals(1, storage.uploads);
+        assertEquals(1, approver.messages);
+        assertEquals(1, approver.typed);
+        assertEquals(1, user.typed);
+        assertEquals(1, relay.sends);
+    }
+
+    @Test
+    void activityDoesNotResendWhenRelayResponseIsLost() {
+        relay.failure = new DmrvnException(DmrvnException.Code.RPC_UNAVAILABLE);
+        assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED,
+                assertThrows(DmrvnException.class, () -> submitActivity("lost-activity")).code());
+        relay.failure = null;
+        client = make(new FileOperationJournal(dir));
+        assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED,
+                assertThrows(DmrvnException.class, () -> submitActivity("lost-activity")).code());
+        var state = client.operation("lost-activity");
+        rpc.confirm(Json.map(state.get("approved")), Json.map(state.get("sponsored")),
+                Json.str(state.get("userSignature")), relay.address());
+        assertEquals("CONFIRMED", submitActivity("lost-activity").get("status"));
+        assertEquals(1, user.typed);
+        assertEquals(1, relay.sends);
+        assertEquals(1, storage.uploads);
+    }
+
+    @Test
+    void activityReusesPersistedSignatureAfterFailureBeforeBroadcast() {
+        var approved = prepare("signed-activity");
+        var signing = client.prepareSponsored("signed-activity", "900000");
+        var forward = Json.map(signing.get("forwardRequest"));
+        String signature = user.signTypedData(DmrvnProtocol.typedData(
+                "ForwardRequest", Json.map(signing.get("domain")), forward));
+        client.recordSponsoredSignature("signed-activity", forward, signature);
+        client = make(new FileOperationJournal(dir));
+        assertEquals("BROADCAST", submitActivity("signed-activity").get("status"));
+        assertEquals(approved, client.operation("signed-activity").get("approved"));
+        assertEquals(signature, client.operation("signed-activity").get("userSignature"));
+        assertEquals(1, user.typed);
+    }
+
+    @Test
+    void activityRejectsChangedInputsAndWrongBeneficiaryBeforeSigning() {
+        submitActivity("immutable-activity");
+        var changed = methodology.evidenceBody(101, user.address(), "immutable-activity",
+                Map.of("petBottleCount", 4));
+        assertEquals(DmrvnException.Code.OPERATION_INPUT_CHANGED,
+                assertThrows(DmrvnException.class, () -> client.submitActivity(
+                        user, "immutable-activity", id("immutable-activity"),
+                        "partners/101/immutable-activity/evidence.json", changed, "900000")).code());
+        assertEquals(DmrvnException.Code.SUBMISSION_INPUT_CHANGED,
+                assertThrows(DmrvnException.class, () -> client.submitActivity(
+                        user, "immutable-activity", id("immutable-activity"),
+                        "partners/101/immutable-activity/evidence.json", body("immutable-activity"),
+                        "800000")).code());
+        assertThrows(DmrvnException.class, () -> client.submitActivity(
+                new TestSupport.Signer(9), "wrong-user", id("wrong-user"),
+                "partners/101/wrong-user/evidence.json", body("wrong-user"), "900000"));
+        assertEquals(1, storage.uploads);
+        assertEquals(1, user.typed);
+        assertEquals(1, relay.sends);
+    }
+
+    @Test
+    void concurrentActivityCallsUploadSignAndSendOnce() throws Exception {
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var gate = new CountDownLatch(1);
+            Callable<String> task = () -> {
+                gate.await();
+                try {
+                    return Json.str(submitActivity("concurrent-activity").get("status"));
+                } catch (DmrvnException e) {
+                    return e.code().name();
+                }
+            };
+            var first = executor.submit(task);
+            var second = executor.submit(task);
+            gate.countDown();
+            assertEquals(Set.of("BROADCAST", "SUBMISSION_UNRESOLVED"),
+                    Set.of(first.get(30, TimeUnit.SECONDS), second.get(30, TimeUnit.SECONDS)));
+        } finally {
+            executor.shutdownNow();
+        }
+        assertEquals(1, storage.uploads);
+        assertEquals(1, approver.typed);
+        assertEquals(1, user.typed);
+        assertEquals(1, relay.sends);
+    }
+
+    @Test
+    void activityRejectsSignatureFromAnotherWalletWithoutSending() {
+        var wrongSigner = new TestSupport.Signer(1) {
+            @Override
+            public String signTypedData(Map<String, Object> data) {
+                return new TestSupport.Signer(9).signTypedData(data);
+            }
+        };
+        assertEquals(DmrvnException.Code.SIGNATURE_INVALID,
+                assertThrows(DmrvnException.class, () -> client.submitActivity(
+                        wrongSigner, "bad-signature", id("bad-signature"),
+                        "partners/101/bad-signature/evidence.json", body("bad-signature"),
+                        "900000")).code());
+        assertEquals(0, relay.sends);
+        assertFalse(client.operation("bad-signature").containsKey("userSignature"));
+        assertEquals("BROADCAST", submitActivity("bad-signature").get("status"));
+        assertEquals(1, storage.uploads);
     }
 
     @Test
@@ -119,7 +244,7 @@ class DmrvnClientTest {
         assertEquals(
                 approver.address(),
                 reader.verifyEvidenceProvenance(id("pending"), Json.bytes(before.get("evidence"))));
-        rpc.claim.put("approver", relay.address());
+        rpc.claim.put("approver", new TestSupport.Signer(8).address());
         assertThrows(
                 DmrvnException.class,
                 () ->
@@ -242,7 +367,7 @@ class DmrvnClientTest {
         var direct = new TestSupport.Rpc();
         client =
                 new DmrvnClient(
-                        direct.config, direct, approver, relay, storage, methodology, journal);
+                        direct.config, direct, approver, storage, methodology, journal);
         assertEquals(false, client.preflight().get("ready"));
         assertEquals(
                 DmrvnException.Code.DEPLOYMENT_NOT_READY,
@@ -409,28 +534,14 @@ class DmrvnClientTest {
     }
 
     @Test
-    void invalidPetInputsNeverReachSignersOrStorage() {
-        for (Object n : List.of(0, -1, 100001, 1.5, "3"))
-            assertThrows(
-                    DmrvnException.class,
-                    () ->
-                            methodology.evidenceBody(
-                                    101, user.address(), "one", Map.of("petBottleCount", n)));
-        assertThrows(
-                DmrvnException.class,
-                () ->
-                        methodology.evidenceBody(
-                                101,
-                                user.address(),
-                                "one",
-                                Map.of("petBottleCount", 3, "extra", 1)));
-        assertThrows(
-                DmrvnException.class,
-                () -> methodology.evidenceBody(101, user.address(), "one", Map.of()));
-        for (int n : List.of(1, 100000))
-            assertNotNull(
-                    methodology.evidenceBody(
-                            101, user.address(), "boundary", Map.of("petBottleCount", n)));
+    void partnerOwnsInputFieldsTypesAndRanges() {
+        for (Object value : List.of(0, -1, 100001, 1.5, "3", false, List.of(3, 1))) {
+            var inputs = Map.of("petBottleCount", value, "extra", (Object) Map.of("unit", "arbitrary"));
+            var evidence = methodology.evidenceBody(101, user.address(), "one", inputs);
+            assertEquals(Json.canonical(inputs), Json.canonical(evidence.get("inputs")));
+            assertEquals(Map.of("ownerHash", DmrvnProtocol.ownerHash(user.address())), evidence.get("source"));
+        }
+        assertEquals(Map.of(), methodology.evidenceBody(101, user.address(), "empty", Map.of()).get("inputs"));
         assertEquals(0, approver.messages);
         assertEquals(0, storage.creates);
     }
@@ -462,7 +573,7 @@ class DmrvnClientTest {
                         return super.create(location, data);
                     }
                 };
-        client = new DmrvnClient(rpc.config, rpc, approver, relay, rejected, methodology, journal);
+        client = new DmrvnClient(rpc.config, rpc, approver, rejected, methodology, journal);
         assertEquals(
                 DmrvnException.Code.STORAGE_ACCOUNT_UNFUNDED,
                 assertThrows(DmrvnException.class, () -> prepare("one")).code());
@@ -488,7 +599,7 @@ class DmrvnClientTest {
                         return super.create(location, data);
                     }
                 };
-        client = new DmrvnClient(rpc.config, rpc, approver, relay, rejected, methodology, journal);
+        client = new DmrvnClient(rpc.config, rpc, approver, rejected, methodology, journal);
         var error = assertThrows(DmrvnException.class, () -> prepare("one"));
         assertTrue(error.definitelyRejected());
         assertFalse(error.definitelyNotBroadcast());

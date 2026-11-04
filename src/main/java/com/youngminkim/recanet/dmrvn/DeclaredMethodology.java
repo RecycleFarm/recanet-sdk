@@ -4,7 +4,7 @@ import static com.youngminkim.recanet.dmrvn.DmrvnException.*;
 
 import java.util.*;
 
-/** Approved declared-input manifest and package commitments. Calculation remains in DMRVN nodes. */
+/** Approved methodology/package commitments. Input interpretation belongs to DMRVN nodes. */
 public final class DeclaredMethodology {
     @FunctionalInterface
     public interface Registry {
@@ -16,21 +16,40 @@ public final class DeclaredMethodology {
     private final Map<String, Object> manifest;
     private final String hash;
     private final Registry registry;
+    private final int evidenceSchemaVersion;
+    private final boolean explicitEvidenceVersion;
 
     public DeclaredMethodology(
             byte[] manifestBytes, byte[] wasmBytes, String expectedHash, Registry registry) {
+        this(manifestBytes, wasmBytes, expectedHash, registry, 3, false);
+    }
+
+    /**
+     * Explicit integration setting for the shared common Evidence fields and JCS encoding.
+     * The specification has not finalized the new wire version; obtain it from the DMRVN operator.
+     * Supplying a value is not proof that validators support it. Historical fixtures stay unchanged.
+     */
+    public DeclaredMethodology(byte[] manifestBytes, byte[] wasmBytes, String expectedHash,
+                               Registry registry, int evidenceSchemaVersion) {
+        this(manifestBytes, wasmBytes, expectedHash, registry, evidenceSchemaVersion, true);
+    }
+
+    private DeclaredMethodology(byte[] manifestBytes, byte[] wasmBytes, String expectedHash,
+                                Registry registry, int evidenceSchemaVersion, boolean explicit) {
         this.manifest = Json.object(manifestBytes);
         this.hash = Crypto.bytes32(expectedHash);
         this.registry = Objects.requireNonNull(registry);
+        require(evidenceSchemaVersion > 0, Code.INVALID_INPUT);
+        this.evidenceSchemaVersion = evidenceSchemaVersion;
+        this.explicitEvidenceVersion = explicit;
         require(
                 Json.hash(manifest).equals(hash)
                         && Crypto.hash(wasmBytes).equals(manifest.get("wasmHash")),
                 Code.METHODOLOGY_UNAVAILABLE);
-        require(
-                "PARTNER_DECLARED_INPUTS_V1".equals(manifest.get("evidenceSchema"))
-                        && "DECLARED_INPUTS_V1"
-                                .equals(Json.map(manifest.get("evidenceValidation")).get("kind")),
-                Code.INVALID_INPUT);
+        // Do not select a partner input profile from evidenceSchema/evidenceValidation.
+        activityId();
+        id();
+        version();
     }
 
     public String hash() {
@@ -56,12 +75,16 @@ public final class DeclaredMethodology {
                 Code.METHODOLOGY_UNAVAILABLE);
     }
 
+    void requireExplicitEvidenceVersion() {
+        require(explicitEvidenceVersion, Code.EVIDENCE_CONTRACT_UNCONFIGURED);
+    }
+
     public Map<String, Object> evidenceBody(
             long partnerId, String beneficiary, String sourceEventId, Map<String, Object> inputs) {
         var result =
                 Json.obj(
                         "schemaVersion",
-                        3,
+                        evidenceSchemaVersion,
                         "sourceEventId",
                         sourceEventId,
                         "partnerId",
@@ -74,8 +97,6 @@ public final class DeclaredMethodology {
                         Json.copy(inputs),
                         "source",
                         Json.obj(
-                                "kind",
-                                "PARTNER_DECLARED_INPUTS",
                                 "ownerHash",
                                 DmrvnProtocol.ownerHash(beneficiary)));
         validate(result, partnerId, beneficiary);
@@ -96,7 +117,7 @@ public final class DeclaredMethodology {
                                         "source")),
                 Code.INVALID_INPUT);
         require(
-                "3".equals(String.valueOf(body.get("schemaVersion")))
+                Integer.toString(evidenceSchemaVersion).equals(String.valueOf(body.get("schemaVersion")))
                         && Long.toString(partnerId).equals(String.valueOf(body.get("partnerId")))
                         && Long.toString(activityId())
                                 .equals(String.valueOf(body.get("activityId"))),
@@ -113,29 +134,10 @@ public final class DeclaredMethodology {
                         .equals(
                                 Json.hash(
                                         Json.obj(
-                                                "kind",
-                                                "PARTNER_DECLARED_INPUTS",
                                                 "ownerHash",
                                                 DmrvnProtocol.ownerHash(beneficiary)))),
                 Code.INVALID_INPUT);
-        var inputs = Json.map(body.get("inputs"));
-        var schema = Json.map(manifest.get("inputSchema"));
-        require(inputs.keySet().equals(schema.keySet()), Code.INVALID_INPUT);
-        for (var entry : schema.entrySet()) {
-            var rule = Json.map(entry.getValue());
-            Object value = inputs.get(entry.getKey());
-            require(
-                    "integer".equals(rule.get("type"))
-                            && (value instanceof Integer
-                                    || value instanceof Long
-                                    || value instanceof java.math.BigInteger),
-                    Code.INVALID_INPUT);
-            var n = Crypto.uint(value, 53);
-            require(
-                    n.compareTo(Crypto.uint(rule.get("min"), 53)) >= 0
-                            && n.compareTo(Crypto.uint(rule.get("max"), 53)) <= 0,
-                    Code.INVALID_INPUT);
-        }
+        Json.map(body.get("inputs"));
         require(Json.bytes(body).length <= 1024 * 1024, Code.INVALID_INPUT);
     }
 }

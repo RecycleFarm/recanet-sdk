@@ -17,6 +17,7 @@ dependencies {
     implementation("com.nimbusds:nimbus-jose-jwt:10.10")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
     implementation("org.bouncycastle:bcprov-jdk15to18:1.83")
+    implementation("io.github.erdtman:java-json-canonicalization:1.1")
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

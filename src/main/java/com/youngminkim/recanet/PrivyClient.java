@@ -274,7 +274,7 @@ public final class PrivyClient {
                 wallet.publicKey().orElse(null), wallet.chainType().value());
     }
 
-    private static PrivyApiException apiFailure(APIException e) {
+    static PrivyApiException apiFailure(APIException e) {
         PrivyApiException.Code code = switch (e.code()) {
             case 401 -> PrivyApiException.Code.INVALID_CREDENTIALS;
             case 403 -> PrivyApiException.Code.FORBIDDEN;

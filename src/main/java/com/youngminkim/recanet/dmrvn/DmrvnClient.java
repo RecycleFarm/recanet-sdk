@@ -2,38 +2,60 @@ package com.youngminkim.recanet.dmrvn;
 
 import static com.youngminkim.recanet.dmrvn.DmrvnException.*;
 
+import com.youngminkim.recanet.UserWalletClient;
+import com.youngminkim.recanet.PrivyApiException;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Supplier;
 
-/** Partner-side DMRVN v7 workflow with immutable preparation and conservative recovery. */
+/** Partner-side DMRVN v7 submission. Durable records and recovery belong to the consumer. */
 public final class DmrvnClient {
     private final DmrvnConfig config;
     private final Chain chain;
-    private final EvmSigner approver, relay;
+    private final EvmSigner operator;
+    private final EvmRpc rpc;
+    private final OperationJournal suppliedJournal;
     private final GreenfieldStorage storage;
     private final DeclaredMethodology methodology;
     private final OperationJournal journal;
+    private final Map<String, Map<String, Object>> observations = new java.util.concurrent.ConcurrentHashMap<>();
 
-    public DmrvnClient(
-            DmrvnConfig config,
-            EvmRpc rpc,
-            EvmSigner approver,
-            EvmSigner relay,
-            GreenfieldStorage storage,
-            DeclaredMethodology methodology,
-            OperationJournal journal) {
+    /** One operating wallet signs provenance/approval and pays Relay gas. No durable journal needed. */
+    public DmrvnClient(DmrvnConfig config, EvmRpc rpc, EvmSigner operator,
+                       GreenfieldStorage storage, DeclaredMethodology methodology) {
+        this(config, rpc, operator, storage, methodology, null);
+    }
+
+    /** Optional consumer-owned journal; its presence does not guarantee recovery. */
+    public DmrvnClient(DmrvnConfig config, EvmRpc rpc, EvmSigner operator,
+                       GreenfieldStorage storage, DeclaredMethodology methodology,
+                       OperationJournal journal) {
         this.config = Objects.requireNonNull(config);
-        this.chain = new Chain(config, Objects.requireNonNull(rpc));
-        this.approver = Objects.requireNonNull(approver);
-        this.relay = Objects.requireNonNull(relay);
+        this.rpc = Objects.requireNonNull(rpc);
+        this.chain = new Chain(config, rpc);
+        this.operator = Objects.requireNonNull(operator);
         this.storage = Objects.requireNonNull(storage);
         this.methodology = Objects.requireNonNull(methodology);
-        this.journal = Objects.requireNonNull(journal);
-        Crypto.address(approver.address());
-        Crypto.address(relay.address());
+        this.suppliedJournal = journal;
+        this.journal = journal == null ? new MemoryOperationJournal() : journal;
+        Crypto.address(operator.address());
         Crypto.address(storage.address());
         require(config.greenfieldChainId().equals(storage.chainId()), Code.WRONG_CHAIN);
+    }
+
+    /** Migration overload: different approval/Relay wallets are rejected before any side effects. */
+    @Deprecated
+    public DmrvnClient(DmrvnConfig config, EvmRpc rpc, EvmSigner approver, EvmSigner relay,
+                       GreenfieldStorage storage, DeclaredMethodology methodology,
+                       OperationJournal journal) {
+        this(config, rpc, sameOperator(approver, relay), storage, methodology, journal);
+    }
+
+    private static EvmSigner sameOperator(EvmSigner approver, EvmSigner relay) {
+        require(approver != null && relay != null
+                && Crypto.address(approver.address()).equals(Crypto.address(relay.address())),
+                Code.INVALID_INPUT);
+        return approver;
     }
 
     /**
@@ -52,7 +74,7 @@ public final class DmrvnClient {
                 checks,
                 "approverRole",
                 () -> {
-                    chain.verifyApprover(approver.address());
+                    chain.verifyApprover(operator.address());
                     return true;
                 });
         check(
@@ -62,6 +84,10 @@ public final class DmrvnClient {
                     methodology.verifyActive();
                     return true;
                 });
+        check(checks, "evidenceContract", () -> {
+            methodology.requireExplicitEvidenceVersion();
+            return true;
+        });
         check(
                 checks,
                 "relayBalanceWei",
@@ -69,7 +95,7 @@ public final class DmrvnClient {
                         Chain.number(
                                         chain.call(
                                                 "eth_getBalance",
-                                                Crypto.address(relay.address()),
+                                                Crypto.address(operator.address()),
                                                 "latest"))
                                 .toString());
         checks.put("greenfieldWriteRead", "NOT_TESTED");
@@ -85,9 +111,9 @@ public final class DmrvnClient {
                 "verifiedMetadata",
                 Json.map(checks.get("deployment")).get("value"),
                 "approver",
-                Crypto.address(approver.address()),
+                Crypto.address(operator.address()),
                 "relay",
-                Crypto.address(relay.address()),
+                Crypto.address(operator.address()),
                 "storageSigner",
                 Crypto.address(storage.address()),
                 "checks",
@@ -112,7 +138,7 @@ public final class DmrvnClient {
     }
 
     private String relayKey() {
-        return "relay-nonce:" + config.chainId() + ":" + Crypto.address(relay.address());
+        return "relay-nonce:" + config.chainId() + ":" + Crypto.address(operator.address());
     }
 
     private String configurationFingerprint() {
@@ -133,9 +159,9 @@ public final class DmrvnClient {
                         "greenfieldChainId",
                         config.greenfieldChainId(),
                         "approver",
-                        Crypto.address(approver.address()),
+                        Crypto.address(operator.address()),
                         "relay",
-                        Crypto.address(relay.address()),
+                        Crypto.address(operator.address()),
                         "storage",
                         Crypto.address(storage.address())));
     }
@@ -230,6 +256,8 @@ public final class DmrvnClient {
     }
 
     private void save(String key, Map<String, Object> state) {
+        // Preserve observed facts even if the consumer's optional journal write fails.
+        observations.put(key, Json.copy(state));
         journal.store(key, Json.copy(state));
     }
 
@@ -281,9 +309,9 @@ public final class DmrvnClient {
                                 "prefix",
                                 config.objectPrefix(),
                                 "relay",
-                                Crypto.address(relay.address()),
+                                Crypto.address(operator.address()),
                                 "approver",
-                                Crypto.address(approver.address()),
+                                Crypto.address(operator.address()),
                                 "storageSigner",
                                 Crypto.address(storage.address())));
         return journal.withLock(
@@ -344,25 +372,26 @@ public final class DmrvnClient {
                             });
                     verifyState(key, state, !state.containsKey("upload"));
                     if (state.containsKey("upload")) return Json.copy(state);
-                    chain.verifyApprover(approver.address());
+                    chain.verifyApprover(operator.address());
                     methodology.verifyActive();
                     if (!state.containsKey("evidence")) {
                         String message = "DMRVN v4 source:" + Json.hash(body);
-                        String signature = approver.signMessage(message);
+                        String signature = operator.signMessage(message);
                         require(
                                 Crypto.recover(Crypto.messageDigest(message), signature)
-                                        .equals(Crypto.address(approver.address())),
+                                        .equals(Crypto.address(operator.address())),
                                 Code.SIGNATURE_INVALID);
                         var evidence = Json.copy(body);
                         evidence.put(
                                 "provenance",
                                 Json.obj(
                                         "signer",
-                                        approver.address(),
+                                        operator.address(),
                                         "sourceSignature",
                                         signature));
                         require(Json.bytes(evidence).length <= 1024 * 1024, Code.INVALID_INPUT);
                         state.put("evidence", evidence);
+                        state.put("phase", "EVIDENCE_SIGNED");
                         save(key, state);
                     }
                     byte[] bytes = Json.bytes(state.get("evidence"));
@@ -400,8 +429,13 @@ public final class DmrvnClient {
                                 txHash != null && !txHash.isBlank(),
                                 Code.STORAGE_CREATE_UNRESOLVED);
                         state.put("createTxHash", txHash);
+                        state.put("phase", "EVIDENCE_CREATE_BROADCAST");
                         save(key, state);
                         head = storage.head(location);
+                    }
+                    if (head.exists()) {
+                        state.put("objectExists", true);
+                        save(key, state);
                     }
                     if (!head.sealed()) {
                         require(
@@ -422,6 +456,7 @@ public final class DmrvnClient {
                                     "status",
                                     "SEALED");
                     state.put("upload", upload);
+                    state.put("phase", "EVIDENCE_SEALED");
                     state.remove("lastStorageError");
                     save(key, state);
                     return Json.copy(state);
@@ -467,11 +502,11 @@ public final class DmrvnClient {
                     require(s.containsKey("upload"), Code.OPERATION_NOT_PREPARED);
                     verifyState(key, s, true);
                     if (s.containsKey("approved")) return Json.copy(Json.map(s.get("approved")));
-                    chain.verifyApprover(approver.address());
+                    chain.verifyApprover(operator.address());
                     DmrvnProtocol.verifyProvenance(
                             Json.map(s.get("evidence")),
                             Json.hash(s.get("evidence")),
-                            approver.address());
+                            operator.address());
                     methodology.verifyActive();
                     var location = Json.map(s.get("evidenceLocation"));
                     require(storage.head(location).sealed(), Code.OBJECT_UNSEALED);
@@ -521,12 +556,12 @@ public final class DmrvnClient {
                                 String digest =
                                         DmrvnProtocol.digest("ClaimRequest", domain, request);
                                 String signature =
-                                        approver.signTypedData(
+                                        operator.signTypedData(
                                                 DmrvnProtocol.typedData(
                                                         "ClaimRequest", domain, request));
                                 require(
                                         Crypto.recover(digest, signature)
-                                                .equals(Crypto.address(approver.address())),
+                                                .equals(Crypto.address(operator.address())),
                                         Code.SIGNATURE_INVALID);
                                 var value =
                                         Json.obj(
@@ -546,6 +581,7 @@ public final class DmrvnClient {
                 });
     }
 
+    /** Uploads evidence and signs partner approval; does not submit an on-chain Claim. */
     public Map<String, Object> prepare(
             String operationId,
             String claimId,
@@ -554,6 +590,194 @@ public final class DmrvnClient {
             Map<String, Object> evidenceBody) {
         prepareEvidence(operationId, claimId, beneficiary, objectName, evidenceBody);
         return approveClaim(operationId);
+    }
+
+    /**
+     * One call: authorized wallet lookup/creation, Evidence construction, Greenfield seal/read,
+     * approval, beneficiary signature, Relay send and bounded receipt/Claim confirmation.
+     * Each invocation is independent: no automatic retries, restart recovery or deduplication.
+     * UNKNOWN is not proof of failure and must not trigger blind resubmission.
+     * Only confirmed facts are returned; no reusable signatures are exposed.
+     */
+    public Map<String, Object> submitActivity(BeneficiaryWallets wallets, ActivityRequest request) {
+        Objects.requireNonNull(wallets);
+        Objects.requireNonNull(request);
+        String operationId = UUID.randomUUID().toString();
+        String claimId = request.claimId() == null
+                ? Crypto.textHash(config.deploymentId() + ":" + operationId) : request.claimId();
+        String objectName = request.objectName() == null
+                ? config.objectPrefix() + "activities/" + methodology.activityId() + "/"
+                        + operationId + "/evidence.json" : request.objectName();
+        // Volatile state is call-scoped. A supplied journal records steps for the consumer only.
+        var run = new DmrvnClient(config, rpc, operator, storage, methodology, suppliedJournal);
+        Map<String, Object> known = Json.obj("deploymentId", config.deploymentId(),
+                "chainId", config.chainId(), "claimAddress", config.claimAddress(),
+                "claimId", claimId, "operationId", operationId, "sourceEventId", request.sourceEventId());
+        var requested = Json.obj("evidenceLocation", Json.obj("storageType", 1,
+                "chainId", config.greenfieldChainId(), "bucketName", config.bucketName(),
+                "objectName", objectName));
+        String stage = "REQUEST_ACCEPTED";
+        try {
+            config.checkObject(objectName);
+            methodology.requireExplicitEvidenceVersion();
+            EvmSigner user = Objects.requireNonNull(
+                    wallets.getOrCreateSigner(config.partnerId(), request.userId()));
+            known.put("beneficiary", Crypto.address(user.address()));
+            stage = "BENEFICIARY_READY";
+            var body = methodology.evidenceBody(config.partnerId(), user.address(),
+                    request.sourceEventId(), request.inputs());
+            var sent = run.submitActivity(user, operationId, claimId, objectName, body, request.gas());
+            if (!"CONFIRMED".equals(sent.get("status"))) {
+                long until = System.nanoTime() + request.confirmationTimeout().toNanos();
+                while (true) {
+                    try {
+                        sent = run.resolveSubmission(operationId, (String) sent.get("txHash"));
+                        break;
+                    } catch (DmrvnException e) {
+                        if (e.code() != Code.SUBMISSION_UNRESOLVED) throw e;
+                        long remaining = until - System.nanoTime();
+                        if (remaining <= 0) throw e;
+                        try {
+                            java.util.concurrent.TimeUnit.NANOSECONDS.sleep(
+                                    Math.min(remaining, request.pollInterval().toNanos()));
+                        } catch (InterruptedException interrupted) {
+                            Thread.currentThread().interrupt();
+                            throw new DmrvnException(Code.INTERRUPTED);
+                        }
+                    }
+                }
+            }
+            var state = run.observations.get(operationKey(operationId));
+            addConfirmedFacts(known, state);
+            return Json.obj("outcome", "CONFIRMED", "lastConfirmedStage", "SUBMISSION_CONFIRMED",
+                    "confirmed", known, "requested", requested);
+        } catch (RuntimeException error) {
+            // Never expose arbitrary adapter messages, causes, credentials or signature snapshots.
+            var state = run.observations.get(operationKey(operationId));
+            Code code = error instanceof DmrvnException e ? e.code()
+                    : error instanceof IllegalArgumentException ? Code.INVALID_INPUT
+                    : error instanceof SecurityException ? Code.UNAUTHORIZED_SIGNER : Code.RPC_UNAVAILABLE;
+            boolean uncertain = code == Code.SUBMISSION_UNRESOLVED
+                    || code == Code.STORAGE_CREATE_UNRESOLVED
+                    || ("REQUEST_ACCEPTED".equals(stage)
+                        && (code == Code.RPC_UNAVAILABLE || code == Code.INTERRUPTED));
+            if (error instanceof PrivyApiException e) {
+                code = switch (e.code()) {
+                    case INVALID_CREDENTIALS, FORBIDDEN -> Code.UNAUTHORIZED_SIGNER;
+                    case INTERRUPTED -> Code.INTERRUPTED;
+                    default -> Code.RPC_UNAVAILABLE;
+                };
+                uncertain = "REQUEST_ACCEPTED".equals(stage)
+                        && switch (e.code()) {
+                            case UNAVAILABLE, INVALID_RESPONSE, INTERRUPTED -> true;
+                            default -> false;
+                        };
+            }
+            if (state != null) {
+                addConfirmedFacts(known, state);
+                stage = confirmedStage(state, stage);
+                uncertain = state.containsKey("submitFromBlock")
+                        || (state.containsKey("createIntent") && !state.containsKey("upload"));
+            }
+            return Json.obj("outcome", "SUBMISSION_CONFIRMED".equals(stage) ? "CONFIRMED"
+                            : uncertain ? "UNKNOWN" : "FAILED",
+                    "lastConfirmedStage", stage, "confirmed", known, "requested", requested,
+                    "errorCode", code.name());
+        }
+    }
+
+    private static String confirmedStage(Map<String, Object> state, String fallback) {
+        if ("CONFIRMED".equals(state.get("submissionStatus"))) return "SUBMISSION_CONFIRMED";
+        if (state.containsKey("txHash")) return "SUBMISSION_BROADCAST";
+        if (state.containsKey("userSignature")) return "BENEFICIARY_SIGNED";
+        if (state.containsKey("approved")) return "CLAIM_APPROVED";
+        if (state.containsKey("upload")) return "EVIDENCE_SEALED";
+        if (state.containsKey("createTxHash")) return "EVIDENCE_CREATE_BROADCAST";
+        if (state.containsKey("evidence")) return "EVIDENCE_SIGNED";
+        return fallback;
+    }
+
+    private static void addConfirmedFacts(Map<String, Object> known, Map<String, Object> state) {
+        if (state.containsKey("evidence")) known.put("evidenceHash", Json.hash(state.get("evidence")));
+        if (state.containsKey("createTxHash")) known.put("createTxHash", state.get("createTxHash"));
+        if (Boolean.TRUE.equals(state.get("objectExists")) || state.containsKey("upload"))
+            known.put("evidenceLocation", Json.copy(Json.map(state.get("evidenceLocation"))));
+        if (state.containsKey("upload")) known.put("storageStatus", "SEALED");
+        if (state.containsKey("submitFromBlock")) known.put("submissionFromBlock", state.get("submitFromBlock"));
+        if (state.containsKey("txHash")) known.put("txHash", state.get("txHash"));
+        if (state.containsKey("receipt")) known.put("receipt", Json.copy(Json.map(state.get("receipt"))));
+        if (state.containsKey("chainStatus")) known.put("chainStatus", state.get("chainStatus"));
+    }
+
+    /**
+     * Uploads evidence, approves, signs with the member wallet and submits a sponsored Claim.
+     * The service must authenticate/authorize userId. The existing member wallet must match the
+     * evidence beneficiary. No app signature or signature file is needed.
+     * Returns BROADCAST on initial submission, not final DMRVN validation; use resolveSubmission
+     * and readResult for confirmation and the final report. Reuse the same operationId and inputs
+     * to recover without resending an unresolved transaction.
+     */
+    public Map<String, Object> submitActivity(
+            UserWalletClient wallets,
+            String userId,
+            String operationId,
+            String claimId,
+            String objectName,
+            Map<String, Object> evidenceBody,
+            String gas) {
+        return submitActivity(
+                Objects.requireNonNull(wallets).signerFor(userId),
+                operationId, claimId, objectName, evidenceBody, gas);
+    }
+
+    /** Same workflow with an explicitly supplied beneficiary signer, e.g. a remote wallet adapter. */
+    public Map<String, Object> submitActivity(
+            EvmSigner userSigner,
+            String operationId,
+            String claimId,
+            String objectName,
+            Map<String, Object> evidenceBody,
+            String gas) {
+        Objects.requireNonNull(userSigner);
+        String key = operationKey(operationId);
+        BigInteger gasValue = Crypto.uint(gas, 256);
+        require(
+                gasValue.compareTo(BigInteger.valueOf(100000)) >= 0
+                        && gasValue.compareTo(BigInteger.valueOf(2000000)) <= 0,
+                Code.INVALID_INPUT);
+        var body = Json.copy(evidenceBody);
+        String beneficiary = Crypto.address(userSigner.address());
+        // A separate workflow lock serializes signing across composed calls without recursively
+        // acquiring the operation lock used by each existing durable step.
+        return journal.withLock(
+                "activity:" + key,
+                () -> {
+                    var state = prepareEvidence(
+                            operationId, claimId, beneficiary, objectName, body);
+                    Map<String, Object> signingRequest;
+                    if (state.containsKey("submitFromBlock")) {
+                        // Do not require a still-valid approval or generate a new signature after
+                        // broadcast intent. Only reconcile the exact original submission.
+                        require("SPONSORED".equals(state.get("submissionMode")),
+                                Code.SUBMISSION_INPUT_CHANGED);
+                        signingRequest = Json.map(state.get("sponsored"));
+                        require(gas.equals(Json.map(signingRequest.get("forwardRequest")).get("gas")),
+                                Code.SUBMISSION_INPUT_CHANGED);
+                    } else {
+                        approveClaim(operationId);
+                        signingRequest = prepareSponsored(operationId, gas);
+                    }
+                    var forward = Json.map(signingRequest.get("forwardRequest"));
+                    String signature = (String) state.get("userSignature");
+                    if (signature == null) {
+                        require(!state.containsKey("submitFromBlock"), Code.SUBMISSION_UNRESOLVED);
+                        signature = userSigner.signTypedData(
+                                DmrvnProtocol.typedData(
+                                        "ForwardRequest", Json.map(signingRequest.get("domain")), forward));
+                        recordSponsoredSignature(operationId, forward, signature);
+                    }
+                    return submitSponsored(operationId, forward, signature);
+                });
     }
 
     private void validateCurrent(Map<String, Object> request) {
@@ -811,7 +1035,7 @@ public final class DmrvnClient {
                                                 || reserved.isEmpty()
                                                 || operationId.equals(reserved.get("operationId")),
                                         Code.NONCE_CONFLICT);
-                                String sender = Crypto.address(relay.address());
+                                String sender = Crypto.address(operator.address());
                                 String data = DmrvnProtocol.executeCalldata(forward, userSignature);
                                 var tx =
                                         Json.obj(
@@ -881,7 +1105,7 @@ public final class DmrvnClient {
                                 save(key, s);
                                 try {
                                     String txHash =
-                                            relay.sendTransaction(
+                                            operator.sendTransaction(
                                                     config.chainId(),
                                                     Json.copy(tx),
                                                     Json.str(s.get("relayIdempotencyKey")));
@@ -1056,6 +1280,9 @@ public final class DmrvnClient {
         s.put("receipt", receipt);
         s.put("phase", "SUBMITTED");
         s.put("submissionStatus", "CONFIRMED");
+        int status = Crypto.uint(claim.get("status"), 8).intValueExact();
+        require(status >= 1 && status <= 4, Code.SUBMISSION_INPUT_CHANGED);
+        s.put("chainStatus", List.of("NONE", "PENDING", "VALID", "INVALID", "REVOKED").get(status));
         save(key, s);
         release(
                 beneficiaryKey(Json.str(request.get("beneficiary"))),

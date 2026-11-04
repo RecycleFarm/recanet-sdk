@@ -4,6 +4,7 @@ package com.youngminkim.recanet.dmrvn;
 public final class DmrvnException extends RuntimeException {
     public enum Code {
         INVALID_INPUT,
+        EVIDENCE_CONTRACT_UNCONFIGURED,
         WRONG_CHAIN,
         DEPLOYMENT_MISMATCH,
         DEPLOYMENT_NOT_READY,

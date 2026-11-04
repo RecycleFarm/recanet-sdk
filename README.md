@@ -60,6 +60,55 @@ client.exportWalletPrivateKeyAndLog(wallet.id(), registration);
 
 Privy app secret은 실행 환경의 환경변수 또는 secret manager에서 주입합니다.
 
+## 서비스 회원별 지갑과 자동 서명
+
+`UserWalletClient`는 서비스 회원마다 EVM 지갑을 만들고 서버 authorization key로 자동 서명합니다. 사용자 Privy 계정 생성, Privy 로그인, 사용자 JWT는 필요하지 않습니다. Privy상의 제어 권한은 서버 키가 가집니다. `APP_ID / APP_SECRET`은 API 인증, `BACKEND_WALLET_PRIVATE_KEY`는 지갑 작업 승인에 사용합니다.
+
+```java
+var memberWallets = new UserWalletClient(
+    client, BackendWalletRegistration.fromEnvironment(), "recanet-prod");
+
+// 반드시 서비스가 인증·권한 확인한 회원 ID 또는 승인된 백엔드 작업의 회원 ID 사용
+String memberId = authenticatedServiceMemberId;
+UserWallet memberWallet = memberWallets.getOrCreateWallet(memberId);
+String signature = memberWallets.signMessage(memberId, "서비스가 승인한 메시지");
+String typedSignature = memberWallets.signTypedData(memberId, typedData);
+```
+
+- 서비스 구분값(namespace)과 회원 ID를 SHA-256으로 해시한 고정 `external_id`를 Privy에 저장합니다. 별도 매핑 DB 없이 회원 지갑을 찾고 재사용할 수 있으며, 필요하면 DB에 지갑 ID와 주소를 저장해도 됩니다. namespace와 회원 ID는 변경되지 않는 값을 사용하고, 여러 서비스/tenant는 서로 다른 namespace를 사용하세요. 해시는 암호화가 아닙니다.
+- `external_id`는 회원 연결 정보이며 인증 수단이 아닙니다. 조회 시 `external_id`와 서버 `authorization_key`를 함께 필터링하고, 서명 전 서버 키 권한도 확인합니다. 호출자가 임의의 지갑 ID를 지정하는 API는 제공하지 않습니다. 동일 키로 관리하는 다른 namespace의 지갑에도 키 자체의 권한은 있으므로, 서비스의 회원/tenant 접근 제어가 필요합니다.
+- Privy의 앱 내 `external_id` 유일성으로 중복 생성을 방지합니다. 생성 충돌(HTTP 409) 시 기존 지갑을 다시 조회하며, 네트워크 오류 시 생성 요청을 자동 재전송하지 않습니다. 같은 namespace와 회원 ID로 다시 호출하면 기존 지갑을 찾을 수 있습니다. 이 기능은 기존에 `external_id` 없이 생성한 지갑을 자동 연결하지 않습니다.
+- `findWallet(memberId)`는 없으면 빈 `Optional`을 반환합니다. 서명 메서드는 지갑이 없으면 실패하고 자동 생성하지 않습니다. authorization key는 생성 전에 안전하게 영속 보관해야 하며, 기존 키 교체/지갑 권한 이전은 별도로 처리해야 합니다.
+- `sendTransaction(memberId, chainId, transaction, operationId)`도 제공합니다. `transaction`에는 `to`, `data`와 hex 문자열 `value`, `gas`, `gasPrice`, `nonce`를 전달합니다. 요청 본문과 operation ID를 함께 보관하고, 동일 작업의 복구 시 요청 본문을 바꾸지 마세요. 같은 지갑의 nonce 관리는 서비스에서 직렬화합니다. 반환 해시는 제출 결과이며 확정 여부는 별도 조회해야 합니다.
+
+Privy의 [external ID 규칙](https://docs.privy.io/wallets/wallets/external-ids)과 [authorization key 제어 모델](https://docs.privy.io/security/wallet-infrastructure/policy-and-controls)을 사용합니다.
+
+## 자금 조회와 전송
+
+현재 지원 자산은 **아비트럼 세폴리아의 네이티브 ETH** 하나입니다 (chain ID `421614`, 소수점 18자리). `AssetClient`는 체인 ID를 확인하고 잔액을 조회하며, 인증된 Privy 백엔드 지갑으로 전송합니다. 조회 주소는 블록체인 주소이고 전송 지갑은 기존 `PrivyEvmSigner`로 지정합니다.
+
+```java
+import com.youngminkim.recanet.AssetClient;
+import com.youngminkim.recanet.PrivyEvmSigner;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URI;
+
+var assets = new AssetClient(URI.create("https://sepolia-rollup.arbitrum.io/rpc"));
+var signer = new PrivyEvmSigner(client, wallet.id(), registration);
+BigInteger balanceWei = assets.getBalance(signer.address());
+BigDecimal balanceEth = new BigDecimal(balanceWei, AssetClient.DECIMALS);
+
+// 0.001 ETH = 10^15 wei. 정수 wei를 사용해 반올림을 피합니다.
+BigInteger amountWei = new BigInteger("1000000000000000");
+String txHash = assets.transfer(signer, recipientAddress, amountWei, operationId);
+```
+
+- `operationId`는 전송별로 고유하고 안정적인 Privy idempotency key입니다. 수신 주소와 금액은 호출자가 검증하고, 같은 지갑의 전송은 애플리케이션에서 직렬화해야 pending nonce가 충돌하지 않습니다.
+- 가스 추정, 현재 gas price와 pending nonce를 이용하며 가스비도 송신 지갑의 ETH에서 차감됩니다. 반환된 해시는 제출 결과이며 성공이나 최종 확정을 뜻하지 않습니다. 아래 `EvmTransactionClient`로 상태를 확인하세요.
+- 서명/제출 중 오류 또는 유효하지 않은 해시는 `SUBMISSION_UNRESOLVED`로 반환합니다. 이미 제출되었을 수 있으므로 자동 재전송하지 말고 Privy와 체인에서 해당 작업을 먼저 확인하세요. 호출 시마다 nonce와 가스를 다시 조회하므로 동일 key로 이 메서드를 재호출하는 것은 동일한 요청의 안전한 재시도가 아닙니다.
+- 이 기능은 백엔드 지갑을 대상으로 하며 HTTP 요청자의 해당 지갑에 대한 접근 권한 검증은 애플리케이션에서 수행해야 합니다. 자체 코인 발행 후에는 자산 종류와 전송 방식을 별도로 변경해야 합니다.
+
 ## Transaction 조회
 
 `EvmTransactionClient`는 DMRVN 작업 여부와 무관하게 EVM 트랜잭션을 조회합니다.
@@ -223,10 +272,23 @@ JWKS cache TTL 안에 이미 확보된 키는 네트워크 호출 없이 사용�
 - [Access token 검증](https://docs.privy.io/authentication/user-authentication/access-tokens)
 - [통합 최적화](https://docs.privy.io/recipes/dashboard/optimizing)
 
-## DMRVN 연동 (PET 시험 방법론)
+## DMRVN 연동
 
-`com.youngminkim.recanet.dmrvn`에 원본 Greenfield 저장·봉인, Claim v7 승인, Relay 대납/사용자 직접 납부, 영속 작업 기록, 거래 복구와 최종 Report 검증을 추가했습니다. EVM 승인자/Relay는 `PrivyEvmSigner`를 사용하며 사용자 서명은 앱에서 받습니다. PET 3개는 DMRVN 노드의 예상 결과가 60 gCO2e이고 SDK에서 탄소량을 계산하지 않습니다.
+공유 명세 [`6da7d02`](https://github.com/RecycleFarm/specifications/tree/6da7d029ca9a9dad71e5b2928de0f3c06cc5b499/dmrvn/backend-sdk) 기준이다. 운영 지갑 하나로 provenance·Claim 승인·Relay를 수행하고, durable journal 없이 다음 단일 요청을 사용할 수 있다.
 
-공유 명세 `341809a` 기준으로 신규 대상은 테스트넷 proxy `0x5984B6C7773031497AcA9BF0C7C1155bdeAEd24e`입니다. 구현 `1.0.1`과 서명 domain `7`을 구분하며 승인 manifest/ERC1967/code hash 검증, 호환 upgrade 후 기존 서명 재사용, 과거 direct 조회와 배포 간 Claim ID 충돌 방지를 지원합니다. DB journal adapter는 `findOperationsByClaimId`를 구현해야 합니다.
+```java
+// methodology는 운영자와 확인한 Evidence 버전을 명시하여 설정한다.
+var sdk = new DmrvnClient(config, rpc, operatingSigner, storage, methodology);
+var beneficiaries = memberWallets.forPartner(config.partnerId(), (partnerId, userId) ->
+    accessPolicy.isWalletUseAuthorized(authenticatedPartnerCredentials, partnerId, userId));
+var result = sdk.submitActivity(beneficiaries,
+    new ActivityRequest(memberId, sourceEventId, Map.of("petBottleCount", 3)));
+```
 
-Greenfield 쓰기 어댑터는 Node 22+와 `tools/greenfield`의 공식 JS SDK 설치가 필요합니다. 저장 위치, Java API와 실행 방법은 [DMRVN 연동 안내](docs/DMRVN.md), 실제 실행/미실행 범위는 [검증 기록](docs/DMRVN_VALIDATION.md)을 참고하세요.
+수혜자 지갑 조회·생성, Evidence 생성, Greenfield 저장·봉인, 승인·수혜자 서명, Relay 제출과 receipt/Claim 확인까지 수행한다. `source.ownerHash`는 유지하고 `source.kind`는 제거한다. `inputs`는 파트너 JSON 객체를 보존하며 방법론별 형식·값 검증은 DMRVN에 맡긴다. 수혜자 서명을 호출자가 준비할 필요는 없다.
+
+`CONFIRMED`는 제출 receipt와 Claim을 확인했다는 뜻이며 `chainStatus=PENDING`은 최종 VALID가 아니다. 실패·미확인 응답에는 확인된 단계와 식별자를 반환한다. `UNKNOWN`을 근거로 안전한 재전송을 추정하지 않는다. 기록 보존·조사·복구와 여러 프로세스의 운영 지갑 nonce 관리는 소비자 책임이며 journal은 선택 사항이다. 기존 직접 가스비 납부·단계별 조회 기능은 유지한다.
+
+명세에서 새 Evidence wire 버전과 Privy 매핑·권한 방식은 미결이다. 고수준 API는 Evidence 버전을 명시하지 않으면 중단하며 파트너 권한 어댑터를 반드시 받는다. 제공된 `forPartner` 매핑은 명시적으로 선택하는 어댑터이며 기존 지갑을 자동 연결하지 않는다. 과거 QA는 새 계약의 실환경 인수 증거가 아니다.
+
+Greenfield 쓰기 어댑터는 Node 22+와 `tools/greenfield`의 공식 JS SDK 설치가 필요하다. [DMRVN 연동 안내](docs/DMRVN.md)와 [검증 기록](docs/DMRVN_VALIDATION.md)을 참고한다.

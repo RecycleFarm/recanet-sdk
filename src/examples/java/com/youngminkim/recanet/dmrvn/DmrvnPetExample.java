@@ -127,8 +127,11 @@ public final class DmrvnPetExample {
                         publicReader.read(manifest),
                         publicReader.read(wasm),
                         DeclaredMethodology.PET_HASH,
-                        (a, id, v, h) -> "ACTIVE".equals(publication.get("status")));
-        var sdk = new DmrvnClient(config, rpc, signer, signer, storage, methodology, journal);
+                        (a, id, v, h) -> "ACTIVE".equals(publication.get("status")),
+                        Integer.parseInt(Objects.requireNonNull(
+                                System.getenv("DMRVN_EVIDENCE_SCHEMA_VERSION"),
+                                "DMRVN_EVIDENCE_SCHEMA_VERSION must be confirmed by the operator")));
+        var sdk = new DmrvnClient(config, rpc, signer, storage, methodology, journal);
         Map<String, Object> result;
         if (action.equals("evidence")) {
             var body =

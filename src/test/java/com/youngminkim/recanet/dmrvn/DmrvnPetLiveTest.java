@@ -24,6 +24,7 @@ class DmrvnPetLiveTest {
     @Test
     @Timeout(value = 70, unit = TimeUnit.MINUTES)
     void userSignsThenRealRelaySubmitsAndFinalPetReportIsVerified() throws Exception {
+        int evidenceVersion = Integer.parseInt(env("DMRVN_EVIDENCE_SCHEMA_VERSION"));
         int waitMinutes =
                 Integer.parseInt(System.getenv().getOrDefault("DMRVN_LIVE_WAIT_MINUTES", "10"));
         if (waitMinutes < 1 || waitMinutes > 60)
@@ -96,8 +97,8 @@ class DmrvnPetLiveTest {
                         publicReader.read(manifest),
                         publicReader.read(wasm),
                         DeclaredMethodology.PET_HASH,
-                        (a, id, v, h) -> "ACTIVE".equals(publication.get("status")));
-        var sdk = new DmrvnClient(config, rpc, backend, backend, storage, methodology, journal);
+                        (a, id, v, h) -> "ACTIVE".equals(publication.get("status")), evidenceVersion);
+        var sdk = new DmrvnClient(config, rpc, backend, storage, methodology, journal);
         var preflight = sdk.preflight();
         assertEquals(true, preflight.get("ready"), "Configured proxy and partner must be ready");
         var deployment = Json.map(preflight.get("verifiedMetadata"));
