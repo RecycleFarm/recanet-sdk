@@ -48,4 +48,21 @@ const verifier = new PrivyTokenVerifier('your-app-id', {
 JWKS는 첫 검증 시 조회하며 5분간 캐시합니다. 동시 조회는 공유하고 갱신은 30초 구간당 최대 2회로 제한합니다.
 갱신 실패 시 만료된 캐시 키를 사용하지 않습니다. `KEY_SOURCE_UNAVAILABLE`은 토큰 오류와 구분해 처리하세요.
 
+회원 지갑은 서비스별 namespace와 회원 ID로 조회하거나 생성합니다.
+
+```ts
+import { BackendWalletRegistration } from 'recanet-typescript';
+
+// 최초 생성 후 안전하게 영속 보관하세요. 호출마다 새 키를 만들지 마세요.
+const registration = BackendWalletRegistration.generate();
+// 재시작 시에는 저장한 공개키·개인키로 new BackendWalletRegistration(publicPem, privatePem).
+const members = client.userWallets(registration, 'service');
+const wallet = await members.getOrCreateWallet('authenticated-member-id');
+const existing = await members.findWallet('authenticated-member-id'); // 없으면 null
+```
+
+호출자는 회원 인증과 tenant 권한을 먼저 확인해야 합니다. 승인키는 블록체인 지갑의 개인키가 아닙니다.
+생성은 자동 재전송하지 않으며, 생성 충돌(409)일 때만 다시 조회합니다.
+`isBackendWallet`의 기존 public key 비교는 서명 권한 판정에 사용하지 마세요.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

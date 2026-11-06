@@ -2,6 +2,8 @@ import { PrivyApiError } from './errors.js';
 import { requestJson, type HttpSettings } from './internal/http.js';
 import { isJavaBlank } from './member-identity.js';
 import { PrivyTokenVerifier, type TokenVerificationOptions, type AuthenticatedUser } from './token-verifier.js';
+import { BackendWalletRegistration, type BackendWalletCreateRequest, type BackendWallet } from './backend-wallet.js';
+import { registerWallet, listWallets, isBackendWallet, memberWallets, type UserWalletClient } from './internal/wallets.js';
 
 export interface PrivyClientOptions {
   readonly appId: string;
@@ -66,4 +68,26 @@ export class PrivyClient {
       throw new PrivyApiError('INVALID_RESPONSE');
     }
   }
+
+  registerBackendWallet(registration: BackendWalletRegistration, input: BackendWalletCreateRequest,
+    signal?: AbortSignal): Promise<BackendWallet> {
+    return registerWallet(this.#request, registration, input, signal);
+  }
+
+  listBackendWallets(publicKey: string, signal?: AbortSignal): Promise<readonly BackendWallet[]> {
+    return listWallets(this.#request, publicKey, signal);
+  }
+
+  /** 기존 public_key 문자열 비교 API. 서명 권한 판정과 다르다 (D-01). */
+  isBackendWallet(walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal): Promise<boolean> {
+    return isBackendWallet(this.#request, walletId, registration, signal);
+  }
+
+  /** 인증/tenant 권한을 확인한 userId만 전달한다. 생성 전에 승인키를 영속 보관한다. */
+  userWallets(registration: BackendWalletRegistration, namespace: string): UserWalletClient {
+    return memberWallets(this.#request, registration, namespace);
+  }
+
+  #request = (path: string, method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal): Promise<unknown> =>
+    requestJson(this.#settings, path, method, body, signal);
 }

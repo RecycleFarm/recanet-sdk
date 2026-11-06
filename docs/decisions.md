@@ -12,6 +12,8 @@
 | TS-05 / D-09 | JWT 파서의 비표준 입력 수용·중복 claim·중첩 한도 | 원시 숫자를 보존하는 별도 파서 사용. 중복 key·128단계 초과 중첩·비정상 UTF-8·비 base64url compact 입력은 INVALID_TOKEN. Nimbus 비표준 허용 범위와 교차 검증 전 전체 파서 호환 선언 보류 |
 | TS-06 | 인증 결과의 시각 표현 | `issuedAtMs`·`expiresAtMs`는 UTC epoch 밀리초 bigint. NumericDate 전체 범위는 JS Date 범위를 초과하므로 Date/number로 축소하지 않음. 최종 공개 API 채택 대기 |
 | TS-07 / D-09 | JWKS 전송·키 선택 경계 | fetch의 header 대기와 각 body read에 timeout 적용. Java 소켓의 connect/read와 완전히 같은 시간 경계는 미검증. EC/P-256, kid/alg/use 기준 후보 선택; Nimbus의 모든 비표준 JWK 파싱·선택 규칙 교차 검증 대기. `now` 주입은 claim과 캐시/갱신 제한 시계 모두에 적용 |
+| TS-08 / D-04 | 승인키 자동 출력·환경변수 기반 초기화 편의 기능 | 키 생성·명시적 입력만 구현. Java generateAndLog/ensureBackendWallet/exportAndLog의 비밀 자동 출력과 첫 지갑 선택 정책은 미채택·미구현. 소비자 비밀 저장소와 환경변수 매핑은 호출자 책임 |
+| TS-09 / D-07 | 등록/목록 일반 전송 예외의 노출 | 직접 fetch 계층에서는 공통 sanitize 오류로 반환. Java 공식 SDK의 일부 일반 실행 예외 노출까지 복제하지 않음. 계약 통합 채택은 대기 |
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
 | D-02·17·30 | Evidence wire 버전·숫자 정규화·제어문자 escape | 운영 기본 버전을 추정하지 않음 |
 | D-05·08–16 | API 표면·회원 연결·외부 공급자·승인 서명·거래 정책 | 각 상세 구현 전 원본 계약 대조 |
