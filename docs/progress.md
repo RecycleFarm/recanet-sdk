@@ -19,7 +19,8 @@
 | 5b | ETH 잔액·전송 (C-04 일부) | 구현, 정확한 wei·호출 순서·실패 경계 시험 통과 |
 | 5c | 거래 상세/상태 (C-04 일부) | 구현, 상태·receipt/블록 결속·수치 경계·snapshot 시험 통과 |
 | 5d | 발신 거래 목록/cursor (C-04 일부) | 구현, 블록 내부/100블록 페이지·anchor·reorg·cursor 벡터 시험 통과 |
-| 6 | DMRVN 계산·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
+| 6a | DMRVN 암호·JSON (C-05 일부) | 구현, 복구/JSON/escape 고정 벡터 시험 통과 |
+| 6b | ABI·EIP-712·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -66,4 +67,6 @@
   genesis 종료, latest snapshot 고정·증가 head의 confirmations, 범위/cursor 입력 사전 거부,
   anchor·parent·거래 위치/index·페이지 반환 직전 reorg 검사 확인.
 - 현재 전체 79개 시험 통과. EVM RPC·ETH·단건 상세/상태·발신 목록을 각각 독립 리뷰 승인 후 커밋.
+- DMRVN 암호/JSON: Keccak·hex·uint·EIP-55·low-s 서명 복구 3개 고정 벡터·EIP-191 바이트 길이,
+  Java JSON 사례 11개·제어 문자 9개 hash, decimal/정수 구분과 기존 비왕복 경계 확인.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

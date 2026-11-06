@@ -23,6 +23,7 @@
 | TS-16 / D-13 | ETH 전송 금액·복구 정보의 공개 API | 금액은 bigint wei만 받으며 string/number 자동 변환 없음. 현재 Java처럼 hash만 반환하고 완성 transaction·pending nonce를 별도 결과로 노출하지 않음. 같은 key의 transfer 재호출은 body가 달라질 수 있어 원래 전송 복구 계약은 결정 대기 |
 | TS-17 / D-15 | 거래 조회의 수치·원본 응답 타입 | chain/block/confirmations·금액/가스/nonce는 bigint, transactionIndex는 int32 범위 number. 원본은 중첩 동결한 JSON snapshot이며 주입 RPC도 JSON 호환 값을 반환해야 함. 조회 오류는 TransactionQueryError. 합의 포함 증명/마지막 anchor 재확인 강화는 원본 D-15 결정 대기 |
 | TS-18 / D-16 | 거래 cursor의 SDK 간 호환·변조 방지 | Java 발급 ASCII/Base64url 벡터와 일치하며 수신 시 padding·snapshot/index 정수의 부호/선행 0을 허용. cursor는 비서명·비암호화이며 권한 증명이 아님. 교차 언어 전체 비정규 파싱 호환 및 서버 변조 방지 정책은 결정 대기 |
+| TS-19 / D-17·30 | DMRVN decimal 자료형과 암호 의존성 | ethers 6.17.0을 고정해 Keccak/secp256k1 연산에 사용하고 Java 입력 범위·low-s를 별도 검사. DMRVN JSON 소수는 DmrvnDecimal로 원문/BigDecimal 구분 유지하며 canonical/hash/copy에는 DmrvnJson 사용. 큰 decimal의 canonical 결과를 다시 파싱하면 거부되는 기존 경계 유지. 표준 JCS로 수정·일반 JSON 자료형으로 축소하는 정책은 결정 대기 |
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
 | D-02·17·30 | Evidence wire 버전·숫자 정규화·제어문자 escape | 운영 기본 버전을 추정하지 않음 |
 | D-05·08–16 | API 표면·회원 연결·외부 공급자·승인 서명·거래 정책 | 각 상세 구현 전 원본 계약 대조 |

@@ -42,16 +42,49 @@ function numeric(value: JsonNumber): number {
   return result;
 }
 
-function convert(value: JsonValue): unknown {
-  if (value instanceof JsonNumber) return numeric(value);
+/** Java BigDecimal 경로를 정수 경로와 구분한다. 표준 JSON 출력에는 SDK canonical을 사용한다. */
+export class DmrvnDecimal extends JsonNumber {
+  constructor(source: string) {
+    super(source);
+    if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(source)) invalid();
+    numeric(this);
+    Object.freeze(this);
+  }
+
+  toString(): string {
+    const parts = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(this.source)!;
+    const digits = (parts[2]! + (parts[3] ?? '')).replace(/^0+(?=\d)/, '');
+    const sign = /^0+$/.test(digits) ? '' : parts[1]!;
+    const scale = BigInt(parts[3]?.length ?? 0) - BigInt(parts[4] ?? '0');
+    const exponent = BigInt(digits.length - 1) - scale;
+    if (scale >= 0n && exponent >= -6n) {
+      const point = digits.length - Number(scale);
+      return sign + (point <= 0 ? '0.' + '0'.repeat(-point) + digits
+        : point === digits.length ? digits : digits.slice(0, point) + '.' + digits.slice(point));
+    }
+    return sign + digits[0] + (digits.length > 1 ? '.' + digits.slice(1) : '') + 'E' + (exponent >= 0n ? '+' : '') + exponent;
+  }
+}
+
+function convert(value: JsonValue, preserveDecimals = false): unknown {
+  if (value instanceof JsonNumber) {
+    const result = numeric(value);
+    return preserveDecimals && /[.eE]/.test(value.source) ? new DmrvnDecimal(value.source) : result;
+  }
   if (typeof value === 'string') { unicode(value); return value; }
-  if (Array.isArray(value)) return value.map(convert);
+  if (Array.isArray(value)) return value.map(item => convert(item, preserveDecimals));
   if (value !== null && typeof value === 'object') {
     const result: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-    for (const [key, item] of Object.entries(value)) { unicode(key); result[key] = convert(item); }
+    for (const [key, item] of Object.entries(value)) { unicode(key); result[key] = convert(item, preserveDecimals); }
     return result;
   }
   return value;
+}
+
+export function parseDmrvnJson(bytes: Uint8Array): unknown {
+  try {
+    return convert(parseLosslessJson(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)), true);
+  } catch { return invalid(); }
 }
 
 /** DMRVN/체인 JSON 응답 규칙. Privy 승인/JWT JSON과 공유하지 않는다. */
@@ -86,6 +119,7 @@ export function canonicalChainJson(value: unknown, depth = 0): string {
   if (value === null) return 'null';
   if (typeof value === 'string') return quoted(value);
   if (typeof value === 'boolean') return String(value);
+  if (value instanceof DmrvnDecimal) return JSON.stringify(numeric(value));
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return invalid();
     return JSON.stringify(value);

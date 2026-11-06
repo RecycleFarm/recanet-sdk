@@ -14,3 +14,5 @@ export { EvmTransactionClient } from './evm-transaction-client.js';
 export type { EvmTransaction, EvmTransactionStatus, EvmTransactionState, EvmTransactionPage, EvmTransactionQuery,
   ReadonlyJson, ReadonlyJsonObject } from './evm-transaction.js';
 export { TransactionQueryError, type TransactionQueryErrorCode } from './errors.js';
+export * as DmrvnCrypto from './dmrvn-crypto.js';
+export { DmrvnJson, DmrvnDecimal } from './dmrvn-json.js';

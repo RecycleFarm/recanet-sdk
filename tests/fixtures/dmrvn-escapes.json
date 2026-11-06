@@ -1,0 +1,79 @@
+{
+  "cases": [
+    {
+      "currentCanonical": "\"\\u0000\"",
+      "currentKeccak256": "0x88277dae5b1a447e32c9207777cbe7aafb330239a82a124229066d2db395e506",
+      "id": "U+0000",
+      "inputJson": "\"\\u0000\"",
+      "jcsCanonical": "\"\\u0000\"",
+      "jcsKeccak256": "0x88277dae5b1a447e32c9207777cbe7aafb330239a82a124229066d2db395e506"
+    },
+    {
+      "currentCanonical": "\"\\b\"",
+      "currentKeccak256": "0x91ef2da6a58e17254c834b2d9fdd464f3672469b9a208c49082b464703efce44",
+      "id": "U+0008",
+      "inputJson": "\"\\u0008\"",
+      "jcsCanonical": "\"\\b\"",
+      "jcsKeccak256": "0x91ef2da6a58e17254c834b2d9fdd464f3672469b9a208c49082b464703efce44"
+    },
+    {
+      "currentCanonical": "\"\\t\"",
+      "currentKeccak256": "0xee2aaba3fc6989bc1ca82e8426974b5722778062a6a418c335c19efefb7411d2",
+      "id": "U+0009",
+      "inputJson": "\"\\u0009\"",
+      "jcsCanonical": "\"\\t\"",
+      "jcsKeccak256": "0xee2aaba3fc6989bc1ca82e8426974b5722778062a6a418c335c19efefb7411d2"
+    },
+    {
+      "currentCanonical": "\"\\n\"",
+      "currentKeccak256": "0xa0750cd4c4eed066d0a020d6eba11cbce385aa3cc84bb3e90126842d93730246",
+      "id": "U+000A",
+      "inputJson": "\"\\u000a\"",
+      "jcsCanonical": "\"\\n\"",
+      "jcsKeccak256": "0xa0750cd4c4eed066d0a020d6eba11cbce385aa3cc84bb3e90126842d93730246"
+    },
+    {
+      "currentCanonical": "\"\\f\"",
+      "currentKeccak256": "0x28d4f78873c623d4edfc7bdb27cbdc4879a980f582792586824569b7f9238e04",
+      "id": "U+000C",
+      "inputJson": "\"\\u000c\"",
+      "jcsCanonical": "\"\\f\"",
+      "jcsKeccak256": "0x28d4f78873c623d4edfc7bdb27cbdc4879a980f582792586824569b7f9238e04"
+    },
+    {
+      "currentCanonical": "\"\\r\"",
+      "currentKeccak256": "0x30512afc53b10416d0199c81fbd393d413493c68902feeff20939b4d83757f7c",
+      "id": "U+000D",
+      "inputJson": "\"\\u000d\"",
+      "jcsCanonical": "\"\\r\"",
+      "jcsKeccak256": "0x30512afc53b10416d0199c81fbd393d413493c68902feeff20939b4d83757f7c"
+    },
+    {
+      "currentCanonical": "\"\\u000F\"",
+      "currentKeccak256": "0xad627554c864154cf3835f22e71539d44a9e5d854f7003ca6c9988479dc316df",
+      "id": "U+000F",
+      "inputJson": "\"\\u000f\"",
+      "jcsCanonical": "\"\\u000f\"",
+      "jcsKeccak256": "0x1e7390ebab586735fc43dfbce7f336c71deaf2f9351c448e77bbddc13640dccc"
+    },
+    {
+      "currentCanonical": "\"\\u001B\"",
+      "currentKeccak256": "0x892b232432f0d347bdb6bff69baa16d2c696ea3ba05f2fcdbb244b8c1d41baa7",
+      "id": "U+001B",
+      "inputJson": "\"\\u001b\"",
+      "jcsCanonical": "\"\\u001b\"",
+      "jcsKeccak256": "0xf9e123e5471b9676ba67c298053be30a00de0558558a03564e456667ecdfba3a"
+    },
+    {
+      "currentCanonical": "\"\\u001F\"",
+      "currentKeccak256": "0xe962453487ca7a3184692cdaaf21d3a4c8158174761915df289117443198fa6d",
+      "id": "U+001F",
+      "inputJson": "\"\\u001f\"",
+      "jcsCanonical": "\"\\u001f\"",
+      "jcsKeccak256": "0xfe858072b9aa4d5a5abf716e742fff22e52d88324aae813954d36683f967f721"
+    }
+  ],
+  "kind": "source-execution-and-rfc8785-comparison-not-adopted-policy",
+  "sourceCommit": "37c78cfa01d9892ca26de61bb74df827923917cf"
+}
+
