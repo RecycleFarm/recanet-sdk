@@ -36,7 +36,8 @@
 | 6o | 단일 대납 전송 (C-09 일부) | 구현, 완성 거래/intent 저장·비용/nonce/시뮬레이션·무재전송 시험 통과 |
 | 6p | 명시 operation 활동 제출 조합 (C-10 일부) | 구현, 단계 연결·실패 재개·동시 단일 서명/전송·intent 조회 전용 시험 통과 |
 | 6q | 고수준 활동 요청 (C-10 일부) | 구현, 불변 요청·JSON snapshot·기본값·gas/시간/식별자 범위 시험 통과 |
-| 6r | 영속 journal·고수준 활동 실행·보고서 (C-08–11) | 예정 |
+| 6r | 고수준 활동 실행·접수 대기 (C-10) | 구현, 새 ID/호출 상태·권한 경계·bounded polling·UNKNOWN/FAILED/CONFIRMED 사실 시험 통과 |
+| 6s | 영속 journal·Greenfield 쓰기 adapter·보고서 (C-07·08·11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -129,5 +130,8 @@
   16개 동시 호출 단일 서명/전송·intent 이후 만료/철회와 분리한 조회·서명 누락/모드/gas 변경 거부 검증.
 - 고수준 요청: 원시 userId·Java blank·source regex, inputs 생성/조회 사본·불변 필드,
   bytes32 정규화·경로 검사 지연·gas/시간 기본값 및 경계 확인.
-- 현재 전체 188개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
+- 고수준 실행: 자동/명시 ID·요청 경로, Evidence 명시 버전 선검사·회원 확보, timeout=0 첫 조회·unresolved만 polling,
+  send 오류 무poll·Privy 오류별 FAILED/UNKNOWN·관찰 저장 실패의 사실·서명 비노출,
+  confirmed 후 해제 오류·공유/미공유 journal의 새 호출 의미·대기 취소 검증.
+- 현재 전체 197개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

@@ -12,6 +12,14 @@ import { prepareSelfPaid, prepareSponsored, recordSponsoredSignature } from './i
 import { resolveSubmission } from './internal/submission-resolution.js';
 import { submitSponsored } from './internal/sponsored-submission.js';
 import { submitActivity } from './internal/activity-submission.js';
+import { ActivityRequest } from './activity-request.js';
+import type { ActivityOutcome } from './activity-outcome.js';
+import type { BeneficiaryWallets } from './internal/wallets.js';
+import { submitUserActivity } from './internal/user-activity-submission.js';
+
+type ExplicitActivityArgs = [userSigner: EvmSigner, operationId: string, claimId: string, objectName: string,
+  body: Readonly<Record<string, unknown>>, gas: string, signal?: AbortSignal];
+type UserActivityArgs = [wallets: BeneficiaryWallets, request: ActivityRequest, signal?: AbortSignal];
 
 /** DMRVN 단계 API. 영속 journal·재시작 복구와 외부 권한은 소비자가 제공한다. */
 export class DmrvnClient {
@@ -46,9 +54,11 @@ export class DmrvnClient {
     signal?: AbortSignal): Promise<Record<string, unknown>> {
     return submitSponsored(this.#context, operationId, forwardRequest, signature, signal);
   }
-  submitActivity(userSigner: EvmSigner, operationId: string, claimId: string, objectName: string,
-    body: Readonly<Record<string, unknown>>, gas: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
-    return submitActivity(this.#context, userSigner, operationId, claimId, objectName, body, gas, signal);
+  submitActivity(...args: UserActivityArgs): Promise<ActivityOutcome>;
+  submitActivity(...args: ExplicitActivityArgs): Promise<Record<string, unknown>>;
+  submitActivity(...args: UserActivityArgs | ExplicitActivityArgs): Promise<ActivityOutcome | Record<string, unknown>> {
+    if (typeof args[1] === 'string') return submitActivity(this.#context, ...args as ExplicitActivityArgs);
+    return submitUserActivity(this.#context, ...args as UserActivityArgs);
   }
   recordSponsoredSignature(operationId: string, forwardRequest: Readonly<Record<string, unknown>>, signature: string,
     signal?: AbortSignal): Promise<Record<string, unknown>> {

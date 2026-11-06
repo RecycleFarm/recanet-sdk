@@ -188,6 +188,13 @@ intent 이후 재호출은 원래 거래를 조회합니다. 자동 replacement�
 
 `submitActivity(beneficiarySigner, operationId, claimId, objectName, evidenceBody, gas)`는 위 단계를 조합합니다.
 복구할 때 같은 operationId와 입력을 사용하세요. 최초 `BROADCAST` 뒤 자동 polling하지 않으며,
-intent가 있으면 저장된 서명을 재사용해 조회합니다. 회원 지갑의 조회/생성과 요청별 자동 ID API는 아직 별도 구현 중입니다.
+intent가 있으면 저장된 서명을 재사용해 조회합니다.
+
+`submitActivity(wallets, new ActivityRequest(userId, sourceEventId, inputs, options))`는 파트너 권한 adapter로
+회원 지갑을 확보하고 새 ID로 저장·승인·대납·접수 확인을 실행합니다. `wallets`는 `forPartner` 반환값 또는
+`BeneficiaryWallets` 구현입니다. 기본 확인 대기는 60초이며 전송 결과가 나온 뒤부터 측정합니다.
+반환 `outcome`은 `CONFIRMED`·`UNKNOWN`·`FAILED`이고, `confirmed`는 관찰 사실만 담습니다.
+이 고수준 API를 재호출하면 **새 작업**입니다. UNKNOWN 후에는 반환 ID/hash와 journal로 원래 작업을 복구하세요.
+명시 journal이 없으면 호출 종료 후 단계 상태의 자동 복구를 보장하지 않습니다.
 
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

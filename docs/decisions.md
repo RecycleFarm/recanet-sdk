@@ -37,6 +37,7 @@
 | TS-30 / D-22·27 | DMRVN receipt/log 조회 일관성 | 현재 Java처럼 receipt blockHash는 raw 문자열 일치, txHash는 대소문자 무시. event 선택은 claim주소/topic/claimId 첫 일치, 로그 검색은 범위 차이≤100000을 1000블록 창으로 읽음. 개별 receipt log의 removed/block/tx 추가 결속·마지막 anchor 재검사·실패 receipt 종료 정책은 결정 대기 |
 | TS-31 / D-22·23 | relay 거래·오류 종료·수수료 정책 | Java 규칙인 estimate×130/100 floor·legacy gasPrice·비용 상한·pending=latest nonce·pending 시뮬레이션 유지. 양의 gas/price 추가 검사·EIP-1559·replacement/fee bump는 채택하지 않음. 완성 거래와 intent를 send 전에 저장하고 send 이후 명백 거절 flags도 미확정으로 처리하며 자동 재전송하지 않음. RPC/서명자에는 거래 사본을 전달. 거절 증명 기반 종료·수수료 확장·재전송 정책은 결정 대기 |
 | TS-32 / D-05·26 | 고수준 요청 생성 API와 시간 정밀도 | ActivityRequest는 TS options의 미지정 필드별 기본값 적용(원본 Java는 3인자 생성자만 기본값). 명시 null gas/time은 거부. Duration 대신 정수 밀리초 confirmationTimeoutMs/pollIntervalMs로 0..600000/1..10000 제한하며 sub-ms는 지원하지 않음. 요청 객체/inputs는 불변 snapshot. 최종 API·sub-ms 필요성·통합 오류 경계는 결정 대기 |
+| TS-33 / D-05·26 | 고수준 오류 매핑·새 호출·확인 대기 | Java IllegalArgumentException은 TS TypeError/RangeError로 대응, 권한 거부 adapter는 DmrvnError(UNAUTHORIZED_SIGNER)를 사용. Privy 오류 특별 매핑 및 stage/intent 기반 outcome 유지. 호출마다 UUID·독립 관찰/기본 메모리, 명시 journal만 공유. timeout은 전송 결과 뒤 monotonic clock으로 측정하며 개별 RPC 총기한을 제한하지 않음. AbortSignal은 RPC/지갑/대기에 전달. 오류 경계 통합·source dedup/자동 재개·전체 실행 기한 정책은 결정 대기 |
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |

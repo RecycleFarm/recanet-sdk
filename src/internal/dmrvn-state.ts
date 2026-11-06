@@ -33,14 +33,18 @@ export class OperationContext {
   readonly methodology: DeclaredMethodology;
   readonly journal: OperationJournal;
   readonly suppliedJournal: OperationJournal | undefined;
+  #rpc: EvmRpc;
   #observations = new Map<string, Record<string, unknown>>();
   constructor(config: DmrvnConfig, rpc: EvmRpc, operator: EvmSigner, storage: GreenfieldStorage,
     methodology: DeclaredMethodology, journal?: OperationJournal) {
-    this.config = config; this.chain = new DmrvnChain(config, rpc); this.operator = operator;
+    this.config = config; this.#rpc = rpc; this.chain = new DmrvnChain(config, rpc); this.operator = operator;
     this.storage = storage; this.methodology = methodology; this.suppliedJournal = journal;
     this.journal = journal ?? new MemoryOperationJournal();
     normalizeAddress(operator.address); normalizeAddress(storage.address);
     requireState(storage.chainId === config.greenfieldChainId, 'WRONG_CHAIN');
+  }
+  fork(): OperationContext {
+    return new OperationContext(this.config, this.#rpc, this.operator, this.storage, this.methodology, this.suppliedJournal);
   }
   configurationFingerprint(): string {
     return DmrvnJson.hash({ deployment: this.config.deploymentId(), forwarder: this.config.forwarderAddress,
