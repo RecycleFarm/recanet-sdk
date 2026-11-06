@@ -1,6 +1,7 @@
 import { DmrvnError } from './errors.js';
 import { canonicalChainJson, parseChainJson, rpcIdText } from './internal/chain-json.js';
 import { JsonNumber } from './internal/lossless-json.js';
+import { dmrvnUri } from './internal/dmrvn-uri.js';
 
 export interface EvmRpc {
   call(method: string, params: readonly unknown[], signal?: AbortSignal): Promise<unknown>;
@@ -13,15 +14,6 @@ export interface HttpEvmRpcOptions {
   readonly connectTimeoutMs?: number;
 }
 
-function endpoint(input: string): string {
-  if (typeof input !== 'string' || /[\x00-\x20\x7f\\#]/.test(input)) throw new DmrvnError('INVALID_INPUT');
-  const authority = /^(https|http):\/\/([^/?#]+)/.exec(input);
-  if (!authority || authority[2]!.includes('@')) throw new DmrvnError('INVALID_INPUT');
-  const host = authority[2]!.replace(/:\d+$/, '');
-  if (authority[1] === 'http' && !['localhost', '127.0.0.1', '[::1]'].includes(host)) throw new DmrvnError('INVALID_INPUT');
-  try { return new URL(input).href; } catch { throw new DmrvnError('INVALID_INPUT'); }
-}
-
 /** 제한된 EVM JSON-RPC 2.0 전송. 비밀 header·배치·자동 재시도를 사용하지 않는다. */
 export class HttpEvmRpc implements EvmRpc {
   #url: string;
@@ -31,7 +23,7 @@ export class HttpEvmRpc implements EvmRpc {
   #id = 0;
 
   constructor(url: string, options: HttpEvmRpcOptions = {}) {
-    this.#url = endpoint(url);
+    this.#url = dmrvnUri(url);
     this.#fetch = options.fetch ?? globalThis.fetch;
     this.#timeout = options.timeoutMs ?? 30000;
     this.#connect = options.connectTimeoutMs ?? 10000;

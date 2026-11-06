@@ -19,3 +19,5 @@ export { DmrvnJson, DmrvnDecimal } from './dmrvn-json.js';
 export { DmrvnAbi, type AbiField, type AbiDefinition } from './dmrvn-abi.js';
 export { DmrvnProtocol, type DmrvnStructType } from './dmrvn-protocol.js';
 export { DeclaredMethodology, type MethodologyRegistry } from './declared-methodology.js';
+export { DmrvnDeployment } from './dmrvn-deployment.js';
+export { DmrvnConfig, type DmrvnConfigOptions, type DeploymentConfigOptions } from './dmrvn-config.js';

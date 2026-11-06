@@ -148,4 +148,8 @@ DMRVN의 순수 계산 계층은 `DmrvnCrypto`, `DmrvnJson`, `DmrvnAbi`로 제�
 Evidence 본문을 만들 때는 운영자와 확인한 `evidenceSchemaVersion`을 명시해야 합니다. SDK는 WASM을 실행하거나
 파트너 입력 프로필을 선택하지 않습니다. 현재 Evidence 계약의 미결 사항은 의사결정 문서에 남아 있습니다.
 
+`DmrvnDeployment.fromManifest`는 승인된 배포 manifest를 정규화하고 `DmrvnConfig.fromDeployment`는
+RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testnet 자료는 고정 스냅샷이며 현재 체인 준비 상태가 아닙니다.
+과거 direct 배포는 읽기·복구용으로만 유지합니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
