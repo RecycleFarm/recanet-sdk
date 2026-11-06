@@ -3,7 +3,8 @@ export type PrivyApiErrorCode = 'INVALID_CREDENTIALS' | 'FORBIDDEN' | 'RATE_LIMI
 
 export type PrivyAuthenticationErrorCode = 'MISSING_TOKEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'KEY_SOURCE_UNAVAILABLE';
 
-export type DmrvnErrorCode = 'UNAUTHORIZED_SIGNER' | 'RPC_UNAVAILABLE' | 'INTERRUPTED';
+export type DmrvnErrorCode = 'UNAUTHORIZED_SIGNER' | 'RPC_UNAVAILABLE' | 'INTERRUPTED'
+  | 'INVALID_INPUT' | 'GAS_ESTIMATION_FAILED' | 'WRONG_CHAIN' | 'SUBMISSION_UNRESOLVED';
 
 /** 서명/RPC 경계의 정리된 오류. 제출 여부를 확정하지 않는다. */
 export class DmrvnError extends Error {

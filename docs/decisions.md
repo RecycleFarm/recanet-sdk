@@ -18,6 +18,8 @@
 | TS-11 / D-12 | chainId와 직접 서명자 입력 검증의 공개 타입 | chainId는 안전한 number 또는 bigint로 Java signed int64 범위 보존. 직접 signer는 양수·key blank·Quantity 문법을 추가 검사하지 않음. 회원 API는 별도 양수/key 검사를 유지할 예정. 반환 hash/signature는 문자열 반환이며 암호학적 검증은 상위 계층 책임 |
 | TS-12 / D-11 | idempotency key의 HTTP 공백 처리 | native Fetch가 앞뒤 HTTP 공백을 제거하므로 동일하게 정규화한 실제 header 값으로 승인하고 전송. 교차 SDK의 공백 key 허용/거부 정책은 결정 대기. 연동 시 앞뒤 공백 없는 안정적 key 사용; 원본 body와 wire key를 함께 보존 |
 | TS-13 / D-03·07 | 파트너 콜백 및 미발견 서명자 오류 | 콜백은 boolean 또는 Promise<boolean>을 명시적으로 지원하고 매 서명/전송에 재확인. 미발견은 회원 상세 Page의 UNAUTHORIZED_SIGNER로 구현(Java 일반 signerFor의 IllegalStateException과 차이). 콜백 자체 오류는 원문 그대로 호출자에게 전파. 최종 언어 공통 오류정책 결정 대기 |
+| TS-14 / D-14 | EVM fetch 시간 경계·범위 | 요청 전체 30초, 연결 단계는 fetch header 반환까지 10초 상한. native Fetch가 소켓 연결 timeout을 직접 제공하지 않아 Java connect timeout과 같은 의미는 아님. 설정은 양의 안전 정수 밀리초, 1ms 미만은 거부(원본 Duration 소수 ms 차이). 정식 시간 계약 결정 대기 |
+| TS-15 / D-17·30 | 체인 JSON의 언어별 숫자·중첩 경계 | 응답 숫자는 원문을 읽어 integer safe 범위/decimal 정확 왕복을 별도 검증. JS 입력 number는 double 경로로 JCS 숫자를 출력하고 bigint 입력은 safe 정수만 허용. Java의 입력 숫자 클래스 차이를 JS에서 완전히 복제하지 않음. 중첩 128단계 상한은 기존 lossless 파서 공유. key escape/제어문자 대문자는 Java 호환 경로이며 표준 JCS 정책은 미채택 |
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
 | D-02·17·30 | Evidence wire 버전·숫자 정규화·제어문자 escape | 운영 기본 버전을 추정하지 않음 |
 | D-05·08–16 | API 표면·회원 연결·외부 공급자·승인 서명·거래 정책 | 각 상세 구현 전 원본 계약 대조 |

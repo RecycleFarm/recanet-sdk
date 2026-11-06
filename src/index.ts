@@ -8,3 +8,4 @@ export { BackendWalletRegistration, type BackendWallet, type BackendWalletCreate
 export type { UserWallet, UserWalletClient, WalletAuthorization, BeneficiaryWallets } from './internal/wallets.js';
 export type { EvmSigner, EvmTypedData, EvmTransactionInput } from './evm-signer.js';
 export { DmrvnError, type DmrvnErrorCode } from './errors.js';
+export { HttpEvmRpc, type EvmRpc, type HttpEvmRpcOptions } from './evm-rpc.js';
