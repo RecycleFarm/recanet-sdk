@@ -21,7 +21,8 @@
 | 5d | 발신 거래 목록/cursor (C-04 일부) | 구현, 블록 내부/100블록 페이지·anchor·reorg·cursor 벡터 시험 통과 |
 | 6a | DMRVN 암호·JSON (C-05 일부) | 구현, 복구/JSON/escape 고정 벡터 시험 통과 |
 | 6b | ABI (C-05 일부) | 구현, selector/topic·과거 calldata·strict decode 시험 통과 |
-| 6c | EIP-712·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
+| 6c | EIP-712·provenance·commitment (C-05 일부) | 구현, 6개 타입/3개 digest·PET 해시/서명/calldata 시험 통과 |
+| 6d | 배포·저장·복구·제출·보고서 (C-06–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -74,4 +75,7 @@
   과거 PET의 submitClaim/execute/onReport calldata byte 일치 및 재디코딩, 별도 ethers codec 대조,
   동적 배열 offset/1024 상한·uint/address/bool/bytes1/UTF8·call trailing/padding 거부 시험.
 - 과거 PET fixture는 offlineOnly/actuallySubmitted=false이며 새 Evidence 계약의 수용 증거가 아니다.
+- 프로토콜: 6개 encodeType/typeHash·Claim/Assignment/Observation digest/복구 주소, EvidenceLocation hash,
+  과거 PET Evidence/provenance/Claim/Forwarder·submit/execute calldata·committee 순서·report signer 정렬 commitment,
+  누락/범위/변조 및 typed data snapshot 확인. quorum·역할·최종 상태 검증을 대신하지 않음.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

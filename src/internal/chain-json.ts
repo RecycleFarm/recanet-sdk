@@ -51,6 +51,9 @@ export class DmrvnDecimal extends JsonNumber {
     Object.freeze(this);
   }
 
+  /** 외부 JSON wire에서는 수치로 보낸다. 정밀도 검증은 생성 시 완료한다. */
+  toJSON(): number { return numeric(this); }
+
   toString(): string {
     const parts = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(this.source)!;
     const digits = (parts[2]! + (parts[3] ?? '')).replace(/^0+(?=\d)/, '');

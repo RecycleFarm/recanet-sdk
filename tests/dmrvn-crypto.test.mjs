@@ -72,6 +72,7 @@ test('Java JSON 관찰 벡터와 제어 문자 바이트/hash가 일치한다', 
 test('DMRVN decimal은 정수와 구분하고 canonical copy의 기존 비왕복 경계를 보존한다', () => {
   const decimal = DmrvnJson.parse(Buffer.from('9007199254740992.0'));
   assert.ok(decimal instanceof DmrvnDecimal);
+  assert.equal(JSON.stringify({ decimal: new DmrvnDecimal('1.5') }), '{"decimal":1.5}');
   assert.equal(DmrvnJson.canonical(decimal), '9007199254740992');
   assert.throws(() => DmrvnJson.copy(decimal), code('INVALID_INPUT'));
   for (const [input, output] of [['1.0', '1.0'], ['1e0', '1'], ['1e3', '1E+3'],

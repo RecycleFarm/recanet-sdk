@@ -141,4 +141,7 @@ DMRVN의 순수 계산 계층은 `DmrvnCrypto`, `DmrvnJson`, `DmrvnAbi`로 제�
 이 경로는 Java의 현재 바이트 규칙을 재현하며 전체 입력에서 표준 JCS와 동일하다는 뜻은 아닙니다.
 동봉 ABI는 필요한 타입의 부분집합만 인코딩하며, 실제 거래를 자동 제출하지 않습니다.
 
+`DmrvnProtocol`은 Claim·ForwardRequest·보고서의 EIP-712 digest, provenance 검증, committee/report hash와
+제출 calldata를 계산합니다. 이 계산만으로 signer 권한·quorum·DMRVN 최종 검증 성공을 판단하지 않습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
