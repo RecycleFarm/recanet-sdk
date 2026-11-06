@@ -172,4 +172,10 @@ private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 h
 조합이며 Claim 거래를 전송하지 않습니다. 승인 실패 후에도 같은 작업의 nonce/deadline과 예약을 보존하며,
 만료된 승인을 자동 갱신하지 않습니다. 저장된 승인의 반환은 현재 역할·만료·nonce의 재검증을 뜻하지 않습니다.
 
+`prepareSponsored(operationId, gas)`는 beneficiary가 서명할 ForwardRequest를 고정합니다. gas는
+`100000`..`2000000`의 십진 문자열이며 서명 대상 호출의 gas입니다. `recordSponsoredSignature`는
+앱에서 받은 서명을 검증·저장하고 전송하지 않습니다. 같은 요청의 서명도 저장 후 교체할 수 없습니다.
+`prepareSelfPaid`는 직접 제출용 calldata를 반환하기 전에 전송 intent를 기록합니다. 반환 유실 시에도
+원래 거래를 먼저 확인해야 하며, 이미 선택한 직접 제출/대납 모드는 바꿀 수 없습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

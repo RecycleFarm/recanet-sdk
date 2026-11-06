@@ -12,6 +12,21 @@ export async function validateCurrent(context: OperationContext, request: Record
   requireState(await context.chain.nonce(stateString(request.beneficiary), false, signal) === uint(request.nonce, 256), 'NONCE_CONFLICT');
 }
 
+export async function approvedState(context: OperationContext, key: string): Promise<Record<string, unknown>> {
+  const state = await context.required(key);
+  requireState(Object.hasOwn(state, 'approved'), 'OPERATION_NOT_PREPARED');
+  return state;
+}
+
+export async function verifyBeforeSubmission(context: OperationContext, state: Record<string, unknown>, signal?: AbortSignal): Promise<void> {
+  const approved = stateMap(state.approved), request = stateMap(approved.claimRequest);
+  const signer = recover(DmrvnProtocol.digest('ClaimRequest', DmrvnProtocol.domain(context.config.chainId, context.config.claimAddress), request),
+    stateString(approved.approvalSignature));
+  DmrvnProtocol.verifyProvenance(stateMap(state.evidence), stateString(request.evidenceHash), signer);
+  await context.chain.verifyApprover(signer, signal);
+  await validateCurrent(context, request, signal);
+}
+
 /** 저장소 실측 후 요청을 서명 전에 고정한다. 만료/nonce 충돌 시 새 요청으로 교체하지 않는다. */
 export async function approveClaim(context: OperationContext, operationId: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const key = operationKey(operationId);

@@ -30,7 +30,8 @@
 | 6i | 공개 Greenfield 객체 reader (C-11 기반) | 구현, 직접 GET·인코딩·권한/크기/timeout·취소 시험 통과 |
 | 6j | Evidence 준비·생성 복구 (C-07 일부) | 구현, intent·서명/hash 재사용·예약·정확 bytes·동시 호출 시험 통과 |
 | 6k | Claim 승인 (C-09 일부) | 구현, 서명 전 요청 저장·원 요청 재사용·예약·승인 검증 시험 통과 |
-| 6l | 영속 journal·제출·보고서 (C-08–11) | 예정 |
+| 6l | 대납/직접 제출 준비·beneficiary 서명 기록 (C-09 일부) | 구현, 고정 gas·mode 충돌·서명 fingerprint·직접 intent 시험 통과 |
+| 6m | 영속 journal·전송/확인·보고서 (C-08–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -108,5 +109,8 @@
   sealed 원시 bytes 비교·어댑터 변경 분리·재실측 실패 시 ready 초기화 검증. 독립 리뷰 승인.
 - Claim 승인: 16개 동시 호출 단일 서명·큰 nonce·체인 시각 deadline, 역할/provenance/활성/실제 bytes/본문 검사,
   서명·저장 실패 후 원 요청 재사용, 만료/nonce 충돌 미갱신·beneficiary 예약 유지, 캐시 승인과 배포 재실측 확인.
-- 현재 전체 148개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
+- 제출 준비: signed target gas 100000..2000000·문자열 불변, nonce/calldata/typed digest 결속,
+  제출 전 승인/provenance/역할/시각/nonce 검사·cache 경계, SELF_PAID/SPONSORED 충돌,
+  유효한 다른 서명 표현도 fingerprint 교체 거부, 직접 intent 저장 응답 유실·입력 snapshot 검증.
+- 현재 전체 157개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.
