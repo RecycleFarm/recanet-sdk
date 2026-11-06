@@ -35,6 +35,7 @@
 | TS-28 / D-21 | 승인 요청의 만료·취소·재승인과 예약 해제 | 서명 전에 Claim nonce/deadline을 고정하고 서명 실패 후에도 원 요청과 beneficiary 예약 유지. 만료/nonce 충돌을 자동 갱신하지 않음. 이미 저장한 approved는 배포 재검증 후 그대로 반환하며 현재 유효성 보증이 아님. 취소·재승인·안전한 예약 해제 API는 정책 결정 대기 |
 | TS-29 / D-22·23 | 제출 준비 후 반환 유실·서명 교체·취소 | Java처럼 직접 제출 calldata를 노출하기 전에 intent를 저장하고 이후 같은 거래 반환. SDK는 앱의 직접 전송 횟수를 제한할 수 없음. beneficiary 서명은 요청+서명 문자열 fingerprint로 고정해 같은 유효 서명의 다른 v 표현도 교체 금지. 직접/대납 mode 전환·intent 해제·서명 교체 및 원래 거래 확인 후 종료 정책은 결정 대기 |
 | TS-30 / D-22·27 | DMRVN receipt/log 조회 일관성 | 현재 Java처럼 receipt blockHash는 raw 문자열 일치, txHash는 대소문자 무시. event 선택은 claim주소/topic/claimId 첫 일치, 로그 검색은 범위 차이≤100000을 1000블록 창으로 읽음. 개별 receipt log의 removed/block/tx 추가 결속·마지막 anchor 재검사·실패 receipt 종료 정책은 결정 대기 |
+| TS-31 / D-22·23 | relay 거래·오류 종료·수수료 정책 | Java 규칙인 estimate×130/100 floor·legacy gasPrice·비용 상한·pending=latest nonce·pending 시뮬레이션 유지. 양의 gas/price 추가 검사·EIP-1559·replacement/fee bump는 채택하지 않음. 완성 거래와 intent를 send 전에 저장하고 send 이후 명백 거절 flags도 미확정으로 처리하며 자동 재전송하지 않음. RPC/서명자에는 거래 사본을 전달. 거절 증명 기반 종료·수수료 확장·재전송 정책은 결정 대기 |
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |

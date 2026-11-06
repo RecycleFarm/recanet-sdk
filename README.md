@@ -182,4 +182,8 @@ private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 h
 hash가 없으면 승인 nonce로 제한된 블록 범위를 검색합니다. `SUBMISSION_UNRESOLVED`는 실패 증거가 아니므로
 재전송하지 마세요. `CONFIRMED`는 Claim 접수 거래의 확인이며, 최종 DMRVN 판정은 저장된 `chainStatus`와 별개입니다.
 
+`submitSponsored`는 저장한 beneficiary 요청·서명을 검증하고 비용·잔액·nonce·시뮬레이션을 확인한 뒤
+완성 relay 거래와 intent를 저장해 한 번 전송합니다. 첫 반환은 `BROADCAST`이며 실행 성공을 뜻하지 않습니다.
+intent 이후 재호출은 원래 거래를 조회합니다. 자동 replacement·fee bump·재전송은 제공하지 않습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
