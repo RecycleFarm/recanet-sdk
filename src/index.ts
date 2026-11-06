@@ -21,3 +21,4 @@ export { DmrvnProtocol, type DmrvnStructType } from './dmrvn-protocol.js';
 export { DeclaredMethodology, type MethodologyRegistry } from './declared-methodology.js';
 export { DmrvnDeployment } from './dmrvn-deployment.js';
 export { DmrvnConfig, type DmrvnConfigOptions, type DeploymentConfigOptions } from './dmrvn-config.js';
+export { DmrvnChain, IMPLEMENTATION_SLOT, ADMIN_SLOT } from './dmrvn-chain.js';

@@ -24,7 +24,8 @@
 | 6c | EIP-712·provenance·commitment (C-05 일부) | 구현, 6개 타입/3개 digest·PET 해시/서명/calldata 시험 통과 |
 | 6d | 방법론·Evidence 본문 (C-05 일부) | 구현, manifest/WASM·버전·본문 7키/1 MiB 시험 통과 |
 | 6e | 배포 manifest·config (C-06 일부) | 구현, 정규화·릴리스/identity·저장소/비용 범위 시험 통과 |
-| 6f | 배포 실측·저장·복구·제출·보고서 (C-06–11) | 예정 |
+| 6f | 배포 실측·Chain 읽기 (C-06 일부) | 구현, pinned tag·slot/release/code/domain·변경 실패 시험 통과 |
+| 6g | preflight·저장·복구·제출·보고서 (C-06–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -87,4 +88,6 @@
   Evidence 생성/검증·ABI 빈 tuple 회귀 시험 및 재리뷰 승인. 현재 전체 102개 시험과 패키징 확인 통과.
 - 배포/config: raw proxy/direct·정규 metadata 왕복, 승인 릴리스 순서/중복/충돌·비영 주소/hash·버전,
   과거 direct 쓰기 거부·저장된 identity/release 호환, 명시 config·uint 범위/양의 무상한 비용·object UTF8 경계 확인.
+- 배포 실측: 같은 tag의 4개 code/2개 slot·실제 승인 릴리스 선택·proxy version/owner·EIP-712 domain·trusted forwarder,
+  22개 불일치 시나리오, direct 경로, Chain quantity/nonce/role/confirmedHead, 마지막 raw hash 경계 확인.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.
