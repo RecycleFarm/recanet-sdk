@@ -24,4 +24,17 @@ const externalId = memberExternalId('service', 'member-1');
 요청은 자동 재시도하지 않으며 `AbortSignal`로 취소할 수 있습니다.
 오류의 `code`, `statusCode`, 선택적 `retryAfterMs`(bigint)를 서비스에서 처리하세요.
 
+사용자 access token은 appSecret 없이도 고정 공개키로 검증할 수 있습니다.
+
+```ts
+import { PrivyTokenVerifier } from 'recanet-typescript';
+
+const verifier = new PrivyTokenVerifier('your-app-id', { publicKeyPem: verificationPublicKeyPem });
+const user = await verifier.authenticateAuthorizationHeader(authorizationHeader);
+// user.userId, user.sessionId, user.issuedAtMs, user.expiresAtMs
+```
+
+시각은 UTC epoch 밀리초 `bigint`입니다. 검증은 로그인·실시간 로그아웃/철회 조회나 회원 지갑 권한 확인을 대신하지 않습니다.
+`PrivyClient`의 `tokenVerification`에도 같은 설정을 지정할 수 있습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

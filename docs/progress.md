@@ -8,7 +8,8 @@
 | 1 | TypeScript/ESM 빌드 기반 | 구현 |
 | 2 | 회원 식별자·바이트 계산 (C-01 일부) | 구현, 문서 벡터 8개와 경계 시험 통과 |
 | 3 | 서버 인증·제한된 HTTP (C-02 일부) | 구현, 로컬 HTTP 및 주입 fetch 시험 통과 |
-| 4 | JWT·회원 지갑 조회/생성·서명 | 예정 |
+| 4a | 공개키 JWT (C-02 일부) | 구현, 생성 P-256 서명으로 문서 claim 23개 및 경계 시험 통과 |
+| 4b | JWKS·회원 지갑 조회/생성·서명 | 예정 |
 | 5 | EVM 조회·ETH 전송 (C-04) | 예정 |
 | 6 | DMRVN 계산·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
@@ -23,4 +24,7 @@
   JSON 오류, Retry-After 첫 필드·날짜·int64 경계, 정확히 4 MiB/초과 body,
   loopback HTTP의 body timeout과 AbortSignal 취소. 현재 총 11개 테스트 통과.
 - 독립 리뷰의 Retry-After 중복 헤더 처리 지적을 수정하고 회귀 시험 추가.
+- 고정 SPKI P-256 JWT: 문서 claim 사례 23개를 생성한 키로 서명해 검증. 위조·변조·header,
+  NumericDate 정밀도/범위·Bearer·시계/skew·오류 비노출 시험. 서명 전후 claim 재검사.
+- 문서 claim fixture는 계산 사례이며 실제 Privy token을 수집한 자료가 아니다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

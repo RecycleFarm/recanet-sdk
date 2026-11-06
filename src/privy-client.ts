@@ -1,6 +1,7 @@
 import { PrivyApiError } from './errors.js';
 import { requestJson, type HttpSettings } from './internal/http.js';
 import { isJavaBlank } from './member-identity.js';
+import { PrivyTokenVerifier, type TokenVerificationOptions, type AuthenticatedUser } from './token-verifier.js';
 
 export interface PrivyClientOptions {
   readonly appId: string;
@@ -9,6 +10,7 @@ export interface PrivyClientOptions {
   readonly timeoutMs?: number;
   /** 테스트와 서비스별 연결 설정에 사용하는 fetch. */
   readonly fetch?: typeof globalThis.fetch;
+  readonly tokenVerification?: TokenVerificationOptions;
 }
 
 function settings(options: PrivyClientOptions): HttpSettings {
@@ -38,9 +40,23 @@ function settings(options: PrivyClientOptions): HttpSettings {
 /** 생성은 네트워크 호출을 하지 않는다. 인스턴스를 서비스 수명 동안 재사용한다. */
 export class PrivyClient {
   #settings: HttpSettings;
+  #verifier: PrivyTokenVerifier | undefined;
 
   constructor(options: PrivyClientOptions) {
     this.#settings = settings(options);
+    this.#verifier = options.tokenVerification === undefined ? undefined
+      : new PrivyTokenVerifier(this.#settings.appId, options.tokenVerification);
+  }
+
+  /** 미설정은 사용자 인증 실패가 아닌 구성 오류다. */
+  verifyAccessToken(token: string | null | undefined): Promise<AuthenticatedUser> {
+    if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
+    return this.#verifier.verifyAccessToken(token);
+  }
+
+  authenticateAuthorizationHeader(header: string | null | undefined): Promise<AuthenticatedUser> {
+    if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
+    return this.#verifier.authenticateAuthorizationHeader(header);
   }
 
   /** 사용자 조회 권한을 진단한다. 지갑 쓰기 권한까지 검증하지 않는다. */

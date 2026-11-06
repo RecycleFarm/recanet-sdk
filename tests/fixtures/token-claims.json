@@ -1,0 +1,336 @@
+{
+  "description": "Claim-validation cases only. Assume valid ES256/JWT header and signature for appId=app; no key retrieval. Not signed token fixtures or captured SDK executions.",
+  "sourceCommit": "37c78cfa01d9892ca26de61bb74df827923917cf",
+  "cases": [
+    {
+      "case": "valid",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600
+      },
+      "expected": "ACCEPT"
+    },
+    {
+      "case": "single-audience-array",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": [
+          "app"
+        ],
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600
+      },
+      "expected": "ACCEPT"
+    },
+    {
+      "case": "multiple-audiences",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": [
+          "app",
+          "other"
+        ],
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "wrong-issuer",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "other",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "missing-session",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "iat": 1799999940,
+        "exp": 1800003600
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "blank-session",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": " ",
+        "iat": 1799999940,
+        "exp": 1800003600
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "empty-did-suffix",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "linked-accounts-present",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600,
+        "linked_accounts": []
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "linked-accounts-null",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600,
+        "linked_accounts": null
+      },
+      "expected": "ACCEPT"
+    },
+    {
+      "case": "expiry-equals-now",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800000000
+      },
+      "expected": "EXPIRED_TOKEN"
+    },
+    {
+      "case": "expiry-before-now",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1799999999
+      },
+      "expected": "EXPIRED_TOKEN"
+    },
+    {
+      "case": "expiry-equals-issued",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1799999940
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "issued-in-future",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1800000001,
+        "exp": 1800003600
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "issued-at-skew-boundary",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 10,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1800000010,
+        "exp": 1800003600
+      },
+      "expected": "ACCEPT"
+    },
+    {
+      "case": "expiry-inside-skew",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 10,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1799999991
+      },
+      "expected": "ACCEPT"
+    },
+    {
+      "case": "expiry-at-skew-boundary",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 10,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1799999990
+      },
+      "expected": "EXPIRED_TOKEN"
+    },
+    {
+      "case": "nbf-future",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600,
+        "nbf": 1800000001
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "nbf-null",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800003600,
+        "nbf": null
+      },
+      "expected": "ACCEPT"
+    },
+    {
+      "case": "negative-date",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": -1,
+        "exp": 1800003600
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "string-date",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": "1800003600"
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "fractional-date",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 1800000000.5
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "millisecond-overflow",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940,
+        "exp": 9223372036854776
+      },
+      "expected": "INVALID_TOKEN"
+    },
+    {
+      "case": "missing-exp",
+      "nowEpochSeconds": 1800000000,
+      "clockSkewSeconds": 0,
+      "claims": {
+        "iss": "privy.io",
+        "aud": "app",
+        "sub": "did:privy:user-1",
+        "sid": "session-1",
+        "iat": 1799999940
+      },
+      "expected": "INVALID_TOKEN"
+    }
+  ]
+}
+
