@@ -152,4 +152,8 @@ Evidence 본문을 만들 때는 운영자와 확인한 `evidenceSchemaVersion`�
 RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testnet 자료는 고정 스냅샷이며 현재 체인 준비 상태가 아닙니다.
 과거 direct 배포는 읽기·복구용으로만 유지합니다.
 
+`DmrvnPreflight`는 배포·운영자 역할·방법론·명시 Evidence 버전·잔액을 읽기 전용으로 확인합니다.
+`ready=true`여도 Greenfield 쓰기/재읽기, 검증자 읽기 권한, 충분한 가스 잔액이나 Evidence 버전의 실제 수용을
+입증하지 않습니다. `checks`의 미시험 항목과 오류를 함께 확인하세요.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

@@ -22,3 +22,5 @@ export { DeclaredMethodology, type MethodologyRegistry } from './declared-method
 export { DmrvnDeployment } from './dmrvn-deployment.js';
 export { DmrvnConfig, type DmrvnConfigOptions, type DeploymentConfigOptions } from './dmrvn-config.js';
 export { DmrvnChain, IMPLEMENTATION_SLOT, ADMIN_SLOT } from './dmrvn-chain.js';
+export { DmrvnPreflight, type DmrvnPreflightResult, type PreflightCheck } from './dmrvn-preflight.js';
+export type { GreenfieldStorage, GreenfieldIdentity, GreenfieldHead } from './greenfield-storage.js';

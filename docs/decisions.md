@@ -28,6 +28,7 @@
 | TS-21 / D-02·19 | Evidence 버전과 registry 경계 | DeclaredMethodology에 명시적 schemaVersion 및 registry callback(boolean/Promise)을 주입. 버전 미지정은 Java 과거 생성자 3 호환값을 보관하되 requireExplicitEvidenceVersion에서 중단하여 신규 운영 계약으로 인정하지 않음. helper 자체는 partner long 입력을 유지하며 고수준 파트너 uint32 제약은 config 계층에서 적용 예정. 승인된 Evidence 버전/방법론 프로필/registry 원천은 결정 대기 |
 | TS-22 / D-19·20 | 배포 설정의 숫자/URL 표현과 과거 배포 | config chainId·partnerId·confirmations는 검증된 number, maxRelayCostWei는 양의 bigint(원본처럼 uint256 상한 없음). rpcUrl은 검증 후 WHATWG URL 정규 표현으로 저장. 과거 direct 편의 설정은 읽기/복구용이며 requireWritable은 거부. 제공 testnet 스냅샷은 최신 운영 상태가 아닌 Java 고정 사본. owner/릴리스 변경 복구 정책은 D-20 결정 대기 |
 | TS-23 / D-19 | 배포 실측 결과와 읽기 경계 | observedBlock/head/nonce는 bigint. 현재 Java처럼 block 응답 number를 대조하지 않고 마지막 raw hash와 첫 정규화 hash를 비교. 오류는 UNAPPROVED_IMPLEMENTATION 외에는 취소/RPC 오류도 DEPLOYMENT_NOT_READY로 변환. 강화·오류 정책 변경은 결정 대기 |
+| TS-24 / D-19 | preflight API와 ready 의미 | 고수준 client 조합 전 읽기 전용 DmrvnPreflight.run으로 제공. Java처럼 zero balance 조회 성공·문자열 미시험 표식 제외한 check들만 ready에 반영하고 registry 일반 오류는 그대로 전파. GreenfieldStorage는 실제 객체 읽기/원래 create 거래 확인을 요구하는 async 경계로 정의. 외부 쓰기/validator 권한과 비용 충족 인수는 별도 결정 대기 |
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
