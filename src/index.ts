@@ -16,3 +16,4 @@ export type { EvmTransaction, EvmTransactionStatus, EvmTransactionState, EvmTran
 export { TransactionQueryError, type TransactionQueryErrorCode } from './errors.js';
 export * as DmrvnCrypto from './dmrvn-crypto.js';
 export { DmrvnJson, DmrvnDecimal } from './dmrvn-json.js';
+export { DmrvnAbi, type AbiField, type AbiDefinition } from './dmrvn-abi.js';
