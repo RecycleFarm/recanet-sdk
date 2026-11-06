@@ -39,6 +39,7 @@
 | TS-32 / D-05·26 | 고수준 요청 생성 API와 시간 정밀도 | ActivityRequest는 TS options의 미지정 필드별 기본값 적용(원본 Java는 3인자 생성자만 기본값). 명시 null gas/time은 거부. Duration 대신 정수 밀리초 confirmationTimeoutMs/pollIntervalMs로 0..600000/1..10000 제한하며 sub-ms는 지원하지 않음. 요청 객체/inputs는 불변 snapshot. 최종 API·sub-ms 필요성·통합 오류 경계는 결정 대기 |
 | TS-33 / D-05·26 | 고수준 오류 매핑·새 호출·확인 대기 | Java IllegalArgumentException은 TS TypeError/RangeError로 대응, 권한 거부 adapter는 DmrvnError(UNAUTHORIZED_SIGNER)를 사용. Privy 오류 특별 매핑 및 stage/intent 기반 outcome 유지. 호출마다 UUID·독립 관찰/기본 메모리, 명시 journal만 공유. timeout은 전송 결과 뒤 monotonic clock으로 측정하며 개별 RPC 총기한을 제한하지 않음. AbortSignal은 RPC/지갑/대기에 전달. 오류 경계 통합·source dedup/자동 재개·전체 실행 기한 정책은 결정 대기 |
 | TS-34 / D-27·28 | 보고서 권한·metadata·계산 출력 신뢰 | 검증기는 성공한 승인 배포 v7 receipt를 권한 근거로 삼는 원본 계약 유지. coordinator/committee 역할·과거 정책·현재 deadline 독립 조회는 하지 않음. reportHash는 파일 hash가 아니며 추가 metadata는 독립 검증하지 않음. expectedFileHash가 있어도 metadataIndependentlyVerified=false. 출력은 정확한 value/unit/scale 형태와 hash를 검증하지만 단위 환산/scale 계산은 하지 않음. -0·큰 정수 문자열·VALID 빈 outputs 허용. 외부 commitment 신뢰·권한 registry·출력 프로필은 결정 대기 |
+| TS-35 / D-26·27·29 | 독립 reader 오류·철회·resolver 경계 | resolver는 동기/비동기 resolve와 AbortSignal을 지원. reader callback 오류/취소는 REPORT_READ_FAILED, resolver 일반 오류는 REPORT_MISMATCH, 초기 체인/배포 오류는 전파하는 원본 경계 유지. REVOKED는 보고서 조회 없이 NOT_FINALIZED, taskStatus는 항상 UNKNOWN. 관찰 높이는 bigint. 철회 이력·통합 오류·전체 snapshot 일관성은 결정 대기 |
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |

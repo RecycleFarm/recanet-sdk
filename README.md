@@ -197,4 +197,12 @@ intent가 있으면 저장된 서명을 재사용해 조회합니다.
 이 고수준 API를 재호출하면 **새 작업**입니다. UNKNOWN 후에는 반환 ID/hash와 journal로 원래 작업을 복구하세요.
 명시 journal이 없으면 호출 종료 후 단계 상태의 자동 복구를 보장하지 않습니다.
 
+`DmrvnReader`는 Privy 자격 증명 없이 확인 높이의 Claim과 보고 거래·파일을 검증합니다.
+`readResult(claimId, fromBlock?, reportTxHash?, waitTimedOut?, expectedFileHash?)`는 자동 대기하지 않습니다.
+`waitTimedOut`은 호출자의 표식이며 task 만료를 뜻하지 않습니다. 보고서 읽기에 실패해도 `chainStatus`를
+보존하고 `reportError`를 반환하므로 `reportVerified`와 함께 확인하세요. 초기 체인/배포 오류는 전파됩니다.
+`defaultReportResolver(chainId, bucket)`의 파일 경로는 `dmrvn/v4/reports/<hash>.json`입니다.
+파일 checksum과 프로토콜 reportHash는 다르며, `metadataIndependentlyVerified`는 항상 false입니다.
+`verifyEvidenceProvenance`는 별도로 제공받은 private Evidence bytes를 저장 Claim의 hash·approver와 대조합니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

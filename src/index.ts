@@ -30,3 +30,4 @@ export { GreenfieldPublicReader, type GreenfieldPublicReaderOptions, type Report
 export { DmrvnClient } from './dmrvn-client.js';
 export { ActivityRequest, type ActivityRequestOptions } from './activity-request.js';
 export type { ActivityOutcome, ActivityStage } from './activity-outcome.js';
+export { DmrvnReader, type ReportResolver } from './dmrvn-reader.js';
