@@ -65,4 +65,19 @@ const existing = await members.findWallet('authenticated-member-id'); // 없으�
 생성은 자동 재전송하지 않으며, 생성 충돌(409)일 때만 다시 조회합니다.
 `isBackendWallet`의 기존 public key 비교는 서명 권한 판정에 사용하지 마세요.
 
+운영 지갑을 서명자로 사용하려면 승인키 목록에서 해당 지갑의 권한을 확인합니다.
+
+```ts
+const signer = await client.signerForWallet(wallet.id, registration);
+const signature = await signer.signMessage('hello');
+const hash = await signer.sendTransaction(421614, {
+  to: recipientAddress,
+  value: '0x0', data: '0x', gas: '0x5208', gasPrice: '0x1', nonce: '0x0',
+}, 'stable-operation-id');
+```
+
+거래의 nonce·가스·금액은 호출자가 구성해야 합니다. 동일 지갑의 nonce 처리는 서비스에서 직렬화하고,
+원본 거래와 operation ID를 함께 보관하세요. 반환 hash는 실행 성공이나 최종 확정을 뜻하지 않습니다.
+서명·전송 오류는 `DmrvnError.code`로 구분하며, `RPC_UNAVAILABLE`도 미제출을 보장하지 않습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

@@ -3,6 +3,18 @@ export type PrivyApiErrorCode = 'INVALID_CREDENTIALS' | 'FORBIDDEN' | 'RATE_LIMI
 
 export type PrivyAuthenticationErrorCode = 'MISSING_TOKEN' | 'INVALID_TOKEN' | 'EXPIRED_TOKEN' | 'KEY_SOURCE_UNAVAILABLE';
 
+export type DmrvnErrorCode = 'UNAUTHORIZED_SIGNER' | 'RPC_UNAVAILABLE' | 'INTERRUPTED';
+
+/** 서명/RPC 경계의 정리된 오류. 제출 여부를 확정하지 않는다. */
+export class DmrvnError extends Error {
+  readonly code: DmrvnErrorCode;
+  constructor(code: DmrvnErrorCode) {
+    super(code);
+    this.name = 'DmrvnError';
+    this.code = code;
+  }
+}
+
 /** 원본 token이나 검증 라이브러리의 예외를 포함하지 않는다. */
 export class PrivyAuthenticationError extends Error {
   readonly code: PrivyAuthenticationErrorCode;

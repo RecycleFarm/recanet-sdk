@@ -4,6 +4,8 @@ import { isJavaBlank } from './member-identity.js';
 import { PrivyTokenVerifier, type TokenVerificationOptions, type AuthenticatedUser } from './token-verifier.js';
 import { BackendWalletRegistration, type BackendWalletCreateRequest, type BackendWallet } from './backend-wallet.js';
 import { registerWallet, listWallets, isBackendWallet, memberWallets, type UserWalletClient } from './internal/wallets.js';
+import { createPrivySigner } from './internal/privy-signer.js';
+import type { EvmSigner } from './evm-signer.js';
 
 export interface PrivyClientOptions {
   readonly appId: string;
@@ -86,6 +88,11 @@ export class PrivyClient {
   /** 인증/tenant 권한을 확인한 userId만 전달한다. 생성 전에 승인키를 영속 보관한다. */
   userWallets(registration: BackendWalletRegistration, namespace: string): UserWalletClient {
     return memberWallets(this.#request, registration, namespace);
+  }
+
+  /** 승인키 목록으로 권한을 확인하며 지갑 개인키를 export하지 않는다. */
+  signerForWallet(walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal): Promise<EvmSigner> {
+    return createPrivySigner(this.#settings, this.#request, walletId, registration, signal);
   }
 
   #request = (path: string, method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal): Promise<unknown> =>

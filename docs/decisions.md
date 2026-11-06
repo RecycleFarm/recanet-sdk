@@ -15,6 +15,8 @@
 | TS-08 / D-04 | 승인키 자동 출력·환경변수 기반 초기화 편의 기능 | 키 생성·명시적 입력만 구현. Java generateAndLog/ensureBackendWallet/exportAndLog의 비밀 자동 출력과 첫 지갑 선택 정책은 미채택·미구현. 소비자 비밀 저장소와 환경변수 매핑은 호출자 책임 |
 | TS-09 / D-07 | 등록/목록 일반 전송 예외의 노출 | 직접 fetch 계층에서는 공통 sanitize 오류로 반환. Java 공식 SDK의 일부 일반 실행 예외 노출까지 복제하지 않음. 계약 통합 채택은 대기 |
 | TS-10 / D-11 | Privy 승인 정규화의 기존 비표준 동작과 수치 표현 | Privy 0.59 경로를 별도 구현: 키 UTF-16 정렬·key escape 생략·Jackson 제어문자 escape. 정상 payload 3개 바이트/digest/DER 벡터 검증. 숫자는 JS JSON wire 표현을 사용하여 Java Double의 `1.0`·지수 표기까지 동일하다는 보장은 없음. 큰 정수는 10진 문자열 사용. malformed Unicode·임의 수치 표현의 최종 정책 및 외부 수용 범위는 결정 대기 |
+| TS-11 / D-12 | chainId와 직접 서명자 입력 검증의 공개 타입 | chainId는 안전한 number 또는 bigint로 Java signed int64 범위 보존. 직접 signer는 양수·key blank·Quantity 문법을 추가 검사하지 않음. 회원 API는 별도 양수/key 검사를 유지할 예정. 반환 hash/signature는 문자열 반환이며 암호학적 검증은 상위 계층 책임 |
+| TS-12 / D-11 | idempotency key의 HTTP 공백 처리 | native Fetch가 앞뒤 HTTP 공백을 제거하므로 동일하게 정규화한 실제 header 값으로 승인하고 전송. 교차 SDK의 공백 key 허용/거부 정책은 결정 대기. 연동 시 앞뒤 공백 없는 안정적 key 사용; 원본 body와 wire key를 함께 보존 |
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
 | D-02·17·30 | Evidence wire 버전·숫자 정규화·제어문자 escape | 운영 기본 버전을 추정하지 않음 |
 | D-05·08–16 | API 표면·회원 연결·외부 공급자·승인 서명·거래 정책 | 각 상세 구현 전 원본 계약 대조 |

@@ -39,13 +39,17 @@ export function prepareAuthorization(appId: string, url: string, body: unknown, 
   if (bodyJson === undefined) throw new TypeError('요청 body가 필요합니다');
   const snapshot: unknown = JSON.parse(bodyJson);
   const headers: Record<string, string> = { 'privy-app-id': appId };
-  if (idempotencyKey !== undefined) headers['privy-idempotency-key'] = idempotencyKey;
+  // native fetch는 헤더의 앞뒤 HTTP 공백을 제거한다. 전송될 값으로 한 번 확정하여
+  // 실제 헤더와 승인 payload의 idempotency key가 달라지지 않게 한다.
+  const wireKey = idempotencyKey === undefined ? undefined
+    : new Headers({ 'privy-idempotency-key': idempotencyKey }).get('privy-idempotency-key')!;
+  if (wireKey !== undefined) headers['privy-idempotency-key'] = wireKey;
   const canonical = canonicalPrivy059({ version: 1, method: 'POST', url, body: snapshot, headers });
   try {
     const key = createPrivateKey({ key: Buffer.from(authorizationPrivateKey(privateKey), 'base64'), format: 'der', type: 'pkcs8' });
     if (key.asymmetricKeyType !== 'ec' || key.asymmetricKeyDetails?.namedCurve !== 'prime256v1') throw new Error();
     const signature = sign('sha256', Buffer.from(canonical, 'utf8'), { key, dsaEncoding: 'der' }).toString('base64');
-    return Object.freeze({ bodyJson, signature, idempotencyKey });
+    return Object.freeze({ bodyJson, signature, idempotencyKey: wireKey });
   } catch {
     throw new TypeError('승인 요청에 P-256 PKCS#8 개인키가 필요합니다');
   }

@@ -1,4 +1,5 @@
 import { PrivyApiError, type PrivyApiErrorCode } from '../errors.js';
+import type { SignedRequest } from './authorization.js';
 
 export interface HttpSettings {
   readonly origin: string;
@@ -37,7 +38,8 @@ function statusCode(status: number): PrivyApiErrorCode {
 
 /** 네트워크 시작부터 body 완료까지 제한한다. 자동 재시도·redirect가 없다. */
 export async function requestJson(settings: HttpSettings, path: string,
-  method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal, expectedStatus = 200): Promise<unknown> {
+  method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal, expectedStatus = 200,
+  signed?: SignedRequest): Promise<unknown> {
   const controller = new AbortController();
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -67,7 +69,12 @@ export async function requestJson(settings: HttpSettings, path: string,
       'privy-app-id': settings.appId,
     };
     const init: RequestInit = { method, headers, signal: controller.signal, redirect: 'error' };
-    if (body !== undefined) {
+    if (signed !== undefined) {
+      headers['content-type'] = 'application/json';
+      headers['privy-authorization-signature'] = signed.signature;
+      if (signed.idempotencyKey !== undefined) headers['privy-idempotency-key'] = signed.idempotencyKey;
+      init.body = signed.bodyJson;
+    } else if (body !== undefined) {
       headers['content-type'] = 'application/json';
       init.body = JSON.stringify(body);
     }
