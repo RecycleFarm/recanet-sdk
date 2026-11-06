@@ -156,4 +156,8 @@ RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testn
 `ready=true`여도 Greenfield 쓰기/재읽기, 검증자 읽기 권한, 충분한 가스 잔액이나 Evidence 버전의 실제 수용을
 입증하지 않습니다. `checks`의 미시험 항목과 오류를 함께 확인하세요.
 
+`OperationJournal`은 선택적 단계 상태 경계이고 `MemoryOperationJournal`은 프로세스 내 휘발성 구현입니다.
+재시작·다중 프로세스 복구를 제공하지 않습니다. `withLock` 콜백 안의 모든 비동기 작업은 완료까지 await하세요.
+영속 adapter는 저장 완료·작업자 간 잠금·소유권 상실 후 부작용 차단과 배포 전체 claim 검색을 제공해야 합니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

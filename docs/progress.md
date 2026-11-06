@@ -26,7 +26,8 @@
 | 6e | 배포 manifest·config (C-06 일부) | 구현, 정규화·릴리스/identity·저장소/비용 범위 시험 통과 |
 | 6f | 배포 실측·Chain 읽기 (C-06 일부) | 구현, pinned tag·slot/release/code/domain·변경 실패 시험 통과 |
 | 6g | preflight·저장소 경계 (C-06 일부) | 구현, 항목별 결과/오류·무부작용·준비 의미 시험 통과 |
-| 6h | 저장·복구·제출·보고서 (C-07–11) | 예정 |
+| 6h | journal 경계·메모리 상태 (C-08 일부) | 구현, 동시/중첩 잠금·snapshot·claim 검색 시험 통과 |
+| 6i | 영속 journal·저장·복구·제출·보고서 (C-07–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -93,4 +94,8 @@
   22개 불일치 시나리오, direct 경로, Chain quantity/nonce/role/confirmedHead, 마지막 raw hash 경계 확인.
 - preflight: 초기화 무통신·Greenfield 네트워크/서명자 주소, 순차 검사/실패 후 계속 진행,
   zero balance·storage/validator 미확인 표식·일반 callback 오류 전파·취소의 검사별 결과 경계 확인.
+- 메모리 journal: 32개 동시·16개 nested fan-out 및 재진입, 외부 load/store 대기, 호출 시점 store snapshot,
+  load/claim 검색 독립 복사·배포 전체 operation 검색, 오류 후 lock 해제·미지원 claim 검색의 닫힌 실패 확인.
+- journal 리뷰에서 Promise.all 조기 실패 시 자식 종료 전에 전역 lock이 해제되던 문제 발견.
+  자식 queue를 모두 drain한 후 해제하도록 수정하고 외부 작업의 중첩 방지 회귀 시험·재리뷰 승인.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

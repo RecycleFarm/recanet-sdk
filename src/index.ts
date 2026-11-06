@@ -24,3 +24,5 @@ export { DmrvnConfig, type DmrvnConfigOptions, type DeploymentConfigOptions } fr
 export { DmrvnChain, IMPLEMENTATION_SLOT, ADMIN_SLOT } from './dmrvn-chain.js';
 export { DmrvnPreflight, type DmrvnPreflightResult, type PreflightCheck } from './dmrvn-preflight.js';
 export type { GreenfieldStorage, GreenfieldIdentity, GreenfieldHead } from './greenfield-storage.js';
+export type { OperationJournal } from './operation-journal.js';
+export { MemoryOperationJournal } from './memory-operation-journal.js';
