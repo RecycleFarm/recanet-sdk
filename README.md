@@ -205,4 +205,9 @@ intent가 있으면 저장된 서명을 재사용해 조회합니다.
 파일 checksum과 프로토콜 reportHash는 다르며, `metadataIndependentlyVerified`는 항상 false입니다.
 `verifyEvidenceProvenance`는 별도로 제공받은 private Evidence bytes를 저장 Claim의 hash·approver와 대조합니다.
 
+작업 client의 `readResult(operationId, reader, fromBlock?, reportTxHash?, waitTimedOut?)`는 관찰 결과와 오류를
+journal에 보존하고 저장 Evidence의 출처를 추가 대조합니다. fromBlock을 자동 보완하지 않으며 외부 파일
+commitment도 전달하지 않습니다. 외부 commitment 검증이 필요하면 독립 reader를 직접 호출하세요.
+이 관찰 저장은 `resolveSubmission`의 거래 확인·nonce 예약 해제를 대신하지 않습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

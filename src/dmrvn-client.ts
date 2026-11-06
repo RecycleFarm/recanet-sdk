@@ -16,6 +16,8 @@ import { ActivityRequest } from './activity-request.js';
 import type { ActivityOutcome } from './activity-outcome.js';
 import type { BeneficiaryWallets } from './internal/wallets.js';
 import { submitUserActivity } from './internal/user-activity-submission.js';
+import type { DmrvnReader } from './dmrvn-reader.js';
+import { readOperationResult } from './internal/result-observation.js';
 
 type ExplicitActivityArgs = [userSigner: EvmSigner, operationId: string, claimId: string, objectName: string,
   body: Readonly<Record<string, unknown>>, gas: string, signal?: AbortSignal];
@@ -59,6 +61,10 @@ export class DmrvnClient {
   submitActivity(...args: UserActivityArgs | ExplicitActivityArgs): Promise<ActivityOutcome | Record<string, unknown>> {
     if (typeof args[1] === 'string') return submitActivity(this.#context, ...args as ExplicitActivityArgs);
     return submitUserActivity(this.#context, ...args as UserActivityArgs);
+  }
+  readResult(operationId: string, reader: DmrvnReader, fromBlock?: bigint | number | null, reportTxHash?: string | null,
+    waitTimedOut = false, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    return readOperationResult(this.#context, operationId, reader, fromBlock, reportTxHash, waitTimedOut, signal);
   }
   recordSponsoredSignature(operationId: string, forwardRequest: Readonly<Record<string, unknown>>, signature: string,
     signal?: AbortSignal): Promise<Record<string, unknown>> {
