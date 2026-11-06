@@ -37,4 +37,15 @@ const user = await verifier.authenticateAuthorizationHeader(authorizationHeader)
 시각은 UTC epoch 밀리초 `bigint`입니다. 검증은 로그인·실시간 로그아웃/철회 조회나 회원 지갑 권한 확인을 대신하지 않습니다.
 `PrivyClient`의 `tokenVerification`에도 같은 설정을 지정할 수 있습니다.
 
+키 회전에 대응하려면 Dashboard의 신뢰한 JWKS URL을 명시합니다.
+
+```ts
+const verifier = new PrivyTokenVerifier('your-app-id', {
+  jwksUrl: 'https://your-trusted-jwks-url',
+});
+```
+
+JWKS는 첫 검증 시 조회하며 5분간 캐시합니다. 동시 조회는 공유하고 갱신은 30초 구간당 최대 2회로 제한합니다.
+갱신 실패 시 만료된 캐시 키를 사용하지 않습니다. `KEY_SOURCE_UNAVAILABLE`은 토큰 오류와 구분해 처리하세요.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

@@ -2,15 +2,21 @@ import { createPublicKey, verify, type KeyObject } from 'node:crypto';
 import { PrivyAuthenticationError } from './errors.js';
 import { jsonObject, numericDate, parseLosslessJson, type JsonObject } from './internal/lossless-json.js';
 import { isJavaBlank } from './member-identity.js';
+import { JwksSource, type JwksPolicy } from './internal/jwks.js';
 
-export interface TokenVerificationOptions {
-  /** Dashboard가 제공하는 SPKI EC P-256 공개키. */
-  readonly publicKeyPem: string;
+interface TokenVerificationPolicy {
   /** 허용 시계 오차(밀리초). 기본 0, 최대 60000, 소수 허용. */
   readonly clockSkewMs?: number;
   /** UTC epoch 밀리초. 시험 또는 서비스 시계 주입용. */
   readonly now?: () => number;
 }
+
+export type TokenVerificationOptions = TokenVerificationPolicy & (
+  { readonly publicKeyPem: string; readonly jwksUrl?: never; }
+  | { readonly jwksUrl: string; readonly publicKeyPem?: never;
+    readonly jwksPolicy?: JwksPolicy; readonly fetch?: typeof globalThis.fetch; }
+);
+export type { JwksPolicy } from './internal/jwks.js';
 
 export interface AuthenticatedUser {
   readonly appId: string;
@@ -50,7 +56,8 @@ function object(part: string): JsonObject {
 /** 재사용 가능한 Privy access token 검증기. 로그인·실시간 철회 조회는 수행하지 않는다. */
 export class PrivyTokenVerifier {
   #appId: string;
-  #key: KeyObject;
+  #key: KeyObject | undefined;
+  #jwks: JwksSource | undefined;
   #skewNs: bigint;
   #now: () => number;
 
@@ -59,9 +66,13 @@ export class PrivyTokenVerifier {
     const skew = options.clockSkewMs ?? 0;
     if (!Number.isFinite(skew) || skew < 0 || skew > 60000) throw new TypeError('clockSkewMs는 0–60000 범위여야 합니다');
     this.#appId = appId;
-    this.#key = publicKey(options.publicKeyPem);
     this.#skewNs = BigInt(Math.round(skew * 1000000));
     this.#now = options.now ?? Date.now;
+    if (typeof this.#now !== 'function') throw new TypeError('now 함수가 필요합니다');
+    if (options.publicKeyPem !== undefined && options.jwksUrl === undefined) this.#key = publicKey(options.publicKeyPem);
+    else if (options.jwksUrl !== undefined && options.publicKeyPem === undefined) {
+      this.#jwks = new JwksSource(options.jwksUrl, options.jwksPolicy ?? {}, options.fetch ?? globalThis.fetch, this.#now);
+    } else throw new TypeError('고정 공개키와 JWKS 중 하나만 지정해야 합니다');
   }
 
   async authenticateAuthorizationHeader(header: string | null | undefined): Promise<AuthenticatedUser> {
@@ -88,9 +99,10 @@ export class PrivyTokenVerifier {
         || (header.kid != null && (typeof header.kid !== 'string' || header.kid.length > 256))) throw invalid();
       const claims = object(encodedClaims);
       const user = this.#claims(claims);
+      const keys = this.#key ? [this.#key] : await this.#jwks!.keys(typeof header.kid === 'string' ? header.kid : undefined);
       const signature = decode(encodedSignature);
-      if (signature.length !== 64 || !verify('sha256', Buffer.from(`${encodedHeader}.${encodedClaims}`, 'ascii'),
-        { key: this.#key, dsaEncoding: 'ieee-p1363' }, signature)) throw invalid();
+      if (signature.length !== 64 || !keys.some(key => verify('sha256', Buffer.from(`${encodedHeader}.${encodedClaims}`, 'ascii'),
+        { key, dsaEncoding: 'ieee-p1363' }, signature))) throw invalid();
       this.#claims(claims);
       return user;
     } catch (error) {

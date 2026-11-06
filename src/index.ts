@@ -3,4 +3,4 @@ export { memberExternalId } from './member-identity.js';
 export { PrivyClient, type PrivyClientOptions } from './privy-client.js';
 export { PrivyApiError, type PrivyApiErrorCode } from './errors.js';
 export { PrivyAuthenticationError, type PrivyAuthenticationErrorCode } from './errors.js';
-export { PrivyTokenVerifier, type TokenVerificationOptions, type AuthenticatedUser } from './token-verifier.js';
+export { PrivyTokenVerifier, type TokenVerificationOptions, type AuthenticatedUser, type JwksPolicy } from './token-verifier.js';

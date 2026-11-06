@@ -9,7 +9,8 @@
 | 2 | 회원 식별자·바이트 계산 (C-01 일부) | 구현, 문서 벡터 8개와 경계 시험 통과 |
 | 3 | 서버 인증·제한된 HTTP (C-02 일부) | 구현, 로컬 HTTP 및 주입 fetch 시험 통과 |
 | 4a | 공개키 JWT (C-02 일부) | 구현, 생성 P-256 서명으로 문서 claim 23개 및 경계 시험 통과 |
-| 4b | JWKS·회원 지갑 조회/생성·서명 | 예정 |
+| 4b | JWKS (C-02 일부) | 구현, 동시 조회·회전·캐시·조회 제한·장애 시험 통과 |
+| 4c | 회원 지갑 조회/생성·서명 | 예정 |
 | 5 | EVM 조회·ETH 전송 (C-04) | 예정 |
 | 6 | DMRVN 계산·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
@@ -22,9 +23,12 @@
 - 회원 식별자: 문서 계산 벡터 8개, Java 공백 집합·입력 경계·Unicode 비정규화 시험.
 - 서버 통신: 초기화 무통신, 인증 header, 설정 snapshot, 비밀 비노출, 상태 오류·재시도 0회,
   JSON 오류, Retry-After 첫 필드·날짜·int64 경계, 정확히 4 MiB/초과 body,
-  loopback HTTP의 body timeout과 AbortSignal 취소. 현재 총 11개 테스트 통과.
+  loopback HTTP의 body timeout과 AbortSignal 취소.
 - 독립 리뷰의 Retry-After 중복 헤더 처리 지적을 수정하고 회귀 시험 추가.
 - 고정 SPKI P-256 JWT: 문서 claim 사례 23개를 생성한 키로 서명해 검증. 위조·변조·header,
   NumericDate 정밀도/범위·Bearer·시계/skew·오류 비노출 시험. 서명 전후 claim 재검사.
 - 문서 claim fixture는 계산 사례이며 실제 Privy token을 수집한 자료가 아니다.
+- JWKS: 동시 32건 최초/unknown-kid 조회 공유, 5분 TTL, 30초당 최대 2회 갱신,
+  키 회전, 캐시 만료 후 조회 실패의 인증 거부, 128 KiB 경계, 로컬 HTTP 읽기 timeout,
+  사전 claim 실패 시 조회 0회, 키 조회 중 만료의 사후 검사. 전체 28개 테스트 통과.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.
