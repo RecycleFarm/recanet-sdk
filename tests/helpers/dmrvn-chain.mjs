@@ -15,14 +15,15 @@ export function chainFixture(proxy = true, confirmations = 1) {
   const deployment = DmrvnDeployment.fromManifest(manifest);
   const config = DmrvnConfig.fromDeployment(deployment, { rpcUrl: 'https://node.invalid', greenfieldChainId: '5600',
     bucketName: 'dmrvn', objectPrefix: 'partners/101/', partnerId: 101, maxRelayCostWei: 1000000000000000n, confirmations });
-  const state = { implementation: first, version: '1.0.0', head: 100n, blockHash: '0x' + 'ab'.repeat(32), role: true, balance: '0x0' };
+  const state = { implementation: first, version: '1.0.0', head: 100n, blockHash: '0x' + 'ab'.repeat(32), role: true, balance: '0x0',
+    timestamp: 291n, claimNonce: '9007199254740993', forwardNonce: '9007199254740993' };
   const calls = [];
   const result = (abi, fn, value) => DmrvnAbi.encodeTuple(abi.outputs(fn), value);
   const rpc = { async call(method, params) {
     calls.push({ method, params });
     if (method === 'eth_chainId') return '0x66eee';
     if (method === 'eth_blockNumber') return '0x' + state.head.toString(16);
-    if (method === 'eth_getBlockByNumber') return { hash: state.blockHash, number: '0x64', timestamp: '0x0123' };
+    if (method === 'eth_getBlockByNumber') return { hash: state.blockHash, number: '0x64', timestamp: '0x' + state.timestamp.toString(16) };
     if (method === 'eth_getCode') return code[params[0]];
     if (method === 'eth_getStorageAt') return '0x' + '00'.repeat(12) + (params[1] === IMPLEMENTATION_SLOT ? state.implementation : admin).slice(2);
     if (method === 'eth_getBalance') return state.balance;
@@ -37,7 +38,7 @@ export function chainFixture(proxy = true, confirmations = 1) {
       if (tx.to !== forwarder && matches('isTrustedForwarder')) return result(abi, 'isTrustedForwarder', { '': true });
       if (tx.to !== forwarder && matches('CLAIM_APPROVER_ROLE')) return result(abi, 'CLAIM_APPROVER_ROLE', { '': crypto.textHash('CLAIM_APPROVER_ROLE') });
       if (tx.to !== forwarder && matches('hasRole')) return result(abi, 'hasRole', { '': state.role });
-      if (matches('nonces')) return result(abi, 'nonces', { '': '9007199254740993' });
+      if (matches('nonces')) return result(abi, 'nonces', { '': tx.to === forwarder ? state.forwardNonce : state.claimNonce });
     }
     throw new Error('Unexpected test RPC ' + method);
   } };

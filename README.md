@@ -168,4 +168,8 @@ private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 h
 `recoverCreateTransaction`으로 원래 거래를 확인한 후 같은 작업을 재개하세요. intent를 지우거나 다른
 작업 ID로 재생성하지 마세요. `operation` snapshot에는 재사용 가능한 서명이 있어 접근 권한 관리가 필요합니다.
 
+`approveClaim`은 저장된 Evidence를 재읽고 파트너 승인 서명을 만듭니다. `prepare`는 Evidence 저장과 승인의
+조합이며 Claim 거래를 전송하지 않습니다. 승인 실패 후에도 같은 작업의 nonce/deadline과 예약을 보존하며,
+만료된 승인을 자동 갱신하지 않습니다. 저장된 승인의 반환은 현재 역할·만료·nonce의 재검증을 뜻하지 않습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

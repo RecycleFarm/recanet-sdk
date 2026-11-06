@@ -29,7 +29,8 @@
 | 6h | journal 경계·메모리 상태 (C-08 일부) | 구현, 동시/중첩 잠금·snapshot·claim 검색 시험 통과 |
 | 6i | 공개 Greenfield 객체 reader (C-11 기반) | 구현, 직접 GET·인코딩·권한/크기/timeout·취소 시험 통과 |
 | 6j | Evidence 준비·생성 복구 (C-07 일부) | 구현, intent·서명/hash 재사용·예약·정확 bytes·동시 호출 시험 통과 |
-| 6k | 영속 journal·승인·제출·보고서 (C-07–11) | 예정 |
+| 6k | Claim 승인 (C-09 일부) | 구현, 서명 전 요청 저장·원 요청 재사용·예약·승인 검증 시험 통과 |
+| 6l | 영속 journal·제출·보고서 (C-08–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -105,5 +106,7 @@
 - Evidence 단계: 같은 작업 16개 동시 호출의 단일 서명/생성, 배포·설정/입력 fingerprint, claim/source 예약,
   응답 유실 intent 보존·원래 거래 proof 복구·명시 미전송/거절만 재생성 허용, journal 실패 전 저장 경계,
   sealed 원시 bytes 비교·어댑터 변경 분리·재실측 실패 시 ready 초기화 검증. 독립 리뷰 승인.
-- 현재 전체 140개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
+- Claim 승인: 16개 동시 호출 단일 서명·큰 nonce·체인 시각 deadline, 역할/provenance/활성/실제 bytes/본문 검사,
+  서명·저장 실패 후 원 요청 재사용, 만료/nonce 충돌 미갱신·beneficiary 예약 유지, 캐시 승인과 배포 재실측 확인.
+- 현재 전체 148개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

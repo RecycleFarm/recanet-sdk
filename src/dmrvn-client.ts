@@ -7,6 +7,7 @@ import type { GreenfieldStorage } from './greenfield-storage.js';
 import type { OperationJournal } from './operation-journal.js';
 import { OperationContext, copyState, operationKey } from './internal/dmrvn-state.js';
 import { prepareEvidence, recoverCreateTransaction } from './internal/evidence.js';
+import { approveClaim } from './internal/claim-approval.js';
 
 /** DMRVN 단계 API. 영속 journal·재시작 복구와 외부 권한은 소비자가 제공한다. */
 export class DmrvnClient {
@@ -24,6 +25,15 @@ export class DmrvnClient {
   }
   recoverCreateTransaction(operationId: string, hash: string, signal?: AbortSignal): Promise<void> {
     return recoverCreateTransaction(this.#context, operationId, hash, signal);
+  }
+  approveClaim(operationId: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    return approveClaim(this.#context, operationId, signal);
+  }
+  /** Evidence 저장과 파트너 승인만 수행한다. */
+  async prepare(operationId: string, claimId: string, beneficiary: string, objectName: string,
+    body: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    await this.prepareEvidence(operationId, claimId, beneficiary, objectName, body, signal);
+    return this.approveClaim(operationId, signal);
   }
   /** journal의 기존 사실만 읽는다. 잠금·외부 체인 재조회는 하지 않는다. */
   async operation(operationId: string): Promise<Record<string, unknown>> {
