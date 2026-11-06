@@ -93,4 +93,18 @@ const beneficiarySigner = await beneficiaries.getOrCreateSigner(101, 'authentica
 콜백은 최초 지갑 확보와 이후 모든 서명·전송 때 실행합니다. 서비스에서 인증된 파트너 범위·회원 동의·철회를
 판단해야 합니다. 파트너 지갑은 기존 일반 회원 지갑과 별개이며 자동 연결하지 않습니다.
 
+ETH 잔액과 전송은 Arbitrum Sepolia(chain ID 421614)에서 지원합니다.
+
+```ts
+import { AssetClient } from 'recanet-typescript';
+
+const assets = new AssetClient(rpcUrl); // 또는 주입한 EvmRpc
+const balanceWei = await assets.getBalance(signer.address);
+const transferHash = await assets.transfer(signer, recipientAddress, 1000000000000000n, 'transfer-operation');
+```
+
+금액과 잔액은 정수 wei `bigint`입니다. 가스·가격·pending nonce를 조회해 한 번 제출합니다.
+`SUBMISSION_UNRESOLVED`이면 원래 요청·지갑 서비스·체인에서 먼저 확인하세요.
+같은 key로 이 함수를 다시 호출해도 같은 nonce·body가 만들어진다는 보장은 없습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

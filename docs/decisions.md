@@ -20,6 +20,7 @@
 | TS-13 / D-03·07 | 파트너 콜백 및 미발견 서명자 오류 | 콜백은 boolean 또는 Promise<boolean>을 명시적으로 지원하고 매 서명/전송에 재확인. 미발견은 회원 상세 Page의 UNAUTHORIZED_SIGNER로 구현(Java 일반 signerFor의 IllegalStateException과 차이). 콜백 자체 오류는 원문 그대로 호출자에게 전파. 최종 언어 공통 오류정책 결정 대기 |
 | TS-14 / D-14 | EVM fetch 시간 경계·범위 | 요청 전체 30초, 연결 단계는 fetch header 반환까지 10초 상한. native Fetch가 소켓 연결 timeout을 직접 제공하지 않아 Java connect timeout과 같은 의미는 아님. 설정은 양의 안전 정수 밀리초, 1ms 미만은 거부(원본 Duration 소수 ms 차이). 정식 시간 계약 결정 대기 |
 | TS-15 / D-17·30 | 체인 JSON의 언어별 숫자·중첩 경계 | 응답 숫자는 원문을 읽어 integer safe 범위/decimal 정확 왕복을 별도 검증. JS 입력 number는 double 경로로 JCS 숫자를 출력하고 bigint 입력은 safe 정수만 허용. Java의 입력 숫자 클래스 차이를 JS에서 완전히 복제하지 않음. 중첩 128단계 상한은 기존 lossless 파서 공유. key escape/제어문자 대문자는 Java 호환 경로이며 표준 JCS 정책은 미채택 |
+| TS-16 / D-13 | ETH 전송 금액·복구 정보의 공개 API | 금액은 bigint wei만 받으며 string/number 자동 변환 없음. 현재 Java처럼 hash만 반환하고 완성 transaction·pending nonce를 별도 결과로 노출하지 않음. 같은 key의 transfer 재호출은 body가 달라질 수 있어 원래 전송 복구 계약은 결정 대기 |
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
 | D-02·17·30 | Evidence wire 버전·숫자 정규화·제어문자 escape | 운영 기본 버전을 추정하지 않음 |
 | D-05·08–16 | API 표면·회원 연결·외부 공급자·승인 서명·거래 정책 | 각 상세 구현 전 원본 계약 대조 |

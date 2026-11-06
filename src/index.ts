@@ -9,3 +9,4 @@ export type { UserWallet, UserWalletClient, WalletAuthorization, BeneficiaryWall
 export type { EvmSigner, EvmTypedData, EvmTransactionInput } from './evm-signer.js';
 export { DmrvnError, type DmrvnErrorCode } from './errors.js';
 export { HttpEvmRpc, type EvmRpc, type HttpEvmRpcOptions } from './evm-rpc.js';
+export { AssetClient } from './asset-client.js';
