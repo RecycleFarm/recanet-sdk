@@ -160,6 +160,12 @@ RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testn
 재시작·다중 프로세스 복구를 제공하지 않습니다. `withLock` 콜백 안의 모든 비동기 작업은 완료까지 await하세요.
 영속 adapter는 저장 완료·작업자 간 잠금·소유권 상실 후 부작용 차단과 배포 전체 claim 검색을 제공해야 합니다.
 
+`FileOperationJournal(directory)`는 단일 호스트의 로컬 POSIX 파일에서 OS 잠금과 fsync·원자 교체로 상태를
+보존합니다. 생성 시 디렉터리를 만들고 권한을 0700으로 설정하며 파일은 0600으로 씁니다. 같은 디렉터리의
+모든 작업자는 동일 잠금 계약을 지켜야 합니다. `store`와 claim 검색은 대응 `withLock` 안에서만 가능합니다.
+같은 key 재진입은 거부하며, 잠금 콜백 안의 모든 비동기 작업은 await하세요. NFS·분산 lease/fencing은 지원하지 않습니다.
+잠금 대기에는 자체 timeout이 없으며 지원 OS·native 빌드/배포 경계는 아래와 의사결정 문서를 확인하세요.
+
 `GreenfieldPublicReader`는 신뢰한 Storage Provider에서 공개 객체의 원시 bytes를 직접 읽습니다.
 private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 hash·서명 검증은 별도 계층의 책임입니다.
 
