@@ -87,7 +87,8 @@ export class PrivyClient {
 
   /** 인증/tenant 권한을 확인한 userId만 전달한다. 생성 전에 승인키를 영속 보관한다. */
   userWallets(registration: BackendWalletRegistration, namespace: string): UserWalletClient {
-    return memberWallets(this.#request, registration, namespace);
+    return memberWallets(this.#request, registration, namespace,
+      (walletId, registration, signal) => this.signerForWallet(walletId, registration, signal));
   }
 
   /** 승인키 목록으로 권한을 확인하며 지갑 개인키를 export하지 않는다. */

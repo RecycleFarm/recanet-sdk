@@ -4,6 +4,7 @@ import type { EvmSigner, EvmTransactionInput, EvmTypedData } from '../evm-signer
 import { authorizationPrivateKey, prepareAuthorization } from './authorization.js';
 import { requestJson, type HttpSettings } from './http.js';
 import { listWallets, type WalletRequest } from './wallets.js';
+import { chainNumber } from './chain-id.js';
 
 function failure(error: unknown): DmrvnError {
   if (error instanceof PrivyApiError) {
@@ -11,17 +12,6 @@ function failure(error: unknown): DmrvnError {
     if (error.statusCode === 401 || error.statusCode === 403) return new DmrvnError('UNAUTHORIZED_SIGNER');
   }
   return new DmrvnError('RPC_UNAVAILABLE');
-}
-
-export function chainNumber(value: bigint | number, positive = false): bigint {
-  if (typeof value !== 'bigint' && (typeof value !== 'number' || !Number.isSafeInteger(value))) {
-    throw new TypeError('chainId는 정수 또는 bigint여야 합니다');
-  }
-  const result = BigInt(value);
-  if (result < -(1n << 63n) || result >= (1n << 63n) || (positive && result <= 0n)) {
-    throw new TypeError('chainId가 64비트 범위를 벗어났습니다');
-  }
-  return result;
 }
 
 function record(value: unknown): Record<string, unknown> {

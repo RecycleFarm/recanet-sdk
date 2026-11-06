@@ -13,7 +13,8 @@
 | 4c | 승인키 생성·운영 지갑 등록/조회·회원 조회/생성 (C-01 일부) | 구현, pagination·중복·409 경쟁 복구 시험 통과 |
 | 4d | Privy 요청 승인 서명 (C-03 일부) | 구현, canonical payload/digest 3개·DER 검증·snapshot 결속 시험 통과 |
 | 4e | 운영 지갑 메시지/EIP-712/거래 제출 (C-03 일부) | 구현, 정확한 body/header·권한·오류·무재시도 시험 통과 |
-| 4f | 회원 서명·파트너 권한 어댑터·export | 예정 |
+| 4f | 회원 서명·파트너 권한 어댑터 (C-01 일부) | 구현, 권한 거부·철회·콜백 오류·snapshot 시험 통과 |
+| 4g | 지갑 export·초기화 편의 기능의 미결 정책 | 남은 작업 |
 | 5 | EVM 조회·ETH 전송 (C-04) | 예정 |
 | 6 | DMRVN 계산·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
@@ -37,11 +38,17 @@
 - 지갑: P-256 생성 키의 실제 서명/검증·PEM 형식·개인키 비노출, 등록 body/선택 필드,
   운영 목록·legacy 소유권 비교, 회원 pagination/중복·cursor 검증, 409 재조회 성공/실패,
   503/응답 유실 시 재생성 없음. 전체 38개 테스트 통과.
-- 키 자동 로깅·환경변수 기반 ensureBackendWallet·export 및 파트너 권한/서명은 아직 미구현.
+- 키 자동 로깅·환경변수 기반 ensureBackendWallet·export는 아직 미구현.
   결정이 필요한 편의 기능을 자동으로 채택하지 않으며, 남은 범위를 완료로 계산하지 않는다.
 - 요청 승인: Privy 0.59의 합성 벡터 3개 canonical UTF-8·SHA-256·DER 검증, 새 P-256 키로 서명/검증,
   URL/body/idempotency key 결속·단일 snapshot·비표준 key escape 경계 확인. 실제 Privy 수용은 미실행.
 - 운영 서명자: 승인키 목록으로 wallet ID·ethereum 확인, 저장 주소 사용, 세 RPC의 wire body·header를
   캡처해 DER 승인 서명 검증. 큰 chain bigint/큰 typed 정수 문자열·선택 필드 생략·호출자 변경 분리,
   401/403·503·유형 오류·취소 매핑과 재시도 0회 확인. 반환 signature/hash의 복구·체인 포함 여부는 검증하지 않음.
+- RPC 독립 리뷰에서 Fetch의 idempotency header 공백 정규화로 승인값/전송값이 달라지는 문제 발견.
+  실제 header 값으로 한 번 확정하도록 수정하고 native Request 기반 DER 회귀 시험 및 재리뷰 승인.
+- 회원 서명은 조회→승인키 권한 확인→RPC 순서, 없으면 생성하지 않음. 파트너 scope 분리,
+  파트너 불일치·권한 false 시 외부 요청 0회, 확보 후 동의 철회 시 모든 서명/전송 차단,
+  callback 오류 보존·주소 읽기 무검사·비동기 권한 대기 중 snapshot 확인.
+- 현재 전체 52개 테스트와 `npm pack --dry-run` 통과. 승인 계산·RPC·회원/파트너 단위 각각 독립 리뷰 승인 후 커밋.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

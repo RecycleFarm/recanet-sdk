@@ -80,4 +80,17 @@ const hash = await signer.sendTransaction(421614, {
 원본 거래와 operation ID를 함께 보관하세요. 반환 hash는 실행 성공이나 최종 확정을 뜻하지 않습니다.
 서명·전송 오류는 `DmrvnError.code`로 구분하며, `RPC_UNAVAILABLE`도 미제출을 보장하지 않습니다.
 
+회원 서명은 `members.signMessage(userId, message)`, `signTypedData`, `sendTransaction`으로 요청할 수 있습니다.
+지갑이 없으면 생성하지 않고 실패합니다. DMRVN 파트너 매핑은 명시적으로 선택합니다.
+
+```ts
+const beneficiaries = members.forPartner(101, async (partnerId, userId) => {
+  return accessPolicy.isWalletUseAuthorized(partnerId, userId);
+});
+const beneficiarySigner = await beneficiaries.getOrCreateSigner(101, 'authenticated-member-id');
+```
+
+콜백은 최초 지갑 확보와 이후 모든 서명·전송 때 실행합니다. 서비스에서 인증된 파트너 범위·회원 동의·철회를
+판단해야 합니다. 파트너 지갑은 기존 일반 회원 지갑과 별개이며 자동 연결하지 않습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
