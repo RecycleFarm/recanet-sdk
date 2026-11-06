@@ -8,7 +8,9 @@
     "node": ">=22"
   },
   "files": [
-    "dist"
+    "dist",
+    "native",
+    "scripts/build-native.mjs"
   ],
   "exports": {
     ".": {
@@ -17,7 +19,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run build:native && tsc -p tsconfig.json",
+    "build:native": "node scripts/build-native.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
     "check": "npm test"
   },

@@ -211,3 +211,9 @@ commitment도 전달하지 않습니다. 외부 commitment 검증이 필요하�
 이 관찰 저장은 `resolveSubmission`의 거래 확인·nonce 예약 해제를 대신하지 않습니다.
 
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
+
+소스 빌드는 TypeScript와 함께 영속 journal용 Node-API OS 잠금 컴포넌트를 컴파일합니다.
+macOS/Linux에서 C compiler와 `node_api.h`가 필요합니다. 자동 검색이 안 되면 `RECANET_NODE_INCLUDE`를
+해당 header 디렉터리로 지정하세요. 다른 OS/arch의 tarball을 사용할 때는 동봉 소스에 대해
+`node scripts/build-native.mjs`로 다시 빌드해야 합니다. 플랫폼별 prebuild 배포 정책은 아직 결정되지 않았습니다.
+pure/HTTP SDK import는 native 컴포넌트를 즉시 로드하지 않습니다.

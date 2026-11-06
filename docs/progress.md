@@ -40,7 +40,8 @@
 | 6s | 보고서 순수 검증 (C-11 일부) | 구현, calldata/quorum/서명·출력/report/file commitment·변조 거부 시험 통과 |
 | 6t | 독립 DMRVN reader (C-11 일부) | 구현, 확인 높이·상태 분기·보고 거래/파일 검증·오류 보존·private 출처 시험 통과 |
 | 6u | reader journal 연계 (C-11) | 구현, 관찰/오류 저장·원래 배포·출처 대조·보고 hash 재사용·제출 확인 분리 시험 통과 |
-| 6v | 영속 journal·Greenfield 쓰기 adapter (C-07·08) | 예정 |
+| 6v | 영속 journal OS 잠금 기반 (C-08 일부) | 구현, macOS OFD·worker·실제 Java FileChannel 상호 배제/강제 종료 해제 시험 통과 |
+| 6w | 영속 파일 상태·Greenfield 쓰기 adapter (C-07·08) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -145,5 +146,8 @@
 - reader journal 연계: 실제 PENDING reader 관찰 보존·보고서 오류 저장·최초 배포/최신 metadata 분리,
   fromBlock 미보완/expectedFileHash=null·보고 hash 저장/우선순위·배포/출처 오류 거부·ready 초기화,
   제출 확인 상태와 nonce 예약을 변경하지 않는 경계 확인.
-- 현재 전체 218개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
+- OS 잠금 기반: 최소 Node-API 8 컴포넌트로 OFD record lock 사용. macOS ARM64에서 descriptor/worker 상호 배제,
+  무관한 close 후 잠금 유지·소유 close 해제·실제 Java FileChannel과 양방향 충돌·SIGKILL 후 재획득 확인.
+  Linux 실행/빌드와 플랫폼별 바이너리 배포는 미검증/미결. 아직 영속 파일 journal 전체를 뜻하지 않음.
+- 현재 전체 222개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.
