@@ -186,4 +186,8 @@ hash가 없으면 승인 nonce로 제한된 블록 범위를 검색합니다. `S
 완성 relay 거래와 intent를 저장해 한 번 전송합니다. 첫 반환은 `BROADCAST`이며 실행 성공을 뜻하지 않습니다.
 intent 이후 재호출은 원래 거래를 조회합니다. 자동 replacement·fee bump·재전송은 제공하지 않습니다.
 
+`submitActivity(beneficiarySigner, operationId, claimId, objectName, evidenceBody, gas)`는 위 단계를 조합합니다.
+복구할 때 같은 operationId와 입력을 사용하세요. 최초 `BROADCAST` 뒤 자동 polling하지 않으며,
+intent가 있으면 저장된 서명을 재사용해 조회합니다. 회원 지갑의 조회/생성과 요청별 자동 ID API는 아직 별도 구현 중입니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
