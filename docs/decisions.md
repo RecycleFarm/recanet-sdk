@@ -31,6 +31,7 @@
 | TS-24 / D-19 | preflight API와 ready 의미 | 고수준 client 조합 전 읽기 전용 DmrvnPreflight.run으로 제공. Java처럼 zero balance 조회 성공·문자열 미시험 표식 제외한 check들만 ready에 반영하고 registry 일반 오류는 그대로 전파. GreenfieldStorage는 실제 객체 읽기/원래 create 거래 확인을 요구하는 async 경계로 정의. 외부 쓰기/validator 권한과 비용 충족 인수는 별도 결정 대기 |
 | TS-25 / D-25 | async journal monitor와 영속 adapter | 메모리는 Java처럼 key와 무관한 단일 monitor·nested 재진입을 유지. AsyncLocalStorage와 소유 scope별 queue로 중첩 fan-out 잠금도 직렬화. callback은 모든 자식 비동기 작업을 await해야 하며 scope 밖 부작용을 보장하지 않음. store는 대기 전에 입력 snapshot 캡처. claim 검색 미지원 adapter는 JOURNAL_UNAVAILABLE. 영속 lock/fsync·분산 lease/fencing·포맷 호환은 별도 구현/결정 대기 |
 | TS-26 / D-24 | 공개 객체 reader의 Fetch 경계 | endpoint는 query 금지·WHATWG URI 정규화, Java URLEncoder 규칙으로 bucket/각 object segment 인코딩. Fetch가 '.'/'..' segment를 다른 경로로 정규화하므로 해당 literal segment는 INVALID_INPUT으로 거부(Java reader와 명시적 차이). raw path 지원이 필요하면 전송 adapter/허용 정책 결정 필요. 30초 전체/10초 header 대기 기본과 주입 fetch·시험용 timeout 설정을 제공하며 실제 소켓 connect 경계는 TS-14와 같은 차이 |
+| TS-27 / D-23·25 | 단계 API의 adapter 변경·재전송 오류 사실 | 저장소에 위치/bytes의 독립 사본을 전달해 adapter의 변경이 저장 상태를 오염시키지 않도록 함. 생성 intent 제거는 DmrvnError의 명시 definitelyNotBroadcast/definitelyRejected 사실만 허용하고 retryable/action만으로 재전송하지 않음. 상태 snapshot에는 재사용 가능한 서명이 있으므로 소비자가 접근/저장 권한을 통제. 공통 오류 fact의 외부 공급자 증명 기준과 영속 adapter는 결정 대기 |
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |

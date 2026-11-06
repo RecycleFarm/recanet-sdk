@@ -163,4 +163,9 @@ RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testn
 `GreenfieldPublicReader`는 신뢰한 Storage Provider에서 공개 객체의 원시 bytes를 직접 읽습니다.
 private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 hash·서명 검증은 별도 계층의 책임입니다.
 
+`DmrvnClient.prepareEvidence`는 Evidence 서명·저장소 생성·업로드·sealed 재읽기를 단계 상태로 기록합니다.
+운영 서명자·`GreenfieldStorage` 쓰기 adapter·방법론을 명시적으로 주입합니다. 생성 결과가 불확실하면
+`recoverCreateTransaction`으로 원래 거래를 확인한 후 같은 작업을 재개하세요. intent를 지우거나 다른
+작업 ID로 재생성하지 마세요. `operation` snapshot에는 재사용 가능한 서명이 있어 접근 권한 관리가 필요합니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

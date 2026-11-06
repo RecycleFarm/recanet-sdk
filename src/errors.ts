@@ -7,7 +7,10 @@ export type DmrvnErrorCode = 'UNAUTHORIZED_SIGNER' | 'RPC_UNAVAILABLE' | 'INTERR
   | 'INVALID_INPUT' | 'GAS_ESTIMATION_FAILED' | 'WRONG_CHAIN' | 'SUBMISSION_UNRESOLVED' | 'SIGNATURE_INVALID' | 'REPORT_MISMATCH'
   | 'METHODOLOGY_UNAVAILABLE' | 'EVIDENCE_CONTRACT_UNCONFIGURED'
   | 'DEPLOYMENT_NOT_READY' | 'UNAPPROVED_IMPLEMENTATION' | 'DEPLOYMENT_COLLISION' | 'JOURNAL_UNAVAILABLE'
-  | 'STORAGE_ACCESS_DENIED' | 'STORAGE_UNAVAILABLE';
+  | 'STORAGE_ACCESS_DENIED' | 'STORAGE_UNAVAILABLE' | 'DEPLOYMENT_MISMATCH' | 'OPERATION_INPUT_CHANGED'
+  | 'OPERATION_NOT_PREPARED' | 'SUBMISSION_INPUT_CHANGED' | 'OBJECT_UNSEALED' | 'STORAGE_CREATE_UNRESOLVED'
+  | 'STORAGE_ACCOUNT_UNFUNDED' | 'STORAGE_MISMATCH' | 'REQUEST_EXPIRED' | 'NONCE_CONFLICT' | 'INSUFFICIENT_FUNDS'
+  | 'REPORT_LOOKUP_RANGE' | 'REPORT_TX_NOT_FOUND' | 'REPORT_READ_FAILED';
 
 export type TransactionQueryErrorCode = 'WRONG_CHAIN' | 'CHAIN_CHANGED' | 'RPC_UNAVAILABLE' | 'INVALID_RESPONSE' | 'INTERRUPTED';
 
@@ -24,10 +27,23 @@ export class TransactionQueryError extends Error {
 /** 서명/RPC 경계의 정리된 오류. 제출 여부를 확정하지 않는다. */
 export class DmrvnError extends Error {
   readonly code: DmrvnErrorCode;
-  constructor(code: DmrvnErrorCode) {
+  readonly definitelyNotBroadcast: boolean;
+  readonly definitelyRejected: boolean;
+  constructor(code: DmrvnErrorCode, facts: { readonly definitelyNotBroadcast?: boolean; readonly definitelyRejected?: boolean } = {}) {
     super(code);
     this.name = 'DmrvnError';
     this.code = code;
+    this.definitelyNotBroadcast = facts.definitelyNotBroadcast === true;
+    this.definitelyRejected = facts.definitelyRejected === true;
+  }
+  retryable(): boolean {
+    return ['SUBMISSION_UNRESOLVED', 'STORAGE_CREATE_UNRESOLVED', 'OBJECT_UNSEALED', 'STORAGE_UNAVAILABLE',
+      'RPC_UNAVAILABLE', 'REPORT_TX_NOT_FOUND', 'REPORT_READ_FAILED', 'JOURNAL_UNAVAILABLE', 'METHODOLOGY_UNAVAILABLE'].includes(this.code);
+  }
+  action(): 'RECONCILE_ONLY' | 'FUND_CONFIGURED_ROLE' | 'RETRY_SAME_OPERATION' | 'FIX_INPUT_OR_CONFIGURATION' {
+    if (this.code === 'SUBMISSION_UNRESOLVED' || this.code === 'STORAGE_CREATE_UNRESOLVED') return 'RECONCILE_ONLY';
+    if (this.code === 'STORAGE_ACCOUNT_UNFUNDED' || this.code === 'INSUFFICIENT_FUNDS') return 'FUND_CONFIGURED_ROLE';
+    return this.retryable() ? 'RETRY_SAME_OPERATION' : 'FIX_INPUT_OR_CONFIGURATION';
   }
 }
 
