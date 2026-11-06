@@ -21,7 +21,8 @@ export interface AbiDefinition {
 const invalid = (): never => { throw new DmrvnError('INVALID_INPUT'); };
 const join = (...values: Uint8Array[]) => Uint8Array.from(Buffer.concat(values));
 function map(value: unknown): Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return invalid();
+  if (value === null || typeof value !== 'object' || Array.isArray(value)
+    || (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) return invalid();
   return value as Record<string, unknown>;
 }
 function str(value: unknown): string { if (typeof value !== 'string') return invalid(); return value; }

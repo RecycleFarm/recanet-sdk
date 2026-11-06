@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { AbiCoder, Interface } from 'ethers';
-import { DmrvnAbi, DmrvnCrypto as crypto } from '../dist/index.js';
+import { DmrvnAbi, DmrvnCrypto as crypto, DmrvnDecimal } from '../dist/index.js';
 
 const fixture = async name => JSON.parse(await readFile(new URL('./fixtures/' + name, import.meta.url), 'utf8'));
 const invalid = error => { assert.equal(error.code, 'INVALID_INPUT'); return true; };
@@ -104,4 +104,5 @@ test('ABI schema는 호출자 변경과 분리하고 필요한 키만 인코딩�
   assert.ok(Object.isFrozen(abi.inputs('f')[0]));
   assert.equal(abi.encode('f', { x: 1, extra: 'ignored' }), abi.encode('f', { x: 1 }));
   assert.throws(() => abi.encode('f', {}), invalid);
+  assert.throws(() => DmrvnAbi.encodeTuple([], new DmrvnDecimal('1.5')), invalid);
 });

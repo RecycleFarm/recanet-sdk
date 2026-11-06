@@ -18,3 +18,4 @@ export * as DmrvnCrypto from './dmrvn-crypto.js';
 export { DmrvnJson, DmrvnDecimal } from './dmrvn-json.js';
 export { DmrvnAbi, type AbiField, type AbiDefinition } from './dmrvn-abi.js';
 export { DmrvnProtocol, type DmrvnStructType } from './dmrvn-protocol.js';
+export { DeclaredMethodology, type MethodologyRegistry } from './declared-methodology.js';

@@ -144,4 +144,8 @@ DMRVN의 순수 계산 계층은 `DmrvnCrypto`, `DmrvnJson`, `DmrvnAbi`로 제�
 `DmrvnProtocol`은 Claim·ForwardRequest·보고서의 EIP-712 digest, provenance 검증, committee/report hash와
 제출 calldata를 계산합니다. 이 계산만으로 signer 권한·quorum·DMRVN 최종 검증 성공을 판단하지 않습니다.
 
+`DeclaredMethodology`는 manifest와 원시 WASM hash를 확인하고, 호출자가 제공한 registry 함수로 활성을 조회합니다.
+Evidence 본문을 만들 때는 운영자와 확인한 `evidenceSchemaVersion`을 명시해야 합니다. SDK는 WASM을 실행하거나
+파트너 입력 프로필을 선택하지 않습니다. 현재 Evidence 계약의 미결 사항은 의사결정 문서에 남아 있습니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

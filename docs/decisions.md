@@ -25,6 +25,7 @@
 | TS-18 / D-16 | 거래 cursor의 SDK 간 호환·변조 방지 | Java 발급 ASCII/Base64url 벡터와 일치하며 수신 시 padding·snapshot/index 정수의 부호/선행 0을 허용. cursor는 비서명·비암호화이며 권한 증명이 아님. 교차 언어 전체 비정규 파싱 호환 및 서버 변조 방지 정책은 결정 대기 |
 | TS-19 / D-17·30 | DMRVN decimal 자료형과 암호 의존성 | ethers 6.17.0을 고정해 Keccak/secp256k1 연산에 사용하고 Java 입력 범위·low-s를 별도 검사. DMRVN JSON 소수는 DmrvnDecimal로 원문/BigDecimal 구분 유지하며 canonical/hash/copy에는 DmrvnJson 사용. 큰 decimal의 canonical 결과를 다시 파싱하면 거부되는 기존 경계 유지. 표준 JCS로 수정·일반 JSON 자료형으로 축소하는 정책은 결정 대기 |
 | TS-20 / D-18 | ABI decode 엄격성·기준 selector 오류 | call은 전체 재인코딩 일치를 요구하지만 output/event는 재인코딩하지 않는 Java 경계 유지. uintN/address/bool/bytes1/bytes32/bytes/string/tuple/동적 배열만 codec 지원(예: bytes4는 signature 계산만 가능). Java Field.signature가 tuple[]를 문자 그대로 내보내는 executeBatch selector도 원본 벡터와 일치시키며 올바른 Solidity tuple[] signature로 조용히 교체하지 않음. 교정/지원 확대는 결정 대기 |
+| TS-21 / D-02·19 | Evidence 버전과 registry 경계 | DeclaredMethodology에 명시적 schemaVersion 및 registry callback(boolean/Promise)을 주입. 버전 미지정은 Java 과거 생성자 3 호환값을 보관하되 requireExplicitEvidenceVersion에서 중단하여 신규 운영 계약으로 인정하지 않음. helper 자체는 partner long 입력을 유지하며 고수준 파트너 uint32 제약은 config 계층에서 적용 예정. 승인된 Evidence 버전/방법론 프로필/registry 원천은 결정 대기 |
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
