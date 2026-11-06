@@ -28,3 +28,4 @@ export type { OperationJournal } from './operation-journal.js';
 export { MemoryOperationJournal } from './memory-operation-journal.js';
 export { GreenfieldPublicReader, type GreenfieldPublicReaderOptions, type ReportReader } from './greenfield-public-reader.js';
 export { DmrvnClient } from './dmrvn-client.js';
+export { ActivityRequest, type ActivityRequestOptions } from './activity-request.js';
