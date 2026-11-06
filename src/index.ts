@@ -26,3 +26,4 @@ export { DmrvnPreflight, type DmrvnPreflightResult, type PreflightCheck } from '
 export type { GreenfieldStorage, GreenfieldIdentity, GreenfieldHead } from './greenfield-storage.js';
 export type { OperationJournal } from './operation-journal.js';
 export { MemoryOperationJournal } from './memory-operation-journal.js';
+export { GreenfieldPublicReader, type GreenfieldPublicReaderOptions, type ReportReader } from './greenfield-public-reader.js';

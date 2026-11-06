@@ -160,4 +160,7 @@ RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testn
 재시작·다중 프로세스 복구를 제공하지 않습니다. `withLock` 콜백 안의 모든 비동기 작업은 완료까지 await하세요.
 영속 adapter는 저장 완료·작업자 간 잠금·소유권 상실 후 부작용 차단과 배포 전체 claim 검색을 제공해야 합니다.
 
+`GreenfieldPublicReader`는 신뢰한 Storage Provider에서 공개 객체의 원시 bytes를 직접 읽습니다.
+private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 hash·서명 검증은 별도 계층의 책임입니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
