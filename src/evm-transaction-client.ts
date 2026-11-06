@@ -1,13 +1,15 @@
 import { DmrvnError, TransactionQueryError } from './errors.js';
-import type { EvmTransaction, EvmTransactionState, EvmTransactionStatus } from './evm-transaction.js';
+import type { EvmTransaction, EvmTransactionState, EvmTransactionStatus, EvmTransactionPage, EvmTransactionQuery } from './evm-transaction.js';
 import { HttpEvmRpc, type EvmRpc, type HttpEvmRpcOptions } from './evm-rpc.js';
 import { chainNumber } from './internal/chain-id.js';
 import { evmHex, quantity } from './internal/evm-values.js';
 import { freezeMap, height, index, input, MAX_HEIGHT, requireResponse, responseHex, responseMap,
   responseQuantity, sameChain } from './internal/transaction-data.js';
+import { decodeCursor, encodeCursor, transactionRange, type TransactionCursor, type TransactionRange } from './internal/transaction-cursor.js';
 
 /** 읽기 전용 EVM 거래 조회. 이 응답의 상태·확인 수는 합의/L1 최종성을 보장하지 않는다. */
 export class EvmTransactionClient {
+  static readonly MAX_BLOCKS_PER_PAGE = 100;
   #chain: bigint;
   #rpc: EvmRpc;
 
@@ -40,6 +42,71 @@ export class EvmTransactionClient {
     const detail = await this.getTransaction(hash, signal);
     return detail?.status ?? Object.freeze({ chainId: this.#chain, transactionHash: hash,
       state: 'NOT_FOUND', blockNumber: null, confirmations: 0n });
+  }
+
+  /** 최신 순으로 블록에 포함된 최상위 발신 거래만 탐색한다. 빈 페이지에도 cursor가 있을 수 있다. */
+  async listTransactions(walletAddress: string, query: EvmTransactionQuery, signal?: AbortSignal): Promise<EvmTransactionPage> {
+    const address = evmHex(walletAddress, 20).toLowerCase();
+    const range = transactionRange(query);
+    let cursor = range.cursor === null ? null : decodeCursor(range.cursor, this.#chain, address, range);
+    await this.#verifyChain(signal);
+    const head = height(await this.#call('eth_blockNumber', [], signal));
+    if (cursor === null) {
+      const upper = range.toBlock ?? head;
+      if (upper > head || range.fromBlock > upper) throw new TypeError('블록 범위가 현재 head를 넘습니다');
+      const anchor = responseHex((await this.#block(upper, false, signal)).hash, 32);
+      cursor = { snapshot: upper, anchorHash: anchor, nextBlock: upper, nextIndex: -1, expectedHash: anchor };
+    }
+    sameChain(head >= cursor.snapshot);
+    await this.#verifyAnchor(cursor, signal);
+    const transactions: EvmTransaction[] = [];
+    let scanned = 0;
+    let number = cursor.nextBlock;
+    let nextIndex = cursor.nextIndex;
+    let expectedHash = cursor.expectedHash;
+    let next: TransactionCursor | null = null;
+    while (number >= range.fromBlock && scanned < EvmTransactionClient.MAX_BLOCKS_PER_PAGE) {
+      const block = await this.#block(number, true, signal);
+      sameChain(expectedHash === responseHex(block.hash, 32));
+      const parent = responseHex(block.parentHash, 32);
+      requireResponse(Array.isArray(block.transactions));
+      const entries = block.transactions;
+      requireResponse(nextIndex === -1 || nextIndex < entries.length);
+      const start = nextIndex === -1 ? entries.length - 1 : nextIndex;
+      scanned++;
+      for (let i = start; i >= 0; i--) {
+        const tx = responseMap(entries[i]);
+        requireResponse(height(tx.blockNumber) === number && index(tx.transactionIndex) === i
+          && expectedHash === responseHex(tx.blockHash, 32));
+        if (address !== responseHex(tx.from, 20)) continue;
+        const snapshot = freezeMap(tx);
+        const hash = responseHex(snapshot.hash, 32);
+        const receipt = await this.#call('eth_getTransactionReceipt', [hash], signal);
+        transactions.push(this.#detail(snapshot, receipt, head));
+        if (transactions.length === range.limit) {
+          if (i > 0) next = { ...cursor, nextBlock: number, nextIndex: i - 1, expectedHash };
+          else if (number > range.fromBlock) next = { ...cursor, nextBlock: number - 1n, nextIndex: -1, expectedHash: parent };
+          await this.#verifyAnchor(cursor, signal);
+          return this.#page(transactions, next, address, range, cursor.snapshot, scanned);
+        }
+      }
+      number--;
+      nextIndex = -1;
+      expectedHash = parent;
+    }
+    if (number >= range.fromBlock) next = { ...cursor, nextBlock: number, nextIndex: -1, expectedHash };
+    await this.#verifyAnchor(cursor, signal);
+    return this.#page(transactions, next, address, range, cursor.snapshot, scanned);
+  }
+
+  #page(transactions: EvmTransaction[], next: TransactionCursor | null, address: string,
+    query: TransactionRange, upper: bigint, scanned: number): EvmTransactionPage {
+    return Object.freeze({ transactions: Object.freeze(transactions), nextCursor: next === null ? null
+      : encodeCursor(next, this.#chain, address, query), fromBlock: query.fromBlock, toBlock: upper, scannedBlocks: scanned });
+  }
+
+  async #verifyAnchor(cursor: TransactionCursor, signal?: AbortSignal): Promise<void> {
+    sameChain(cursor.anchorHash === responseHex((await this.#block(cursor.snapshot, false, signal)).hash, 32));
   }
 
   #detail(tx: Record<string, unknown>, rawReceipt: unknown, head: bigint): EvmTransaction {

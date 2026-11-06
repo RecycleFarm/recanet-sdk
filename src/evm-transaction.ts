@@ -30,3 +30,18 @@ export interface EvmTransaction {
   readonly transaction: ReadonlyJsonObject;
   readonly receipt: ReadonlyJsonObject | null;
 }
+
+export interface EvmTransactionQuery {
+  readonly fromBlock: bigint | number;
+  readonly toBlock?: bigint | number | null;
+  readonly limit: number;
+  readonly cursor?: string | null;
+}
+
+export interface EvmTransactionPage {
+  readonly transactions: readonly EvmTransaction[];
+  readonly nextCursor: string | null;
+  readonly fromBlock: bigint;
+  readonly toBlock: bigint;
+  readonly scannedBlocks: number;
+}

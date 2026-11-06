@@ -11,5 +11,6 @@ export { DmrvnError, type DmrvnErrorCode } from './errors.js';
 export { HttpEvmRpc, type EvmRpc, type HttpEvmRpcOptions } from './evm-rpc.js';
 export { AssetClient } from './asset-client.js';
 export { EvmTransactionClient } from './evm-transaction-client.js';
-export type { EvmTransaction, EvmTransactionStatus, EvmTransactionState, ReadonlyJson, ReadonlyJsonObject } from './evm-transaction.js';
+export type { EvmTransaction, EvmTransactionStatus, EvmTransactionState, EvmTransactionPage, EvmTransactionQuery,
+  ReadonlyJson, ReadonlyJsonObject } from './evm-transaction.js';
 export { TransactionQueryError, type TransactionQueryErrorCode } from './errors.js';

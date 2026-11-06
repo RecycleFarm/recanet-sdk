@@ -120,4 +120,20 @@ const status = await transactions.getTransactionStatus(transferHash);
 `SUCCEEDED`는 receipt의 실행 성공이며 합의/L1 최종 확정을 뜻하지 않습니다. 금액·블록 번호·확인 수는 `bigint`이고,
 원본 transaction/receipt는 변경할 수 없는 snapshot입니다. 조회 오류는 `TransactionQueryError.code`로 처리하세요.
 
+발신 거래 목록은 블록 탐색으로 조회합니다. 입력 범위는 다음 페이지에서도 같은 형태로 유지합니다.
+
+```ts
+const query = { fromBlock: 0n, toBlock: null, limit: 20 };
+let cursor: string | null = null;
+do {
+  const page = await transactions.listTransactions(signer.address, { ...query, cursor });
+  // page.transactions 처리
+  cursor = page.nextCursor;
+} while (cursor !== null);
+```
+
+한 페이지는 최대 100개 블록을 읽으므로 **빈 페이지라도 cursor가 있으면 계속** 조회합니다.
+실제 지갑 사용 시작 블록부터 범위를 좁히세요. 입금·내부 호출·pending 목록은 포함하지 않습니다.
+`CHAIN_CHANGED`이면 cursor 없이 새 snapshot부터 조회해야 합니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

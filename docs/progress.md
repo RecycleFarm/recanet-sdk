@@ -18,7 +18,7 @@
 | 5a | EVM HTTP RPC·체인 JSON (C-04 기반) | 구현, id/응답·JSON 정밀도·4 MiB·deadline/취소 시험 통과 |
 | 5b | ETH 잔액·전송 (C-04 일부) | 구현, 정확한 wei·호출 순서·실패 경계 시험 통과 |
 | 5c | 거래 상세/상태 (C-04 일부) | 구현, 상태·receipt/블록 결속·수치 경계·snapshot 시험 통과 |
-| 5d | 발신 거래 목록/cursor (C-04 일부) | 예정 |
+| 5d | 발신 거래 목록/cursor (C-04 일부) | 구현, 블록 내부/100블록 페이지·anchor·reorg·cursor 벡터 시험 통과 |
 | 6 | DMRVN 계산·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
@@ -53,7 +53,7 @@
 - 회원 서명은 조회→승인키 권한 확인→RPC 순서, 없으면 생성하지 않음. 파트너 scope 분리,
   파트너 불일치·권한 false 시 외부 요청 0회, 확보 후 동의 철회 시 모든 서명/전송 차단,
   callback 오류 보존·주소 읽기 무검사·비동기 권한 대기 중 snapshot 확인.
-- 현재 전체 52개 테스트와 `npm pack --dry-run` 통과. 승인 계산·RPC·회원/파트너 단위 각각 독립 리뷰 승인 후 커밋.
+- 회원/파트너 구현 시점 전체 52개 테스트와 `npm pack --dry-run` 통과. 승인 계산·RPC·회원/파트너 단위 각각 독립 리뷰 승인 후 커밋.
 - EVM HTTP RPC: 32개 동시 id, 문자열/수치 id, error=null 우선, 상태/오류/무재시도,
   JSON 정수/소수 원문 검증·중복 키·malformed UTF-8/Unicode·-0 거부,
   4 MiB 정확 경계·로컬 body timeout/취소·header 대기 제한 시험. Privy 자격 증명 미전송.
@@ -62,4 +62,8 @@
 - 거래 단건: NOT_FOUND/PENDING/MINED/SUCCEEDED/REVERTED, null 수신자·optional fee, uint256/height/index 경계,
   receipt의 hash/from/to/index·block 결속, head 후퇴·confirmations overflow·RPC 오류,
   원본 tx/receipt/logs의 깊은 복사·동결 확인. 반환 상태/확인 수는 합의/L1 최종성이 아니다.
+- 발신 목록: 문서 cursor 3개 발급 바이트, 블록 내 역순/limit 변경, 100개 full-block 제한/빈 페이지,
+  genesis 종료, latest snapshot 고정·증가 head의 confirmations, 범위/cursor 입력 사전 거부,
+  anchor·parent·거래 위치/index·페이지 반환 직전 reorg 검사 확인.
+- 현재 전체 79개 시험 통과. EVM RPC·ETH·단건 상세/상태·발신 목록을 각각 독립 리뷰 승인 후 커밋.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

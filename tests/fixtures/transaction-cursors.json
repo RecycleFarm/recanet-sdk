@@ -1,0 +1,42 @@
+{
+  "description": "Synthetic cursor issuance vectors from the source format; not RPC captures. Hashes are illustrative.",
+  "cases": [
+    {
+      "case": "same-block",
+      "chainId": 1,
+      "walletAddress": "0xabababababababababababababababababababab",
+      "queryFromBlock": 0,
+      "queryToBlock": 10,
+      "snapshot": 10,
+      "nextBlock": 10,
+      "nextIndex": 1,
+      "ascii": "1:1:0xabababababababababababababababababababab:0:10:10:0x000000000000000000000000000000000000000000000000000000000000271a:10:1:0x000000000000000000000000000000000000000000000000000000000000271a",
+      "cursor": "MToxOjB4YWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYjowOjEwOjEwOjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMjcxYToxMDoxOjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMjcxYQ"
+    },
+    {
+      "case": "previous-block",
+      "chainId": 1,
+      "walletAddress": "0xabababababababababababababababababababab",
+      "queryFromBlock": 0,
+      "queryToBlock": 10,
+      "snapshot": 10,
+      "nextBlock": 9,
+      "nextIndex": -1,
+      "ascii": "1:1:0xabababababababababababababababababababab:0:10:10:0x000000000000000000000000000000000000000000000000000000000000271a:9:-1:0x0000000000000000000000000000000000000000000000000000000000002719",
+      "cursor": "MToxOjB4YWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYjowOjEwOjEwOjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMjcxYTo5Oi0xOjB4MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMjcxOQ"
+    },
+    {
+      "case": "latest-snapshot",
+      "chainId": 1,
+      "walletAddress": "0xabababababababababababababababababababab",
+      "queryFromBlock": 0,
+      "queryToBlock": null,
+      "snapshot": 200,
+      "nextBlock": 100,
+      "nextIndex": -1,
+      "ascii": "1:1:0xabababababababababababababababababababab:0:latest:200:0x00000000000000000000000000000000000000000000000000000000000027d8:100:-1:0x0000000000000000000000000000000000000000000000000000000000002774",
+      "cursor": "MToxOjB4YWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYjowOmxhdGVzdDoyMDA6MHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAyN2Q4OjEwMDotMToweDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDI3NzQ"
+    }
+  ]
+}
+
