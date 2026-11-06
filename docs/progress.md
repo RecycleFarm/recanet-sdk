@@ -42,7 +42,8 @@
 | 6u | reader journal 연계 (C-11) | 구현, 관찰/오류 저장·원래 배포·출처 대조·보고 hash 재사용·제출 확인 분리 시험 통과 |
 | 6v | 영속 journal OS 잠금 기반 (C-08 일부) | 구현, macOS OFD·worker·실제 Java FileChannel 상호 배제/강제 종료 해제 시험 통과 |
 | 6w | 영속 파일 journal (C-08) | 구현, 원자 교체/fsync·잠금 소유·중첩 async·다중 프로세스/강제 종료·복구 시험 통과 |
-| 6x | Greenfield 쓰기 adapter (C-07) | 예정 |
+| 6x | Greenfield 프로세스 adapter (C-07 일부) | 구현, 격리 환경·프로토콜·6 MiB·시간/취소·오류 사실 시험 통과 |
+| 6y | 공식 Greenfield SDK worker 동봉·실행 검증 (C-07) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -155,5 +156,8 @@
   claim 전역 잠금/배포 전체 검색·손상 파일 거부, 실제 3개 프로세스 counter 및 SIGKILL 후 획득,
   temp 교체 중 강제 종료 old-or-new snapshot·새 journal 인스턴스에서 Evidence 원래 hash 복구 확인.
   fsync·rename은 실제 로컬 파일에서 실행했으며 전원 차단·NFS/분산 저장·Linux 실행 인수는 하지 않음.
-- 현재 전체 231개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
+- Greenfield 프로세스 경계: 다섯 op wire·dedicated key 환경만 전달·stdin/argv 키 제외·stderr 비노출,
+  6 MiB stdout 정확 경계·timeout/EOF 후 종료 대기·AbortSignal·spawn 실패·create 한정 flags,
+  JSON/base64·snapshot·호출별 키 재조회 확인. 현재 실제 가짜 worker 프로세스로 시험했으며 공식 worker 동봉은 다음 단위.
+- 현재 전체 239개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

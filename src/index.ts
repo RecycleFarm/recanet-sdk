@@ -32,3 +32,4 @@ export { ActivityRequest, type ActivityRequestOptions } from './activity-request
 export type { ActivityOutcome, ActivityStage } from './activity-outcome.js';
 export { DmrvnReader, type ReportResolver } from './dmrvn-reader.js';
 export { FileOperationJournal } from './file-operation-journal.js';
+export { NodeGreenfieldStorage, type NodeGreenfieldStorageOptions } from './node-greenfield-storage.js';
