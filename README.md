@@ -11,4 +11,17 @@ npm run check
 npm run build
 ```
 
+```ts
+import { PrivyClient, memberExternalId } from 'recanet-typescript';
+
+const client = new PrivyClient({ appId: 'your-app-id', appSecret: 'your-server-secret' });
+// 서비스 시작 시 명시적으로 진단한다. 생성자는 네트워크를 호출하지 않는다.
+await client.verifyAppCredentials();
+const externalId = memberExternalId('service', 'member-1');
+```
+
+실제 비밀은 서비스의 비밀 저장소에서 주입하세요. SDK가 환경변수를 직접 읽지 않습니다.
+요청은 자동 재시도하지 않으며 `AbortSignal`로 취소할 수 있습니다.
+오류의 `code`, `statusCode`, 선택적 `retryAfterMs`(bigint)를 서비스에서 처리하세요.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
