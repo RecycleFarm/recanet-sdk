@@ -178,4 +178,8 @@ private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 h
 `prepareSelfPaid`는 직접 제출용 calldata를 반환하기 전에 전송 intent를 기록합니다. 반환 유실 시에도
 원래 거래를 먼저 확인해야 하며, 이미 선택한 직접 제출/대납 모드는 바꿀 수 없습니다.
 
+`resolveSubmission(operationId, txHash?)`은 저장한 요청의 Claim·receipt·거래·이벤트를 확인하고 전송하지 않습니다.
+hash가 없으면 승인 nonce로 제한된 블록 범위를 검색합니다. `SUBMISSION_UNRESOLVED`는 실패 증거가 아니므로
+재전송하지 마세요. `CONFIRMED`는 Claim 접수 거래의 확인이며, 최종 DMRVN 판정은 저장된 `chainStatus`와 별개입니다.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.

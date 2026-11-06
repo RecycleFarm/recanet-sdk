@@ -101,4 +101,11 @@ export class OperationContext {
     requireState(reservation === null || Object.keys(reservation).length === 0 || reservation.operationId === operationId, 'NONCE_CONFLICT');
     await this.journal.store(key, { operationId });
   }
+  relayKey(): string { return `relay-nonce:${this.config.chainId}:${normalizeAddress(this.operator.address)}`; }
+  async release(key: string, operationId: string): Promise<void> {
+    await this.journal.withLock(key, async () => {
+      const reservation = await this.journal.load(key);
+      if (reservation !== null && reservation.operationId === operationId) await this.journal.store(key, {});
+    });
+  }
 }

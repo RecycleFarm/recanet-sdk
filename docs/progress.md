@@ -32,7 +32,8 @@
 | 6k | Claim 승인 (C-09 일부) | 구현, 서명 전 요청 저장·원 요청 재사용·예약·승인 검증 시험 통과 |
 | 6l | 대납/직접 제출 준비·beneficiary 서명 기록 (C-09 일부) | 구현, 고정 gas·mode 충돌·서명 fingerprint·직접 intent 시험 통과 |
 | 6m | receipt·이벤트·bounded 로그 검색 (C-09–11 기반) | 구현, 블록 결속·최초 일치·1000블록 창/범위·오류 시험 통과 |
-| 6n | 영속 journal·전송/확인·보고서 (C-08–11) | 예정 |
+| 6n | 제출 결과 조회 복구 (C-09 일부) | 구현, Claim/receipt/tx/이벤트 결속·무재전송·예약 해제 시험 통과 |
+| 6o | 영속 journal·대납 전송·활동·보고서 (C-08–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -115,5 +116,8 @@
   유효한 다른 서명 표현도 fingerprint 교체 거부, 직접 intent 저장 응답 유실·입력 snapshot 검증.
 - DMRVN 조회: receipt 부재/확인 높이·거래 hash/원시 blockHash 결속, 주소/topic/claimId 첫 event 선택,
   1000블록 창·100001개 높이 상한·큰 nonce 정확 비교·removed/주소 오류·취소 전파 검증.
-- 현재 전체 162개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
+- 제출 복구: Claim status 1..4·원래 승인/출처/위치·receipt/tx/이벤트/calldata 검증,
+  nonce 로그 검색·수십 개 필드 변조 거부·확인 높이/부재 미확정 유지, 대납 성공 event·현재 만료/권한과 분리,
+  최초 배포/최신 metadata 보존·확인 후 자기 예약만 해제·저장 실패 후 정리 재개 확인.
+- 현재 전체 171개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

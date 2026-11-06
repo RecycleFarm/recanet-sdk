@@ -9,6 +9,7 @@ import { OperationContext, copyState, operationKey } from './internal/dmrvn-stat
 import { prepareEvidence, recoverCreateTransaction } from './internal/evidence.js';
 import { approveClaim } from './internal/claim-approval.js';
 import { prepareSelfPaid, prepareSponsored, recordSponsoredSignature } from './internal/submission-preparation.js';
+import { resolveSubmission } from './internal/submission-resolution.js';
 
 /** DMRVN 단계 API. 영속 journal·재시작 복구와 외부 권한은 소비자가 제공한다. */
 export class DmrvnClient {
@@ -35,6 +36,9 @@ export class DmrvnClient {
   }
   prepareSelfPaid(operationId: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
     return prepareSelfPaid(this.#context, operationId, signal);
+  }
+  resolveSubmission(operationId: string, txHash?: string | null, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    return resolveSubmission(this.#context, operationId, txHash, signal);
   }
   recordSponsoredSignature(operationId: string, forwardRequest: Readonly<Record<string, unknown>>, signature: string,
     signal?: AbortSignal): Promise<Record<string, unknown>> {
