@@ -6,6 +6,18 @@ export type PrivyAuthenticationErrorCode = 'MISSING_TOKEN' | 'INVALID_TOKEN' | '
 export type DmrvnErrorCode = 'UNAUTHORIZED_SIGNER' | 'RPC_UNAVAILABLE' | 'INTERRUPTED'
   | 'INVALID_INPUT' | 'GAS_ESTIMATION_FAILED' | 'WRONG_CHAIN' | 'SUBMISSION_UNRESOLVED';
 
+export type TransactionQueryErrorCode = 'WRONG_CHAIN' | 'CHAIN_CHANGED' | 'RPC_UNAVAILABLE' | 'INVALID_RESPONSE' | 'INTERRUPTED';
+
+/** 조회 오류는 부재나 빈 목록으로 변환하지 않는다. */
+export class TransactionQueryError extends Error {
+  readonly code: TransactionQueryErrorCode;
+  constructor(code: TransactionQueryErrorCode) {
+    super(`거래 조회 실패: ${code}`);
+    this.name = 'TransactionQueryError';
+    this.code = code;
+  }
+}
+
 /** 서명/RPC 경계의 정리된 오류. 제출 여부를 확정하지 않는다. */
 export class DmrvnError extends Error {
   readonly code: DmrvnErrorCode;

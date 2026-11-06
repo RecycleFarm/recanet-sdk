@@ -17,7 +17,8 @@
 | 4g | 지갑 export·초기화 편의 기능의 미결 정책 | 남은 작업 |
 | 5a | EVM HTTP RPC·체인 JSON (C-04 기반) | 구현, id/응답·JSON 정밀도·4 MiB·deadline/취소 시험 통과 |
 | 5b | ETH 잔액·전송 (C-04 일부) | 구현, 정확한 wei·호출 순서·실패 경계 시험 통과 |
-| 5c | 거래 상세/상태·발신 목록 (C-04 일부) | 예정 |
+| 5c | 거래 상세/상태 (C-04 일부) | 구현, 상태·receipt/블록 결속·수치 경계·snapshot 시험 통과 |
+| 5d | 발신 거래 목록/cursor (C-04 일부) | 예정 |
 | 6 | DMRVN 계산·배포·저장·복구·제출·보고서 (C-05–11) | 예정 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
@@ -58,4 +59,7 @@
   4 MiB 정확 경계·로컬 body timeout/취소·header 대기 제한 시험. Privy 자격 증명 미전송.
 - ETH: 9007199254740993 wei의 정확 보존, 주소 표기 유지, chain→gas 추정→가격→pending nonce 순서,
   gas/price 0의 조회 순서, signer 호출 전/후 오류 구분, 형식이 잘못된 hash의 미확정 결과, 재시도 0회 확인.
+- 거래 단건: NOT_FOUND/PENDING/MINED/SUCCEEDED/REVERTED, null 수신자·optional fee, uint256/height/index 경계,
+  receipt의 hash/from/to/index·block 결속, head 후퇴·confirmations overflow·RPC 오류,
+  원본 tx/receipt/logs의 깊은 복사·동결 확인. 반환 상태/확인 수는 합의/L1 최종성이 아니다.
 - Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.

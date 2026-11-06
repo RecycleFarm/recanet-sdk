@@ -107,4 +107,17 @@ const transferHash = await assets.transfer(signer, recipientAddress, 10000000000
 `SUBMISSION_UNRESOLVED`이면 원래 요청·지갑 서비스·체인에서 먼저 확인하세요.
 같은 key로 이 함수를 다시 호출해도 같은 nonce·body가 만들어진다는 보장은 없습니다.
 
+거래 상세와 상태는 앱 자격 증명 없이 조회합니다.
+
+```ts
+import { EvmTransactionClient } from 'recanet-typescript';
+
+const transactions = new EvmTransactionClient(421614, rpcUrl);
+const detail = await transactions.getTransaction(transferHash); // 미발견이면 null
+const status = await transactions.getTransactionStatus(transferHash);
+```
+
+`SUCCEEDED`는 receipt의 실행 성공이며 합의/L1 최종 확정을 뜻하지 않습니다. 금액·블록 번호·확인 수는 `bigint`이고,
+원본 transaction/receipt는 변경할 수 없는 snapshot입니다. 조회 오류는 `TransactionQueryError.code`로 처리하세요.
+
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
