@@ -17,6 +17,7 @@ function map(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 function str(value: unknown): string { requireValue(typeof value === 'string', 'INVALID_INPUT'); return value; }
+function list(value: unknown): unknown[] { requireValue(Array.isArray(value), 'INVALID_INPUT'); return value; }
 function long(value: bigint): bigint {
   if (value > 9223372036854775807n) throw new RangeError('블록 높이가 int64 범위를 벗어났습니다');
   return value;
@@ -76,6 +77,48 @@ export class DmrvnChain {
   async verifyApprover(address: string, signal?: AbortSignal): Promise<void> {
     const role = await this.view('CLAIM_APPROVER_ROLE', {}, signal);
     requireValue(await this.view('hasRole', { role, account: address }, signal) === true, 'UNAUTHORIZED_SIGNER');
+  }
+
+  async receipt(hash: string, head: bigint, signal?: AbortSignal): Promise<Record<string, unknown> | null> {
+    const raw = await this.call('eth_getTransactionReceipt', [hash], signal);
+    if (raw === null) return null;
+    const receipt = map(raw), height = long(DmrvnChain.number(receipt.blockNumber));
+    if (height > head) return null;
+    requireValue(str(receipt.transactionHash).toLowerCase() === hash.toLowerCase()
+      && (await this.block(height, signal)).hash === receipt.blockHash, 'SUBMISSION_UNRESOLVED');
+    return receipt;
+  }
+
+  event(name: string, receipt: Readonly<Record<string, unknown>>, claimId: string): Record<string, unknown> | null {
+    for (const raw of list(receipt.logs)) {
+      const log = map(raw);
+      if (this.config.claimAddress.toLowerCase() !== String(log.address).toLowerCase()) continue;
+      const topics = list(log.topics);
+      if (topics.length === 0 || DmrvnAbi.CLAIM.topic(name) !== topics[0]) continue;
+      const event = DmrvnAbi.CLAIM.decodeEvent(name, log);
+      if (claimId.toLowerCase() === str(event.claimId).toLowerCase()) return event;
+    }
+    return null;
+  }
+
+  /** 최대 100001개 높이를 1000블록씩 읽고 최초로 일치한 로그의 거래를 반환한다. */
+  async findTransaction(event: string, id: string, from: bigint, to: bigint, field: string, expected: string,
+    signal?: AbortSignal): Promise<string | null> {
+    requireValue(typeof from === 'bigint' && typeof to === 'bigint' && from >= 0n && from <= to && to - from <= 100000n,
+      'REPORT_LOOKUP_RANGE');
+    long(to);
+    for (let start = from; start <= to; start += 1000n) {
+      const end = to < start + 999n ? to : start + 999n;
+      const filter = { address: this.config.claimAddress, fromBlock: DmrvnChain.quantity(start), toBlock: DmrvnChain.quantity(end),
+        topics: [DmrvnAbi.CLAIM.topic(event), id] };
+      for (const item of list(await this.call('eth_getLogs', [filter], signal))) {
+        const log = map(item);
+        requireValue(this.config.claimAddress.toLowerCase() === str(log.address).toLowerCase() && log.removed !== true, 'RPC_UNAVAILABLE');
+        const decoded = DmrvnAbi.CLAIM.decodeEvent(event, log);
+        if (id.toLowerCase() === str(decoded.claimId).toLowerCase() && expected === String(decoded[field])) return str(log.transactionHash);
+      }
+    }
+    return null;
   }
 
   /** 코드·slot·domain을 같은 block tag로 관찰한다. 합의 최종성 증명은 아니다. */
