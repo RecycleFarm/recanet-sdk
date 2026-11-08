@@ -46,6 +46,7 @@
 | 6x | Greenfield 프로세스 adapter (C-07 일부) | 구현, 격리 환경·프로토콜·6 MiB·시간/취소·오류 사실 시험 통과 |
 | 6y | 공식 Greenfield SDK worker 동봉·실행 검증 (C-07) | 구현, 고정 모듈·체크섬·protobuf 생성 거래 확인·실제 자식 protocol 오프라인 시험 통과 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
+| 8 | 패키지 실제 소비자 검증 | 통과, tarball 설치·공개 타입 strict compile·ESM/ABI/native journal 실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
 
@@ -169,3 +170,6 @@
 - 현재 본체 249개 + 공식 worker 12개 = 261개 시험 통과. Node 25.5 및 실제 Node 22.12에서 검증.
   Node-API 잠금·실제 Java17 FileChannel 상호 배제도 실행했다. 숫자/암호의 전체 Java 프로세스 교차 실행은 미실행.
 - 저장소 시험은 합성 SDK/RPC이며 실제 Greenfield/Privy 자격 증명·서비스 인수는 미실행.
+- 실제 tarball을 임시 프로젝트에 설치(ignore-scripts), DOM 없이 Node 타입/ES2022/NodeNext strict
+  컴파일(skipLibCheck 미사용)과 ESM·동봉 ABI·Keccak·native 파일 journal 재개를 검사하는 check:package 추가.
+  소스 checkout의 상대 import나 dev dependency에 기대지 않고 설치한 공개 진입점을 사용했다.

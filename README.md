@@ -10,6 +10,7 @@ npm ci
 npm ci --prefix tools/greenfield --ignore-scripts
 npm run check
 npm run build
+npm run check:package
 ```
 
 ```ts
@@ -223,6 +224,11 @@ intent가 있으면 저장된 서명을 재사용해 조회합니다.
 journal에 보존하고 저장 Evidence의 출처를 추가 대조합니다. fromBlock을 자동 보완하지 않으며 외부 파일
 commitment도 전달하지 않습니다. 외부 commitment 검증이 필요하면 독립 reader를 직접 호출하세요.
 이 관찰 저장은 `resolveSubmission`의 거래 확인·nonce 예약 해제를 대신하지 않습니다.
+
+check:package는 실제 npm tarball을 임시 소비자 프로젝트에 설치하고, Node 전용 strict 타입 컴파일과
+ESM·ABI·native journal 실행을 검증합니다. npm install lifecycle은 실행하지 않고 종료 후 임시 프로젝트를
+삭제합니다. 캐시는 RECANET_NPM_CACHE, 오프라인 실행은 RECANET_PACKAGE_OFFLINE=1로 지정할 수 있습니다.
+같은 OS/arch에서 빌드한 native binary를 검사하며 다른 플랫폼 인수를 대신하지 않습니다.
 
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
 
