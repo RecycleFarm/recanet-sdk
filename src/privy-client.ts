@@ -6,6 +6,7 @@ import { BackendWalletRegistration, type BackendWalletCreateRequest, type Backen
 import { registerWallet, listWallets, isBackendWallet, memberWallets, type UserWalletClient } from './internal/wallets.js';
 import { createPrivySigner } from './internal/privy-signer.js';
 import type { EvmSigner } from './evm-signer.js';
+import { exportWalletPrivateKey } from './internal/wallet-export.js';
 
 export interface PrivyClientOptions {
   readonly appId: string;
@@ -78,6 +79,10 @@ export class PrivyClient {
 
   listBackendWallets(publicKey: string, signal?: AbortSignal): Promise<readonly BackendWallet[]> {
     return listWallets(this.#request, publicKey, signal);
+  }
+  /** 호출 서비스의 접근 제어가 필요하다. 복호화한 블록체인 개인키를 출력/저장하지 않는다. */
+  exportWalletPrivateKey(walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal): Promise<string> {
+    return exportWalletPrivateKey(this.#settings, walletId, registration, signal);
   }
 
   /** 기존 public_key 문자열 비교 API. 서명 권한 판정과 다르다 (D-01). */

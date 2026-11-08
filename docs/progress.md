@@ -14,7 +14,8 @@
 | 4d | Privy 요청 승인 서명 (C-03 일부) | 구현, canonical payload/digest 3개·DER 검증·snapshot 결속 시험 통과 |
 | 4e | 운영 지갑 메시지/EIP-712/거래 제출 (C-03 일부) | 구현, 정확한 body/header·권한·오류·무재시도 시험 통과 |
 | 4f | 회원 서명·파트너 권한 어댑터 (C-01 일부) | 구현, 권한 거부·철회·콜백 오류·snapshot 시험 통과 |
-| 4g | 지갑 export·초기화 편의 기능의 미결 정책 | 남은 작업 |
+| 4g | 명시적 지갑 private key export | 구현, 고정 HPKE·Java BC 벡터·승인 wire·비밀 비출력·오류/동시 요청 시험 통과 |
+| 4h | 자동 로그·환경 bootstrap 편의 기능의 미결 정책 | 채택 대기 |
 | 5a | EVM HTTP RPC·체인 JSON (C-04 기반) | 구현, id/응답·JSON 정밀도·4 MiB·deadline/취소 시험 통과 |
 | 5b | ETH 잔액·전송 (C-04 일부) | 구현, 정확한 wei·호출 순서·실패 경계 시험 통과 |
 | 5c | 거래 상세/상태 (C-04 일부) | 구현, 상태·receipt/블록 결속·수치 경계·snapshot 시험 통과 |
@@ -65,7 +66,7 @@
 - 지갑: P-256 생성 키의 실제 서명/검증·PEM 형식·개인키 비노출, 등록 body/선택 필드,
   운영 목록·legacy 소유권 비교, 회원 pagination/중복·cursor 검증, 409 재조회 성공/실패,
   503/응답 유실 시 재생성 없음. 전체 38개 테스트 통과.
-- 키 자동 로깅·환경변수 기반 ensureBackendWallet·export는 아직 미구현.
+- 키 자동 로깅·환경변수 기반 ensureBackendWallet은 아직 미채택.
   결정이 필요한 편의 기능을 자동으로 채택하지 않으며, 남은 범위를 완료로 계산하지 않는다.
 - 요청 승인: Privy 0.59의 합성 벡터 3개 canonical UTF-8·SHA-256·DER 검증, 새 P-256 키로 서명/검증,
   URL/body/idempotency key 결속·단일 snapshot·비표준 key escape 경계 확인. 실제 Privy 수용은 미실행.
@@ -162,6 +163,9 @@
 - 공식 worker: Java 원본/lockfile 동봉·SDK2.2.2/RS1.1.4/ethers5.8.0 실제 모듈 로드,
   실제 RS worker의 "{}" 체크섬 벡터·protobuf tx hash/creator/object 대조·4 MiB read·네트워크/크기 선검사,
   동봉 프로세스의 키/주소 불일치 protocol 확인. npm 감사 high8 포함28건은 의사결정 문서에 별도 기록.
-- 현재 본체 240개 + 공식 worker 12개 = 252개 시험 통과. Node 25.5 및 실제 Node 22.12에서 검증.
+- 명시 export: 요청별 임시 P-256 SPKI·정확한 URL/body DER 승인·lookup/idempotency/expiry 생략,
+  HPKE base P256/HKDF-SHA256/ChaCha20Poly1305·empty info/AAD, BC1.83 실제 Java 생성 벡터 일치,
+  9개 동시 fresh key·전체 UTF8 평문·Java malformed replacement corpus 1197480개 일치·비밀 비출력·변조/info/AAD/AEAD/다른 recipient 거부·API/취소/timeout 확인.
+- 현재 본체 249개 + 공식 worker 12개 = 261개 시험 통과. Node 25.5 및 실제 Node 22.12에서 검증.
   Node-API 잠금·실제 Java17 FileChannel 상호 배제도 실행했다. 숫자/암호의 전체 Java 프로세스 교차 실행은 미실행.
 - 저장소 시험은 합성 SDK/RPC이며 실제 Greenfield/Privy 자격 증명·서비스 인수는 미실행.

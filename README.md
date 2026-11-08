@@ -21,7 +21,7 @@ await client.verifyAppCredentials();
 const externalId = memberExternalId('service', 'member-1');
 ```
 
-실제 비밀은 서비스의 비밀 저장소에서 주입하세요. SDK가 환경변수를 직접 읽지 않습니다.
+Privy 자격 증명은 서비스의 비밀 저장소에서 주입하세요. PrivyClient는 환경변수를 자동으로 읽지 않습니다.
 요청은 자동 재시도하지 않으며 `AbortSignal`로 취소할 수 있습니다.
 오류의 `code`, `statusCode`, 선택적 `retryAfterMs`(bigint)를 서비스에서 처리하세요.
 
@@ -231,3 +231,8 @@ macOS/Linux에서 C compiler와 `node_api.h`가 필요합니다. 자동 검색�
 해당 header 디렉터리로 지정하세요. 다른 OS/arch의 tarball을 사용할 때는 동봉 소스에 대해
 `node scripts/build-native.mjs`로 다시 빌드해야 합니다. 플랫폼별 prebuild 배포 정책은 아직 결정되지 않았습니다.
 pure/HTTP SDK import는 native 컴포넌트를 즉시 로드하지 않습니다.
+
+PrivyClient.exportWalletPrivateKey(walletId, registration)는 요청마다 임시 HPKE 수신 키를 만들고
+승인한 export 응답을 메모리에서 복호화해 블록체인 개인키 문자열을 반환합니다. 자동 로그·저장·회원 권한
+판정은 하지 않습니다. 호출 서비스에서 반출 접근 제어와 안전한 보관을 담당해야 합니다.
+exportAndLog 및 키를 자동 출력하는 초기화 편의 API는 채택하지 않았습니다.

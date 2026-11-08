@@ -7,6 +7,7 @@ import { isJavaBlank } from './member-identity.js';
 import { copyState, requireState, stateString } from './internal/dmrvn-state.js';
 import { dmrvnUri } from './internal/dmrvn-uri.js';
 import { runGreenfieldWorker } from './internal/greenfield-worker.js';
+import { decodeBase64 } from './internal/base64.js';
 
 export interface NodeGreenfieldStorageOptions {
   readonly rpcUrl: string; readonly chainId: string; readonly address: string;
@@ -41,10 +42,7 @@ export class NodeGreenfieldStorage implements GreenfieldStorage {
   }
   async read(location: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<Uint8Array> {
     const text = stateString((await this.#invoke('read', location, null, null, signal)).bytes);
-    const raw = text.replace(/=+$/, ''), padding = text.length - raw.length;
-    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(text) || raw.length % 4 === 1
-      || (padding > 0 && (text.length % 4 !== 0 || padding !== 4 - raw.length % 4))) throw new TypeError('잘못된 worker base64 응답');
-    return Buffer.from(text, 'base64');
+    return decodeBase64(text);
   }
   async matchesCreateTransaction(location: Readonly<Record<string, unknown>>, hash: string, signal?: AbortSignal): Promise<boolean> {
     return (await this.#invoke('verifyCreate', location, null, hash, signal)).matches === true;
