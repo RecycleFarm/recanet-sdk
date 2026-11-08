@@ -10,7 +10,10 @@
   "files": [
     "dist",
     "native",
-    "scripts/build-native.mjs"
+    "scripts/build-native.mjs",
+    "tools/greenfield/worker.cjs",
+    "tools/greenfield/package.json",
+    "tools/greenfield/package-lock.json"
   ],
   "exports": {
     ".": {
@@ -22,7 +25,8 @@
     "build": "npm run build:native && tsc -p tsconfig.json",
     "build:native": "node scripts/build-native.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "check": "npm test"
+    "check": "npm test && npm run test:greenfield",
+    "test:greenfield": "npm --prefix tools/greenfield test"
   },
   "devDependencies": {
     "@types/node": "22.20.5",

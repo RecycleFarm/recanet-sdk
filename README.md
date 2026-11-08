@@ -7,6 +7,7 @@ Node.js 22 이상에서 사용하는 서버 SDK입니다. 현재 개발 중이�
 
 ```sh
 npm ci
+npm ci --prefix tools/greenfield --ignore-scripts
 npm run check
 npm run build
 ```
@@ -168,6 +169,13 @@ RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testn
 
 `GreenfieldPublicReader`는 신뢰한 Storage Provider에서 공개 객체의 원시 bytes를 직접 읽습니다.
 private 객체의 접근 권한을 제공하지 않으며, 결과 보고서의 hash·서명 검증은 별도 계층의 책임입니다.
+
+NodeGreenfieldStorage는 동봉 공식 SDK worker로 private 객체 생성·업로드·읽기와 원래 생성 거래 확인을
+실행합니다. rpcUrl·chainId·address·keyEnvironmentVariable을 명시하고, 필요하면 feeGranter·timeoutMs를
+지정하세요. 저장소 키는 해당 환경에서 호출마다 읽어 전용 자식 환경 하나로 전달합니다.
+부모 환경·EVM/Privy 자격 증명·stderr는 전달/반환하지 않습니다. validator 권한과 feegrant는 별도 운영 설정입니다.
+고정 worker 의존성의 알려진 감사 결과와 업그레이드 미결 정책은
+[Greenfield 의존성](docs/greenfield-dependencies.md)을 확인하세요.
 
 `DmrvnClient.prepareEvidence`는 Evidence 서명·저장소 생성·업로드·sealed 재읽기를 단계 상태로 기록합니다.
 운영 서명자·`GreenfieldStorage` 쓰기 adapter·방법론을 명시적으로 주입합니다. 생성 결과가 불확실하면

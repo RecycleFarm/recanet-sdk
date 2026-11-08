@@ -1,6 +1,6 @@
 # 개발 현황
 
-기준: 2026-11-06, Java `37c78cfa01d9892ca26de61bb74df827923917cf`.
+기준: 2026-11-09, Java `37c78cfa01d9892ca26de61bb74df827923917cf`.
 작은 단위마다 구현 → 로컬 검증 → 독립 리뷰 → 수정 → 커밋을 반복한다.
 
 | 순서 | 범위 | 상태 |
@@ -43,7 +43,7 @@
 | 6v | 영속 journal OS 잠금 기반 (C-08 일부) | 구현, macOS OFD·worker·실제 Java FileChannel 상호 배제/강제 종료 해제 시험 통과 |
 | 6w | 영속 파일 journal (C-08) | 구현, 원자 교체/fsync·잠금 소유·중첩 async·다중 프로세스/강제 종료·복구 시험 통과 |
 | 6x | Greenfield 프로세스 adapter (C-07 일부) | 구현, 격리 환경·프로토콜·6 MiB·시간/취소·오류 사실 시험 통과 |
-| 6y | 공식 Greenfield SDK worker 동봉·실행 검증 (C-07) | 예정 |
+| 6y | 공식 Greenfield SDK worker 동봉·실행 검증 (C-07) | 구현, 고정 모듈·체크섬·protobuf 생성 거래 확인·실제 자식 protocol 오프라인 시험 통과 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
@@ -159,5 +159,9 @@
 - Greenfield 프로세스 경계: 다섯 op wire·dedicated key 환경만 전달·stdin/argv 키 제외·stderr 비노출,
   6 MiB stdout 정확 경계·timeout/EOF 후 종료 대기·AbortSignal·spawn 실패·create 한정 flags,
   JSON/base64·snapshot·호출별 키 재조회 확인. 현재 실제 가짜 worker 프로세스로 시험했으며 공식 worker 동봉은 다음 단위.
-- 현재 전체 239개 시험 통과. 저장소 시험은 합성 adapter이며 실제 Greenfield 서비스 인수와 구분한다.
-- Node 22 실행, 실제 Java 프로세스와의 비교, 실제 Privy 자격 증명 검증은 미실행.
+- 공식 worker: Java 원본/lockfile 동봉·SDK2.2.2/RS1.1.4/ethers5.8.0 실제 모듈 로드,
+  실제 RS worker의 "{}" 체크섬 벡터·protobuf tx hash/creator/object 대조·4 MiB read·네트워크/크기 선검사,
+  동봉 프로세스의 키/주소 불일치 protocol 확인. npm 감사 high8 포함28건은 의사결정 문서에 별도 기록.
+- 현재 본체 240개 + 공식 worker 12개 = 252개 시험 통과. Node 25.5 및 실제 Node 22.12에서 검증.
+  Node-API 잠금·실제 Java17 FileChannel 상호 배제도 실행했다. 숫자/암호의 전체 Java 프로세스 교차 실행은 미실행.
+- 저장소 시험은 합성 SDK/RPC이며 실제 Greenfield/Privy 자격 증명·서비스 인수는 미실행.

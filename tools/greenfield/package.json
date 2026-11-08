@@ -1,0 +1,17 @@
+{
+  "name": "recanet-greenfield-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned official Greenfield storage worker for Recanet TypeScript",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test worker.test.cjs"
+  },
+  "dependencies": {
+    "ethers": "5.8.0",
+    "@bnb-chain/greenfield-js-sdk": "2.2.2",
+    "@bnb-chain/reed-solomon": "1.1.4"
+  }
+}
