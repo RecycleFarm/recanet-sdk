@@ -231,6 +231,7 @@ ESM·ABI·native journal 실행을 검증합니다. npm install lifecycle은 실
 같은 OS/arch에서 빌드한 native binary를 검사하며 다른 플랫폼 인수를 대신하지 않습니다.
 
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
+원본 C-01~C-12와 시험 증거의 대응, 실환경 실행에 필요한 승인 입력은 [인수 현황](docs/acceptance.md)에 정리했습니다.
 
 소스 빌드는 TypeScript와 함께 영속 journal용 Node-API OS 잠금 컴포넌트를 컴파일합니다.
 macOS/Linux에서 C compiler와 `node_api.h`가 필요합니다. 자동 검색이 안 되면 `RECANET_NODE_INCLUDE`를
