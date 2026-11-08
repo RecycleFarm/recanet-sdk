@@ -167,7 +167,9 @@
 - 명시 export: 요청별 임시 P-256 SPKI·정확한 URL/body DER 승인·lookup/idempotency/expiry 생략,
   HPKE base P256/HKDF-SHA256/ChaCha20Poly1305·empty info/AAD, BC1.83 실제 Java 생성 벡터 일치,
   9개 동시 fresh key·전체 UTF8 평문·Java malformed replacement corpus 1197480개 일치·비밀 비출력·변조/info/AAD/AEAD/다른 recipient 거부·API/취소/timeout 확인.
-- 현재 본체 249개 + 공식 worker 12개 = 261개 시험 통과. Node 25.5 및 실제 Node 22.12에서 검증.
+- worker UTF-8 입력: 원본의 chunk별 Buffer 문자열 변환에서 한글이 손상되는 문제 재현·수정.
+  한글/emoji의 모든 split/단일바이트 chunk·기존 UTF16 2 MiB 한도/종료 flush를 시험하고 리뷰 승인.
+- 현재 본체 249개 + 공식 worker 14개 = 263개 시험 통과. Node 25.5 및 실제 Node 22.12에서 검증.
   Node-API 잠금·실제 Java17 FileChannel 상호 배제도 실행했다. 숫자/암호의 전체 Java 프로세스 교차 실행은 미실행.
 - 저장소 시험은 합성 SDK/RPC이며 실제 Greenfield/Privy 자격 증명·서비스 인수는 미실행.
 - 실제 tarball을 임시 프로젝트에 설치(ignore-scripts), DOM 없이 Node 타입/ES2022/NodeNext strict

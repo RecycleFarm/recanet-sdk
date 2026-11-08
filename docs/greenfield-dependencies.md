@@ -9,8 +9,10 @@
 | ethers (worker 전용) | 5.8.0 |
 
 SDK 본체의 ethers 6.17.0과 worker 의존성은 별도 디렉터리/프로세스로 분리한다.
-worker는 Java commit 37c78cfa01d9892ca26de61bb74df827923917cf의 원본 사본이며 SHA-256은
-e342ea90d687c9cef9a9d628705a6ef4a40fb1f38bbdefcd84782eee81d70305다.
+worker는 Java commit 37c78cfa01d9892ca26de61bb74df827923917cf를 기준으로 하며,
+TS-41의 UTF-8 스트림 경계 보존 수정이 적용됐다. 거래·권한·재시도 로직은 이 수정에서 바꾸지 않았다.
+원본 SHA-256은 e342ea90d687c9cef9a9d628705a6ef4a40fb1f38bbdefcd84782eee81d70305,
+현재 수정본은 e73a9114282a3ad26799bbb5d7ce216d8d37c522f27ea115a2c17cc4555b4295다.
 
 설치 후 최초로 실행한 npm audit은 28건(low 16, moderate 4, high 8, critical 0)을 보고했다.
 이는 감사 DB 시점의 보고이며, 테스트 통과나 프로세스 격리로 취약점이 해소됐다는 뜻은 아니다.

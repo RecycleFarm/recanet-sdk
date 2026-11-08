@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { perform, normalizeError, storageIdentity } = require('./worker.cjs');
+const { perform, normalizeError, storageIdentity, readRequest } = require('./worker.cjs');
 const { BroadcastTxError } = require('@cosmjs/stargate');
 const { ethers } = require('ethers');
 const request = { chainId: '5600', address: '0x'+'11'.repeat(20), feeGranter: '',
@@ -139,4 +139,27 @@ test('real pinned Reed-Solomon worker produces base64 checksum vectors without n
     'FAbgWIHimTZ3ZtMT4mwFVk7JG/ch0xcmvW5G5gaJU5o=', 'Wp6rkUg4k5Xv8FDd8AIg1yISPKhzbIYr8gAxY4mz9hE=',
     'vx1TXTDr9LfmOXIfqkdepuWohPZGiSkQE0fmZbkPzN0=',
   ]);
+});
+
+async function* chunks(bytes, size) {
+  for (let offset = 0; offset < bytes.length; offset += size) yield bytes.subarray(offset, offset + size);
+}
+test('request UTF-8 survives every split position and one-byte chunks for Korean/emoji paths', async () => {
+  const value = { location: { objectName: '파트너/한글🙂/evidence.json' }, bytes: 'e30=' };
+  const bytes = Buffer.from(JSON.stringify(value));
+  for (let position = 1; position < bytes.length; position++) {
+    const stream = (async function* () { yield bytes.subarray(0, position); yield bytes.subarray(position); })();
+    assert.deepEqual(await readRequest(stream), value);
+  }
+  assert.deepEqual(await readRequest(chunks(bytes, 1)), value);
+});
+test('request limit remains 2 MiB UTF-16 string units rather than becoming a new byte limit', async () => {
+  const maximum = 2 * 1024 * 1024, overhead = JSON.stringify({ padding: '' }).length;
+  const value = { padding: '한'.repeat(maximum - overhead) }, bytes = Buffer.from(JSON.stringify(value));
+  assert.ok(bytes.length > maximum);
+  assert.deepEqual(await readRequest(chunks(bytes, 65536)), value);
+  const tooLong = Buffer.concat([bytes, Buffer.from(' ')]);
+  await assert.rejects(readRequest(chunks(tooLong, 65536)), { code: 'INVALID_INPUT' });
+  const unfinished = Buffer.concat([bytes, Buffer.from([0xe2])]);
+  await assert.rejects(readRequest(chunks(unfinished, 65536)), { code: 'INVALID_INPUT' });
 });
