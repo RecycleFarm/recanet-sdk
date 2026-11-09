@@ -154,7 +154,11 @@ DMRVN의 순수 계산 계층은 `DmrvnCrypto`, `DmrvnJson`, `DmrvnAbi`로 제�
 
 `DeclaredMethodology`는 manifest와 원시 WASM hash를 확인하고, 호출자가 제공한 registry 함수로 활성을 조회합니다.
 Evidence 본문을 만들 때는 운영자와 확인한 `evidenceSchemaVersion`을 명시해야 합니다. SDK는 WASM을 실행하거나
-파트너 입력 프로필을 선택하지 않습니다. 현재 Evidence 계약의 미결 사항은 의사결정 문서에 남아 있습니다.
+파트너 입력 프로필을 자동 선택하지 않습니다. 이번 연동의 확정 PET 계약은
+`DeclaredMethodology.petV3(manifestBytes, wasmBytes, expectedMethodologyHash, registry)`로 선택합니다.
+Evidence 버전은 4, partnerId=101/activityId=1003, 방법론은 2003/3이며 `inputs`는 `petBottleCount` 키 하나를 갖습니다.
+실제 승인된 v3 패키지와 hash를 주입해야 합니다. `PET_HASH`는 과거 패키지 값이며 v3 승인값이 아닙니다.
+값의 자료형/범위·공통 정규화 bytes·실환경 수용 등 남은 내용은 [후속 계약](docs/evidence-v4.md)에 정리했습니다.
 
 `DmrvnDeployment.fromManifest`는 승인된 배포 manifest를 정규화하고 `DmrvnConfig.fromDeployment`는
 RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testnet 자료는 고정 스냅샷이며 현재 체인 준비 상태가 아닙니다.

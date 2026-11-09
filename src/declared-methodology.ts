@@ -14,12 +14,25 @@ function map(value: unknown): Record<string, unknown> {
 
 /** 승인된 manifest/WASM commitment를 확인한다. WASM 실행·파트너 입력 프로필 선택은 하지 않는다. */
 export class DeclaredMethodology {
+  /** 과거 PET 패키지 hash. 확정 PET 방법론 v3의 승인 hash가 아니다. */
   static readonly PET_HASH = '0xdcc09ee621f2e388dd858f8f7399dbf2725cbec3526d52b0dd06909da892ff77';
   #manifest: Record<string, unknown>;
   #hash: string;
   #registry: MethodologyRegistry;
   #schema: number;
   #explicit: boolean;
+  #petV3 = false;
+
+  /** 2026-11-05 확정 PET 계약. manifest/WASM/hash와 registry 신뢰는 호출자가 제공한다. */
+  static petV3(manifestBytes: Uint8Array, wasmBytes: Uint8Array, expectedHash: string,
+    registry: MethodologyRegistry): DeclaredMethodology {
+    const result = new DeclaredMethodology(manifestBytes, wasmBytes, expectedHash, registry, 4);
+    if (result.activityId() !== 1003 || result.id() !== 2003 || result.version() !== 3) {
+      throw new DmrvnError('METHODOLOGY_UNAVAILABLE');
+    }
+    result.#petV3 = true;
+    return result;
+  }
 
   constructor(manifestBytes: Uint8Array, wasmBytes: Uint8Array, expectedHash: string,
     registry: MethodologyRegistry, evidenceSchemaVersion?: number) {
@@ -72,7 +85,11 @@ export class DeclaredMethodology {
     if (DmrvnJson.hash(value.methodology) !== DmrvnJson.hash({ id: this.id(), version: this.version() })) invalid();
     if (typeof value.sourceEventId !== 'string' || !/^[A-Za-z0-9:_-]{1,128}$/.test(value.sourceEventId)) invalid();
     if (DmrvnJson.hash(value.source) !== DmrvnJson.hash({ ownerHash: DmrvnProtocol.ownerHash(beneficiary) })) invalid();
-    map(value.inputs);
+    const inputs = map(value.inputs);
+    if (this.#petV3 && (chainNumber(partnerId) !== 101n || value.schemaVersion !== 4
+      || (value.partnerId !== 101 && value.partnerId !== 101n) || value.activityId !== 1003
+      || Object.keys(inputs).length !== 1 || !Object.hasOwn(inputs, 'petBottleCount'))) invalid();
+    // petBottleCount의 자료형·수치 범위는 확정 댓글에 없으므로 여기서 추정하지 않는다.
     if (DmrvnJson.bytes(value).length > 1048576) invalid();
   }
 }

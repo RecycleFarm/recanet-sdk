@@ -11,7 +11,7 @@
 | C-02 | privy-client, token-verifier, jwks 시험: 생성 서명·시각·캐시/회전·로컬 HTTP 오류 | 실제 Privy token/JWKS·앱 권한 |
 | C-03 | authorization, privy-signer, wallet-export 시험: DER·wire·BC1.83 HPKE 벡터 | 실제 provider 서명/export 수용 |
 | C-04 | asset-client, transaction-detail/list, evm-rpc 시험: 큰 정수·nonce·cursor/reorg | 실제 EVM 전송·provider 일관성 |
-| C-05 | dmrvn-crypto/abi/protocol, declared-methodology, java-utf8 시험 | 모든 수치/암호 사례의 Java 프로세스 교차 실행·새 Evidence 계약 승인 |
+| C-05 | dmrvn-crypto/abi/protocol, declared-methodology, evidence-v4, java-utf8 시험 | 모든 수치/암호 사례의 Java 프로세스 교차 실행·PET v3 승인 패키지·validator 공통 bytes/hash 수용 |
 | C-06 | dmrvn-config/chain/preflight 시험: pinned block·proxy/slot/code/domain·불일치 | 승인 배포의 현재 실측·준비 상태 |
 | C-07 | evidence, node-greenfield-storage, 공식 worker 시험: 동일 bytes·seal·원래 create hash·protobuf | 실제 SP 생성/업로드/seal·validator private read |
 | C-08 | memory-journal/file-operation-journal, posix-lock, sponsored-submission 시험: 실제 프로세스·fsync·강제 종료·intent | 전원 차단·다른 OS/arch·NFS/분산 환경 |

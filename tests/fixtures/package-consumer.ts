@@ -1,6 +1,6 @@
 import {
   ActivityRequest, BackendWalletRegistration, DmrvnAbi, DmrvnCrypto, FileOperationJournal,
-  DmrvnClient, DmrvnJson, EvmTransactionClient, PrivyClient, memberExternalId, type UserWalletClient,
+  DeclaredMethodology, DmrvnClient, DmrvnJson, EvmTransactionClient, PrivyClient, memberExternalId, type UserWalletClient,
 } from 'recanet-typescript';
 
 const client = new PrivyClient({ appId: 'offline-test', appSecret: 'offline-test' });
@@ -16,6 +16,10 @@ function memberActivityTypes(sdk: DmrvnClient, members: UserWalletClient, signal
   return outcome;
 }
 void memberActivityTypes;
+const petFactory: (manifest: Uint8Array, wasm: Uint8Array, hash: string,
+  registry: (activity: number, id: number, version: number, hash: string) => Promise<boolean>) => DeclaredMethodology
+  = DeclaredMethodology.petV3;
+void petFactory;
 const object: Record<string, unknown> = DmrvnJson.object(Buffer.from('{"value":1}'));
 if (object.value !== 1) throw new Error('object JSON parser');
 const request = new ActivityRequest('user', 'event', {});

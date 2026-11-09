@@ -3,6 +3,10 @@
 이 문서는 채택 기록이 아니다. 미결 정책은 구현 편의로 확정하지 않는다.
 원본: [추가 의사결정 사항 D-01–D-30](https://chatgpt.com/space/page_e02a6acd8cec8191809fd022e8f534b8).
 
+2026-11-09 정정: 상위 Page의 2026-11-05 댓글에서 Evidence 버전4·PET 방법론2003/3·partner101/activity1003·petBottleCount 구조와
+본문 서명/전체 Evidence 해시 구분이 이미 확정돼 있었다. 앞선 감사에서 댓글을 놓쳤으며 이를 계속 미결로 표시한 판단을 정정한다.
+확정 내용과 아직 남은 값 규칙·정규화·승인 패키지/실환경 검증은 [후속 계약](evidence-v4.md)에 구분했다.
+
 | ID | 결정할 내용 | 현재 개발 처리 |
 | --- | --- | --- |
 | TS-01 | 배포 패키지명·npm scope·지원 Node 버전·CJS 제공 여부 | 임시 이름 recanet-typescript, private, Node 22+, ESM으로 로컬 개발 |
@@ -25,7 +29,7 @@
 | TS-18 / D-16 | 거래 cursor의 SDK 간 호환·변조 방지 | Java 발급 ASCII/Base64url 벡터와 일치하며 수신 시 padding·snapshot/index 정수의 부호/선행 0을 허용. cursor는 비서명·비암호화이며 권한 증명이 아님. 교차 언어 전체 비정규 파싱 호환 및 서버 변조 방지 정책은 결정 대기 |
 | TS-19 / D-17·30 | DMRVN decimal 자료형과 암호 의존성 | ethers 6.17.0을 고정해 Keccak/secp256k1 연산에 사용하고 Java 입력 범위·low-s를 별도 검사. DMRVN JSON 소수는 DmrvnDecimal로 원문/BigDecimal 구분 유지하며 canonical/hash/copy에는 DmrvnJson 사용. 큰 decimal의 canonical 결과를 다시 파싱하면 거부되는 기존 경계 유지. 표준 JCS로 수정·일반 JSON 자료형으로 축소하는 정책은 결정 대기 |
 | TS-20 / D-18 | ABI decode 엄격성·기준 selector 오류 | call은 전체 재인코딩 일치를 요구하지만 output/event는 재인코딩하지 않는 Java 경계 유지. uintN/address/bool/bytes1/bytes32/bytes/string/tuple/동적 배열만 codec 지원(예: bytes4는 signature 계산만 가능). Java Field.signature가 tuple[]를 문자 그대로 내보내는 executeBatch selector도 원본 벡터와 일치시키며 올바른 Solidity tuple[] signature로 조용히 교체하지 않음. 교정/지원 확대는 결정 대기 |
-| TS-21 / D-02·19 | Evidence 버전과 registry 경계 | DeclaredMethodology에 명시적 schemaVersion 및 registry callback(boolean/Promise)을 주입. 버전 미지정은 Java 과거 생성자 3 호환값을 보관하되 requireExplicitEvidenceVersion에서 중단하여 신규 운영 계약으로 인정하지 않음. helper 자체는 partner long 입력을 유지하며 고수준 파트너 uint32 제약은 config 계층에서 적용 예정. 승인된 Evidence 버전/방법론 프로필/registry 원천은 결정 대기 |
+| TS-21 / D-02·19 | 확정 Evidence 프로필의 잔여 계약 | 이번 PET는 schema4·partner101/activity1003·방법론2003/3·petBottleCount로 확정. petV3 factory로 선택하며 일반/과거 생성자 경로는 유지. petBottleCount 자료형/범위·승인 manifest/WASM/hash·registry 원천·validator 공통 벡터 및 실제 수용은 아직 미확인 |
 | TS-22 / D-19·20 | 배포 설정의 숫자/URL 표현과 과거 배포 | config chainId·partnerId·confirmations는 검증된 number, maxRelayCostWei는 양의 bigint(원본처럼 uint256 상한 없음). rpcUrl은 검증 후 WHATWG URL 정규 표현으로 저장. 과거 direct 편의 설정은 읽기/복구용이며 requireWritable은 거부. 제공 testnet 스냅샷은 최신 운영 상태가 아닌 Java 고정 사본. owner/릴리스 변경 복구 정책은 D-20 결정 대기 |
 | TS-23 / D-19 | 배포 실측 결과와 읽기 경계 | observedBlock/head/nonce는 bigint. 현재 Java처럼 block 응답 number를 대조하지 않고 마지막 raw hash와 첫 정규화 hash를 비교. 오류는 UNAPPROVED_IMPLEMENTATION 외에는 취소/RPC 오류도 DEPLOYMENT_NOT_READY로 변환. 강화·오류 정책 변경은 결정 대기 |
 | TS-24 / D-19 | preflight API와 ready 의미 | 고수준 client 조합 전 읽기 전용 DmrvnPreflight.run으로 제공. Java처럼 zero balance 조회 성공·문자열 미시험 표식 제외한 check들만 ready에 반영하고 registry 일반 오류는 그대로 전파. GreenfieldStorage는 실제 객체 읽기/원래 create 거래 확인을 요구하는 async 경계로 정의. 외부 쓰기/validator 권한과 비용 충족 인수는 별도 결정 대기 |
@@ -50,7 +54,7 @@
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |
-| D-02·17·30 | Evidence wire 버전·숫자 정규화·제어문자 escape | 운영 기본 버전을 추정하지 않음 |
+| D-02·17·30 | Evidence 값·정규화·승인 패키지의 잔여 계약 | 이번 PET schema4/방법론3 확정은 반영. 숫자/제어문자 bytes와 petBottleCount 값 정책 및 실제 validator 수용을 추정하지 않음 |
 | D-05·08–16 | API 표면·회원 연결·외부 공급자·승인 서명·거래 정책 | 각 상세 구현 전 원본 계약 대조 |
 | D-18–29 | 배포·권한·제출·저장·journal·대기·보고서 신뢰 | 원본의 개별 질문을 해소하기 전 운영 호환 선언 보류 |
 
