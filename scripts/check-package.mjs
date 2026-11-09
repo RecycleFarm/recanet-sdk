@@ -19,7 +19,7 @@ try {
   for (const path of ['dist/index.js', 'dist/index.d.ts', 'dist/resources/dmrvn/dmrvn-claim-v7.json',
     'native/posix-lock.c', 'scripts/build-native.mjs', 'tools/greenfield/worker.cjs', 'tools/greenfield/package-lock.json',
     'tools/greenfield/README.md', 'docs/decisions.md', 'docs/greenfield-dependencies.md', 'docs/acceptance.md',
-    'docs/progress.md', 'docs/linux-verification.md', 'docs/java-parity.md']) {
+    'docs/progress.md', 'docs/linux-verification.md', 'docs/java-parity.md', 'docs/spec-audit.md']) {
     if (!files.has(path)) throw new Error('Missing package file: ' + path);
   }
   await writeFile(join(directory, 'package.json'), JSON.stringify({ private: true, type: 'module', dependencies: {

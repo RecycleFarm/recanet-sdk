@@ -14,7 +14,7 @@
 | C-05 | dmrvn-crypto/abi/protocol, declared-methodology, java-utf8 시험 | 모든 수치/암호 사례의 Java 프로세스 교차 실행·새 Evidence 계약 승인 |
 | C-06 | dmrvn-config/chain/preflight 시험: pinned block·proxy/slot/code/domain·불일치 | 승인 배포의 현재 실측·준비 상태 |
 | C-07 | evidence, node-greenfield-storage, 공식 worker 시험: 동일 bytes·seal·원래 create hash·protobuf | 실제 SP 생성/업로드/seal·validator private read |
-| C-08 | memory/file-operation-journal, posix-lock, sponsored-submission 시험: 실제 프로세스·fsync·강제 종료·intent | 전원 차단·다른 OS/arch·NFS/분산 환경 |
+| C-08 | memory-journal/file-operation-journal, posix-lock, sponsored-submission 시험: 실제 프로세스·fsync·강제 종료·intent | 전원 차단·다른 OS/arch·NFS/분산 환경 |
 | C-09 | claim-approval, submission-preparation/resolution 시험: 서명·calldata·sender·receipt/event·Claim 결속 | 실제 승인 배포의 접수 거래 |
 | C-10 | activity-request/submission, user-activity-submission 시험: 새 ID·대기·관찰 사실·UNKNOWN | 실제 회원 지갑·저장소·relay 통합 실행 |
 | C-11 | report-verifier, dmrvn-reader, result-observation 시험: quorum·변조·상태/fileHash 경계 | 실제 coordinator/validator 보고서와 독립 파일 수용 |
@@ -29,6 +29,7 @@ BC1.83 생성 HPKE 벡터 및 Java17 UTF-8 1,197,480개 corpus 비교를 수행�
 패키지는 npm run check:package로 별도 소비자 설치·strict 타입·ESM·ABI·native journal을 검증한다.
 Linux 환경과 재현 명령은 [검증 기록](linux-verification.md)에 보존했다.
 공개 API의 Java 대응 및 보류 범위는 [기능 비교](java-parity.md)에 정리했다.
+원본 상세 명세의 기능·불변식별 판정과 이번 문서 보완은 [명세 감사](spec-audit.md)에 있다.
 
 ## C-12 실행에 필요한 승인 입력
 
@@ -46,7 +47,7 @@ C-12는 미실행 상태로 유지하며, 이 답변을 환경 선택·권한 �
 | Evidence 계약 | 승인 schemaVersion·파트너 입력 프로필·manifest/WASM/hash·실제 registry 조회 adapter | D-02·17·19·30 |
 | Privy 앱·지갑·승인키 | 테스트 앱 권한·JWT 검증 원천·operator wallet ID/주소·파트너/회원 동의·서명 직전 철회 정책 | D-01·03·09·10·11 |
 | Greenfield | network/RPC/SP·기존 bucket/prefix·storage signer·feegrant·validator private-object 읽기 권한 | D-24 |
-| 테스트 예산 | 허용 네트워크·대상 계정·relay 및 storage 비용 상한·잔액·실제 쓰기 허용 범위 | D-22·23·24 |
+| 테스트 예산 | 허용 네트워크·대상 계정·relay·직접 납부 beneficiary·storage별 비용 상한·잔액·실제 쓰기 허용 범위 | D-22·23·24 |
 | 보고서 신뢰 | coordinator/committee 권한 근거·quorum policy·report resolver/reader·선택 외부 file commitment 출처 | D-27·28·29 |
 | 배포 방식 | SDK package명/라이선스·지원 OS/arch·native build/prebuild·worker 설치·취약점 처리 | TS-01·36·39 |
 
@@ -61,9 +62,16 @@ Greenfield 고정 의존성 감사 결과와 업그레이드/override 선택은
    preflight ready는 충분한 비용·private 읽기·validator 수용의 증거가 아니다.
 3. 승인된 입력으로 Evidence를 만들고 실제 private create·upload·SEALED 및 raw bytes 재읽기를 확인한다.
    validator 계정에서도 해당 객체를 읽을 수 있어야 한다.
-4. Claim 승인·beneficiary 서명·relay 비용/nonce/시뮬레이션을 확인해 허용 예산 안에서 한 번 제출한다.
-   동일 operationId와 저장된 요청·서명·거래를 보존한다.
-5. 원래 거래의 receipt·sender·target·calldata·이벤트·저장 Claim을 대조해 접수를 확인한다.
+4. 대납과 직접 납부는 별도 operationId·claimId·sourceEventId·objectName으로 각각 인수한다.
+   대납은 Claim 승인→prepareSponsored→beneficiary ForwardRequest 서명→submitSponsored 순서로,
+   relay 비용/nonce/시뮬레이션을 확인해 허용 예산 안에서 한 번 제출한다.
+   직접 납부는 Claim 승인→prepareSelfPaid→beneficiary의 직접 전송 순서로 진행한다.
+   prepareSelfPaid의 value는 십진 문자열이므로 signer의 hex Quantity로 명시 변환하고,
+   사용자 지갑의 gas/gasPrice/계정 nonce와 별도 비용 상한을 확인한 뒤 한 번 전송한다.
+   두 경로 모두 원래 operationId와 요청·서명·완성 거래·전송 hash를 보존한다. mode를 전환해 재사용하지 않는다.
+5. 각 경로에서 resolveSubmission으로 원래 거래의 receipt·sender·target·calldata·이벤트·저장 Claim을 대조한다.
+   직접 납부는 sender=beneficiary·target=Claim·submitClaim calldata,
+   대납은 sender=relay·target=forwarder·execute calldata 및 성공 Forwarder 이벤트를 확인한다.
 6. 실제 최종 보고서·quorum·출력/report/file commitment를 검증한다.
    접수 CONFIRMED를 VALID 또는 reportVerified와 혼동하지 않는다.
 7. 승인된 실패 주입 범위에서 응답 유실/중단/재시작을 시험한다.
@@ -73,7 +81,7 @@ Greenfield 고정 의존성 감사 결과와 업그레이드/override 선택은
 
 - SDK commit, Node/OS/arch, dependency lockfile hash, 실행 시각과 승인 계약의 참조
 - deploymentId·승인 release·실측 블록/hash, methodologyHash·승인 Evidence 버전
-- operationId/claimId·object 위치/hash·원래 create/relay/report 거래 hash
+- 제출 mode와 operationId/claimId/sourceEventId·object 위치/hash·원래 create/relay 또는 beneficiary 직접 전송/report 거래 hash
 - 단계별 실제 관찰, raw bytes 비교 결과, receipt/Claim/report 검증 결과와 부작용 호출 수
 - 실패 주입 지점, 동일 작업 재개 결과, 미실행 항목과 정리된 오류 code
 

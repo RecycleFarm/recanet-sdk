@@ -5,6 +5,7 @@ Node.js 22 이상에서 사용하는 서버 SDK입니다. 현재 개발 중이�
 기준은 [Recanet SDK 개발](https://chatgpt.com/space/page_6aeadd6e8810819197fd76ba1f3b3923)과
 `recanet-java` 커밋 `37c78cfa01d9892ca26de61bb74df827923917cf`입니다.
 Java 대비 대응 API와 남은 보류 항목은 [기능 비교](docs/java-parity.md)에 정리했습니다.
+원본 개발 문서의 기능·실패 규칙별 대조 결과는 [명세 감사](docs/spec-audit.md)에 있습니다.
 
 ```sh
 # 소스 checkout에서 실행
@@ -219,7 +220,13 @@ Java의 회원 지갑 편의 호출인
 `submitActivity(wallets, new ActivityRequest(userId, sourceEventId, inputs, options))`는 파트너 권한 adapter로
 회원 지갑을 확보하고 새 ID로 저장·승인·대납·접수 확인을 실행합니다. `wallets`는 `forPartner` 반환값 또는
 `BeneficiaryWallets` 구현입니다. 기본 확인 대기는 60초이며 전송 결과가 나온 뒤부터 측정합니다.
-반환 `outcome`은 `CONFIRMED`·`UNKNOWN`·`FAILED`이고, `confirmed`는 관찰 사실만 담습니다.
+반환 `outcome`은 `CONFIRMED`·`UNKNOWN`·`FAILED`입니다. `confirmed`에는 요청/생성 식별자와 단계별 관찰 사실이 함께 들어갑니다.
+항상 포함되는 `deploymentId`·`chainId`·`claimAddress`·`operationId`·`claimId`·`sourceEventId`는
+설정·요청·생성 값이며 객체나 Claim의 실제 존재 증거가 아닙니다.
+`beneficiary`는 signer 주소 확보 후, `evidenceHash`는 서명된 Evidence 관찰 후에 추가하며 저장 완료를 뜻하지 않습니다.
+`evidenceLocation`은 객체 존재 또는 upload 관찰 후, `storageStatus=SEALED`는 봉인·원시 bytes 일치 확인 후에 추가합니다.
+`submissionFromBlock`은 전송 intent 기록이며 실제 전송 증거가 아닙니다. `txHash`는 전송 응답 또는 조회로 기록한 값이고,
+`receipt`·`chainStatus`는 제출 조회 확인 후에 추가합니다. `requested.evidenceLocation`은 검증 실패한 요청 위치도 포함할 수 있습니다.
 이 고수준 API를 재호출하면 **새 작업**입니다. UNKNOWN 후에는 반환 ID/hash와 journal로 원래 작업을 복구하세요.
 명시 journal이 없으면 호출 종료 후 단계 상태의 자동 복구를 보장하지 않습니다.
 
