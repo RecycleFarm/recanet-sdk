@@ -143,6 +143,7 @@ Java와 같은 `listTransactions(address, limit, cursor)` 편의 호출도 제�
 
 DMRVN의 순수 계산 계층은 `DmrvnCrypto`, `DmrvnJson`, `DmrvnAbi`로 제공합니다.
 `DmrvnJson.parse`의 소수는 `DmrvnDecimal`이며 해시·복사에는 SDK의 JSON 함수를 사용하세요.
+최상위 객체가 필요한 입력은 `DmrvnJson.object(bytes)`로 파싱합니다. 객체 이외의 값은 `INVALID_INPUT`으로 거부합니다.
 이 경로는 Java의 현재 바이트 규칙을 재현하며 전체 입력에서 표준 JCS와 동일하다는 뜻은 아닙니다.
 동봉 ABI는 필요한 타입의 부분집합만 인코딩하며, 실제 거래를 자동 제출하지 않습니다.
 

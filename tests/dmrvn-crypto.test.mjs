@@ -85,3 +85,18 @@ test('DMRVN decimal은 정수와 구분하고 canonical copy의 기존 비왕복
   assert.equal(copy.nested[0], '한글');
   assert.throws(() => DmrvnJson.parse(new Uint8Array([0xff])), code('INVALID_INPUT'));
 });
+
+test('Java Json.object 대응은 최상위 객체만 허용하고 decimal·특수 키와 기존 파서 거부 경계를 유지한다', () => {
+  const value = DmrvnJson.object(Buffer.from('{"__proto__":{"safe":true},"nested":[{"value":1.5}],"empty":{}}'));
+  assert.equal(Object.hasOwn(value, '__proto__'), true);
+  assert.equal(Object.getPrototypeOf(value), null);
+  assert.equal(value.__proto__.safe, true);
+  assert.ok(value.nested[0].value instanceof DmrvnDecimal);
+  assert.equal(String(value.nested[0].value), '1.5');
+  assert.deepEqual(Object.keys(value.empty), []);
+  assert.deepEqual(Object.keys(DmrvnJson.object(Buffer.from('{}'))), []);
+  for (const input of ['null', '[]', '"value"', 'true', '1', '1.0', '{"a":1,"a":2}', '{} {}', '{"n":-0}', '{']) {
+    assert.throws(() => DmrvnJson.object(Buffer.from(input)), code('INVALID_INPUT'), input);
+  }
+  assert.throws(() => DmrvnJson.object(new Uint8Array([0xff])), code('INVALID_INPUT'));
+});

@@ -22,6 +22,7 @@
 | 5d | 발신 거래 목록/cursor (C-04 일부) | 구현, 블록 내부/100블록 페이지·anchor·reorg·cursor 벡터 시험 통과 |
 | 5e | Java 거래 목록 편의 호출 | 구현, genesis/latest 기본 범위·cursor 재개·입력/취소·패키지 소비자 타입 검증 통과 |
 | 6a | DMRVN 암호·JSON (C-05 일부) | 구현, 복구/JSON/escape 고정 벡터 시험 통과 |
+| 6a-2 | Java 객체 전용 JSON 파싱 편의 함수 | 구현, 객체·decimal·특수 키 보존과 비객체/중복/잘못된 UTF-8 거부 검증 |
 | 6b | ABI (C-05 일부) | 구현, selector/topic·과거 calldata·strict decode 시험 통과 |
 | 6c | EIP-712·provenance·commitment (C-05 일부) | 구현, 6개 타입/3개 digest·PET 해시/서명/calldata 시험 통과 |
 | 6d | 방법론·Evidence 본문 (C-05 일부) | 구현, manifest/WASM·버전·본문 7키/1 MiB 시험 통과 |
