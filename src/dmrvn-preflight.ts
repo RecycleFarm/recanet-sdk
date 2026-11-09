@@ -44,6 +44,7 @@ export class DmrvnPreflight {
     normalizeAddress(storage.address);
     if (storage.chainId !== config.greenfieldChainId) throw new DmrvnError('WRONG_CHAIN');
     if (!(methodology instanceof DeclaredMethodology)) throw new TypeError('방법론이 필요합니다');
+    methodology.validatePartner(config.partnerId);
   }
 
   async run(signal?: AbortSignal): Promise<DmrvnPreflightResult> {

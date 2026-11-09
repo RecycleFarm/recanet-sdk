@@ -20,6 +20,7 @@ message ID는 `00907233-00fd-52c9-801c-c08a4befe633`이다.
 `DeclaredMethodology.petV3(manifestBytes, wasmBytes, expectedMethodologyHash, registry)`로 명시적으로 선택한다.
 이 factory는 manifest/WASM/hash를 기존 방식으로 검증하고 activityId=1003·방법론2003/3을 요구한다.
 Evidence 버전을 4로 지정하며, 생성/검증 시 partner101·정확한 petBottleCount 입력 키와 수치 metadata를 검사한다.
+client/preflight도 초기화 시 프로필의 파트너와 config.partnerId 일치를 확인해 회원 지갑 생성 전에 잘못된 설정을 거부한다.
 일반 생성자의 과거 버전 및 다른 방법론 경로를 전역 변경하지 않는다.
 
 승인된 PET v3 manifest/WASM/hash는 호출자가 공급해야 한다. 기존 PET_HASH와 과거 PET fixture는 v3 승인값으로 사용하지 않는다.
@@ -38,3 +39,7 @@ registry callback의 활성 결과도 실제 승인 registry에 연결해야 하
 `tests/fixtures/evidence-v4-pet-v3.json`은 고정 공개 시험키와 수작업 정렬 JSON에서 만든 로컬 합성 벡터다.
 SDK canonicalizer로 기대 바이트를 생성하지 않았지만 해시/서명은 ethers를 사용했으므로 완전 독립 암호 구현의 증거는 아니다.
 빈 WASM과 합성 manifest는 운영 PET 패키지가 아니다. 역사 fixture를 덮어쓰지 않고 별도 보관한다.
+
+`tests/evidence-v4-workflow.test.mjs`는 새 프로필로 고정 전체 bytes의 저장/재읽기, 직접 납부와 대납 calldata/Claim/receipt 결속,
+고수준 회원 제출, 파일 journal을 다시 연 생성 응답 유실 복구를 검증한다.
+외부 저장소·RPC·회원 지갑은 합성 adapter다. 직접/대납 거래 확인 자료도 합성이며 실제 전송 인수 결과가 아니다.

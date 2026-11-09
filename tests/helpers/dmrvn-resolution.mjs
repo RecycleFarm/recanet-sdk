@@ -3,8 +3,8 @@ import { DmrvnAbi, DmrvnCrypto, DmrvnProtocol } from '../../dist/index.js';
 import { workflowFixture } from './dmrvn-workflow.mjs';
 import { eventLog } from './dmrvn-events.mjs';
 
-export async function resolutionFixture(sponsored = false) {
-  const f = workflowFixture(), operation = 'operation-one', key = 'operation:' + operation;
+export async function resolutionFixture(sponsored = false, workflowOptions = {}) {
+  const f = workflowFixture(undefined, workflowOptions), operation = 'operation-one', key = 'operation:' + operation;
   await f.prepare(); await f.client.approveClaim(operation);
   let forward, signature;
   if (sponsored) {

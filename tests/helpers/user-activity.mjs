@@ -3,8 +3,8 @@ import { DmrvnAbi, DmrvnClient, DmrvnCrypto, DmrvnProtocol } from '../../dist/in
 import { workflowFixture } from './dmrvn-workflow.mjs';
 import { eventLog } from './dmrvn-events.mjs';
 
-export function userActivityFixture(sharedJournal = true) {
-  const f = workflowFixture(), user = new Wallet('0x' + '00'.repeat(31) + '01');
+export function userActivityFixture(sharedJournal = true, workflowOptions = {}) {
+  const f = workflowFixture(undefined, workflowOptions), user = new Wallet('0x' + '00'.repeat(31) + '01');
   if (!sharedJournal) f.client = new DmrvnClient(f.config, f.rpc, f.operator, f.storage, f.methodology);
   const facts = { walletCalls: 0, userSigns: 0, sends: 0, claimReads: 0, claimStatus: 1, confirmAfter: 0, sendError: null,
     submission: null, missingReceipt: false };

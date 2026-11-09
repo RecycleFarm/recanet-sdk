@@ -20,6 +20,12 @@ const petFactory: (manifest: Uint8Array, wasm: Uint8Array, hash: string,
   registry: (activity: number, id: number, version: number, hash: string) => Promise<boolean>) => DeclaredMethodology
   = DeclaredMethodology.petV3;
 void petFactory;
+const wasm = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+// 합성 패키지 소비자용 manifest. 운영 PET 패키지가 아니다.
+const manifest = { activityId: 1003, methodology: { id: 2003, version: 3 }, wasmHash: DmrvnCrypto.keccak(wasm) };
+const pet = DeclaredMethodology.petV3(DmrvnJson.bytes(manifest), wasm, DmrvnJson.hash(manifest), () => true);
+const body = pet.evidenceBody(101, '0x' + '11'.repeat(20), 'consumer', { petBottleCount: 3 });
+if (body.schemaVersion !== 4 || pet.version() !== 3) throw new Error('PET v3 profile');
 const object: Record<string, unknown> = DmrvnJson.object(Buffer.from('{"value":1}'));
 if (object.value !== 1) throw new Error('object JSON parser');
 const request = new ActivityRequest('user', 'event', {});
