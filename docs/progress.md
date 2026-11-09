@@ -37,6 +37,7 @@
 | 6n | 제출 결과 조회 복구 (C-09 일부) | 구현, Claim/receipt/tx/이벤트 결속·무재전송·예약 해제 시험 통과 |
 | 6o | 단일 대납 전송 (C-09 일부) | 구현, 완성 거래/intent 저장·비용/nonce/시뮬레이션·무재전송 시험 통과 |
 | 6p | 명시 operation 활동 제출 조합 (C-10 일부) | 구현, 단계 연결·실패 재개·동시 단일 서명/전송·intent 조회 전용 시험 통과 |
+| 6p-2 | Java 회원 지갑 기반 명시 활동 편의 호출 | 구현, 기존 signer 조회·본문 snapshot·취소 전달·조회 실패 시 무부작용 검증 |
 | 6q | 고수준 활동 요청 (C-10 일부) | 구현, 불변 요청·JSON snapshot·기본값·gas/시간/식별자 범위 시험 통과 |
 | 6r | 고수준 활동 실행·접수 대기 (C-10) | 구현, 새 ID/호출 상태·권한 경계·bounded polling·UNKNOWN/FAILED/CONFIRMED 사실 시험 통과 |
 | 6s | 보고서 순수 검증 (C-11 일부) | 구현, calldata/quorum/서명·출력/report/file commitment·변조 거부 시험 통과 |

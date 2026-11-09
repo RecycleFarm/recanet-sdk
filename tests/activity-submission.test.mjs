@@ -49,6 +49,32 @@ test('활동 조합은 Evidence→승인→beneficiary 서명→relay 전송을 
   await rejects(f.submit, 'SUBMISSION_UNRESOLVED'); assert.equal(f.b.counts.signed, 1); assert.equal(f.status.sends, 1);
 });
 
+test('회원 기반 명시 활동은 기존 signer 조회에 취소 신호를 전달하고 대기 중 본문 변경과 분리한다', async () => {
+  const f = fixture(), original = DmrvnJson.copy(f.body), controller = new AbortController();
+  let release;
+  const waiting = new Promise(resolve => { release = resolve; });
+  const wallets = { async signerFor(userId, signal) {
+    assert.equal(userId, 'member-1'); assert.equal(signal, controller.signal);
+    await waiting; return f.b.signer;
+  }, async getOrCreateWallet() { assert.fail('명시 활동은 회원 지갑을 생성하지 않는다'); } };
+  const pending = f.client.submitActivity(wallets, 'member-1', operation, f.claimId, f.objectName, f.body, '100000', controller.signal);
+  f.body.inputs.changed = true; release();
+  assert.equal((await pending).status, 'BROADCAST');
+  assert.deepEqual((await f.client.operation(operation)).body, original);
+  assert.equal(f.b.counts.signed, 1); assert.equal(f.status.sends, 1);
+});
+
+test('회원 signer 조회의 거부·미발견은 그대로 전파하고 Evidence/relay 부작용을 시작하지 않는다', async () => {
+  for (const error of [new DmrvnError('UNAUTHORIZED_SIGNER'), new DmrvnError('INTERRUPTED'), new Error('policy unavailable')]) {
+    const f = fixture();
+    const wallets = { async signerFor() { throw error; }, async getOrCreateWallet() { assert.fail('자동 생성'); } };
+    await assert.rejects(f.client.submitActivity(wallets, 'missing', operation, f.claimId, f.objectName, f.body, '100000'),
+      seen => seen === error);
+    assert.equal(f.calls.length, 0); assert.equal(f.counts.creates, 0); assert.equal(f.counts.messages, 0);
+    assert.equal(f.status.sends, 0); assert.equal(await f.journal.load(key), null);
+  }
+});
+
 test('16개 동시 활동 호출은 서명과 전송을 한 번만 수행하고 이후 호출은 미확정 조회로 끝난다', async () => {
   const f = fixture(), values = await Promise.allSettled(Array.from({ length: 16 }, () => f.submit()));
   assert.equal(values.filter(v => v.status === 'fulfilled').length, 1);

@@ -208,6 +208,12 @@ intent 이후 재호출은 원래 거래를 조회합니다. 자동 replacement�
 복구할 때 같은 operationId와 입력을 사용하세요. 최초 `BROADCAST` 뒤 자동 polling하지 않으며,
 intent가 있으면 저장된 서명을 재사용해 조회합니다.
 
+Java의 회원 지갑 편의 호출인
+`submitActivity(members, userId, operationId, claimId, objectName, evidenceBody, gas)`도 제공합니다.
+`members`는 `client.userWallets(...)` 반환값입니다. 기존 회원의 `signerFor`를 사용하고 지갑을 자동 생성하지 않습니다.
+호출자는 해당 회원의 인증·tenant 권한을 확인해야 하며, 본문 beneficiary는 조회된 지갑과 같아야 합니다.
+본문은 비동기 지갑 조회 전에 복사하며, 선택적 마지막 `AbortSignal`은 지갑 조회와 제출 단계에 전달합니다.
+
 `submitActivity(wallets, new ActivityRequest(userId, sourceEventId, inputs, options))`는 파트너 권한 adapter로
 회원 지갑을 확보하고 새 ID로 저장·승인·대납·접수 확인을 실행합니다. `wallets`는 `forPartner` 반환값 또는
 `BeneficiaryWallets` 구현입니다. 기본 확인 대기는 60초이며 전송 결과가 나온 뒤부터 측정합니다.

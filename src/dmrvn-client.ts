@@ -14,7 +14,7 @@ import { submitSponsored } from './internal/sponsored-submission.js';
 import { submitActivity } from './internal/activity-submission.js';
 import { ActivityRequest } from './activity-request.js';
 import type { ActivityOutcome } from './activity-outcome.js';
-import type { BeneficiaryWallets } from './internal/wallets.js';
+import type { BeneficiaryWallets, UserWalletClient } from './internal/wallets.js';
 import { submitUserActivity } from './internal/user-activity-submission.js';
 import type { DmrvnReader } from './dmrvn-reader.js';
 import { readOperationResult } from './internal/result-observation.js';
@@ -22,6 +22,8 @@ import { readOperationResult } from './internal/result-observation.js';
 type ExplicitActivityArgs = [userSigner: EvmSigner, operationId: string, claimId: string, objectName: string,
   body: Readonly<Record<string, unknown>>, gas: string, signal?: AbortSignal];
 type UserActivityArgs = [wallets: BeneficiaryWallets, request: ActivityRequest, signal?: AbortSignal];
+type MemberActivityArgs = [wallets: UserWalletClient, userId: string, operationId: string, claimId: string,
+  objectName: string, body: Readonly<Record<string, unknown>>, gas: string, signal?: AbortSignal];
 
 /** DMRVN 단계 API. 영속 journal·재시작 복구와 외부 권한은 소비자가 제공한다. */
 export class DmrvnClient {
@@ -58,9 +60,18 @@ export class DmrvnClient {
   }
   submitActivity(...args: UserActivityArgs): Promise<ActivityOutcome>;
   submitActivity(...args: ExplicitActivityArgs): Promise<Record<string, unknown>>;
-  submitActivity(...args: UserActivityArgs | ExplicitActivityArgs): Promise<ActivityOutcome | Record<string, unknown>> {
-    if (typeof args[1] === 'string') return submitActivity(this.#context, ...args as ExplicitActivityArgs);
-    return submitUserActivity(this.#context, ...args as UserActivityArgs);
+  /** 기존 회원 지갑을 조회한다. 없으면 생성하지 않고 실패한다. */
+  submitActivity(...args: MemberActivityArgs): Promise<Record<string, unknown>>;
+  submitActivity(...args: UserActivityArgs | ExplicitActivityArgs | MemberActivityArgs): Promise<ActivityOutcome | Record<string, unknown>> {
+    if (typeof args[1] !== 'string') return submitUserActivity(this.#context, ...args as UserActivityArgs);
+    if (typeof args[4] === 'string') return this.#submitMemberActivity(...args as MemberActivityArgs);
+    return submitActivity(this.#context, ...args as ExplicitActivityArgs);
+  }
+  async #submitMemberActivity(wallets: UserWalletClient, userId: string, operationId: string, claimId: string,
+    objectName: string, body: Readonly<Record<string, unknown>>, gas: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    const snapshot = copyState(body);
+    const signer = await wallets.signerFor(userId, signal);
+    return submitActivity(this.#context, signer, operationId, claimId, objectName, snapshot, gas, signal);
   }
   readResult(operationId: string, reader: DmrvnReader, fromBlock?: bigint | number | null, reportTxHash?: string | null,
     waitTimedOut = false, signal?: AbortSignal): Promise<Record<string, unknown>> {
