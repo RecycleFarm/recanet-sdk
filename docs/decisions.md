@@ -46,6 +46,7 @@
 | TS-39 / D-24 | 고정 공식 SDK worker의 의존성·보안·설치 | Java worker/lockfile의 SDK2.2.2·RS1.1.4·ethers5.8.0을 별도 tools/greenfield에 설치. 본체 ethers6와 격리하고 worker 소스/설치 manifest를 패키지에 동봉. 별도 npm ci가 필요하며 자동 install lifecycle은 채택하지 않음. 최초 감사 high8 포함28건과 영향 경로를 greenfield-dependencies.md에 기록. SDK 교체·보안 fork/override·운영 채택·자동 설치/번들 배포 정책은 결정 대기 |
 | TS-40 / D-07·10 | 명시 export·HPKE 의존성·오류 | 비출력 export만 구현, 자동 로그/보관/회원 권한 callback은 추가하지 않음. @hpke/core1.10.1·chacha20poly1305 1.8.1을 고정해 Java0.59 suite(P256/KDF1/AEAD3/base, empty info/AAD)를 재현. 요청 SPKI DER·응답 encryption_type 미선택·전체 UTF8 문자열 반환 유지. 일반 암호/응답 형태 오류는 UNAVAILABLE0, 공통 HTTP PrivyApiError는 유지하므로 malformed HTTP JSON은 INVALID_RESPONSE. 관리형 메모리의 완전 zeroization은 보장하지 않음. 실제 Privy 왕복·기능 운영 채택·키 반출 접근제어/보관/폐기와 오류 통합 정책은 결정 대기 |
 | TS-41 / D-24 | worker 입력의 UTF-8 스트림 경계 | Java 원본 worker의 text+=Buffer는 한글 중간 chunk에서 문자를 대체해 객체명이 달라질 수 있음. StringDecoder로 경계 바이트를 보존하도록 수정하고, 기존 2MiB UTF16 문자열 한도/종료 flush 검사를 유지. 원본/수정 SHA와 회귀 시험을 기록. 원본 Java에도 이 수정을 적용할지 및 공통 언어 입력 계약은 결정 대기 |
+| TS-42 | 런타임 Privy 설정 조회 API | Java PrivyClient.config()/설정 getter는 appSecret을 포함해 설정을 다시 읽을 수 있으나 TS는 private snapshot과 생성 options 입력만 제공. 비밀 포함 getter·비밀 제외 진단 snapshot·조회 API 미제공 중 최종 계약은 결정 대기. 호출자는 필요한 원본 options를 직접 보유하며 이를 자동 로그하지 않음 |
 
 `DmrvnDecimal.toJSON()`은 검증한 수치로 외부 JSON wire를 구성한다. 원문 보존/소수와 정수의 구분이 필요한 해시·복사에는 계속 `DmrvnJson`을 사용한다.
 | D-01·03·04 | 지갑 소유권 충돌·파트너 매핑·승인키 출력 | 구현 시 명시적 어댑터, 키 자동 출력 없음 |

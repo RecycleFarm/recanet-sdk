@@ -4,6 +4,7 @@ Node.js 22 이상에서 사용하는 서버 SDK입니다. 현재 개발 중이�
 
 기준은 [Recanet SDK 개발](https://chatgpt.com/space/page_6aeadd6e8810819197fd76ba1f3b3923)과
 `recanet-java` 커밋 `37c78cfa01d9892ca26de61bb74df827923917cf`입니다.
+Java 대비 대응 API와 남은 보류 항목은 [기능 비교](docs/java-parity.md)에 정리했습니다.
 
 ```sh
 # 소스 checkout에서 실행

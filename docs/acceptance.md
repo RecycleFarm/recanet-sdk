@@ -22,11 +22,13 @@
 
 시험 파일은 tests 디렉터리의 해당 이름에 .test.mjs를 붙인다.
 공식 worker 시험은 tools/greenfield/worker.test.cjs다.
-현재 npm run check는 본체 249개와 worker 14개를 실행한다.
-Node 22.12/25.5의 macOS ARM64와 Node 22.23.4의 Linux ARM64 실행, Java17 FileChannel과의 실제 잠금 충돌,
+현재 npm run check는 본체 253개와 worker 14개를 실행하며 macOS ARM64/Node 25.5에서 통과했다.
+이전 263개 시험은 Node 22.12/25.5의 macOS ARM64와 Node 22.23.4의 Linux ARM64에서 실행했다.
+Java17 FileChannel과의 실제 잠금 충돌,
 BC1.83 생성 HPKE 벡터 및 Java17 UTF-8 1,197,480개 corpus 비교를 수행했다.
 패키지는 npm run check:package로 별도 소비자 설치·strict 타입·ESM·ABI·native journal을 검증한다.
 Linux 환경과 재현 명령은 [검증 기록](linux-verification.md)에 보존했다.
+공개 API의 Java 대응 및 보류 범위는 [기능 비교](java-parity.md)에 정리했다.
 
 ## C-12 실행에 필요한 승인 입력
 
