@@ -6,6 +6,7 @@ Node.js 22 이상에서 사용하는 서버 SDK입니다. 현재 개발 중이�
 `recanet-java` 커밋 `37c78cfa01d9892ca26de61bb74df827923917cf`입니다.
 
 ```sh
+# 소스 checkout에서 실행
 npm ci
 npm ci --prefix tools/greenfield --ignore-scripts
 npm run check

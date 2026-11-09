@@ -10,11 +10,14 @@
 !scripts/**
 !tests/
 !tests/**
+!docs/
+!docs/**
 !tools/
 !tools/greenfield/
 !tools/greenfield/*.cjs
 !tools/greenfield/package.json
 !tools/greenfield/package-lock.json
+!tools/greenfield/README.md
 !tools/ci/
 !tools/ci/Dockerfile
 !README.md

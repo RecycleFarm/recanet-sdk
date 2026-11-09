@@ -175,6 +175,8 @@
 - 실제 tarball을 임시 프로젝트에 설치(ignore-scripts), DOM 없이 Node 타입/ES2022/NodeNext strict
   컴파일(skipLibCheck 미사용)과 ESM·동봉 ABI·Keccak·native 파일 journal 재개를 검사하는 check:package 추가.
   소스 checkout의 상대 import나 dev dependency에 기대지 않고 설치한 공개 진입점을 사용했다.
+- 패키지에 의사결정/인수/검증 문서와 worker README를 동봉하고 설치된 모든 Markdown의 로컬 링크를
+  검사한다. source checkout 없이도 고정 의존성 위험과 미실행 인수 조건을 읽을 수 있도록 전달 누락을 수정했다.
 
 - Linux ARM64 Node22.23.4/JDK17.0.21에서 전체 263개 시험(fail0/skip0)과 실제 소비자 검증 통과.
   고정 이미지의 tools/ci/Dockerfile도 전체 빌드 실행으로 재현했다. 자세한 범위는 linux-verification.md 참고.
