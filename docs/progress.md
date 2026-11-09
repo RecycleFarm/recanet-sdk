@@ -143,7 +143,7 @@
   confirmed 후 해제 오류·공유/미공유 journal의 새 호출 의미·대기 취소 검증.
 - 보고서 검증: 과거 PET calldata/서명/hash 벡터·quorum/멤버십/정렬 committee·Claim/event/관찰 결속,
   재서명한 출력 문법·큰 문자열/-0·VALID 빈 outputs·INVALID 정상 검증, source/보고서 signer 집합·metadata와
-  원시 file hash의 경계 확인. 내부 검증 함수이며 승인 배포의 성공 receipt를 확인하는 reader와 조합 예정.
+  원시 file hash의 경계 확인. 내부 검증 함수는 승인 배포의 성공 receipt를 확인하는 독립 reader와 조합했다.
 - 독립 reader: confirmedHead의 배포/Claim pinned 조회·status 분기·WAITING/LOCAL_WAIT_TIMEOUT/REVOKED 표식,
   명시 hash/로그 검색·receipt/tx/report 결속·4 MiB 정확 경계·위치 사본·callback 오류의 READ_ONLY 포장,
   초기 배포/체인 오류 전파·private Evidence 1 MiB/출처·v4 기본 보고서 경로 확인.
@@ -152,12 +152,12 @@
   제출 확인 상태와 nonce 예약을 변경하지 않는 경계 확인.
 - OS 잠금 기반: 최소 Node-API 8 컴포넌트로 OFD record lock 사용. macOS ARM64에서 descriptor/worker 상호 배제,
   무관한 close 후 잠금 유지·소유 close 해제·실제 Java FileChannel과 양방향 충돌·SIGKILL 후 재획득 확인.
-  Linux 실행/빌드와 플랫폼별 바이너리 배포는 미검증/미결. 아직 영속 파일 journal 전체를 뜻하지 않음.
+  이후 Linux ARM64에서도 빌드/동일 시험을 통과했으며 플랫폼별 prebuild 배포는 미결.
 - 영속 파일 journal: Java Keccak 이름/JSON·0700/0600·재생성 snapshot, 24개 동시/별도 instance/symlink 경로,
   중첩 형제 queue·부모 store·같은 key 재진입 거부·Promise.all 조기 실패 후 자식/IO drain·store 호출 순서,
   claim 전역 잠금/배포 전체 검색·손상 파일 거부, 실제 3개 프로세스 counter 및 SIGKILL 후 획득,
   temp 교체 중 강제 종료 old-or-new snapshot·새 journal 인스턴스에서 Evidence 원래 hash 복구 확인.
-  fsync·rename은 실제 로컬 파일에서 실행했으며 전원 차단·NFS/분산 저장·Linux 실행 인수는 하지 않음.
+  fsync·rename은 macOS/Linux ARM64 로컬 파일에서 실행했으며 전원 차단·NFS/분산 저장 인수는 하지 않음.
 - Greenfield 프로세스 경계: 다섯 op wire·dedicated key 환경만 전달·stdin/argv 키 제외·stderr 비노출,
   6 MiB stdout 정확 경계·timeout/EOF 후 종료 대기·AbortSignal·spawn 실패·create 한정 flags,
   JSON/base64·snapshot·호출별 키 재조회 확인. 현재 실제 가짜 worker 프로세스로 시험했으며 공식 worker 동봉은 다음 단위.
@@ -175,3 +175,6 @@
 - 실제 tarball을 임시 프로젝트에 설치(ignore-scripts), DOM 없이 Node 타입/ES2022/NodeNext strict
   컴파일(skipLibCheck 미사용)과 ESM·동봉 ABI·Keccak·native 파일 journal 재개를 검사하는 check:package 추가.
   소스 checkout의 상대 import나 dev dependency에 기대지 않고 설치한 공개 진입점을 사용했다.
+
+- Linux ARM64 Node22.23.4/JDK17.0.21에서 전체 263개 시험(fail0/skip0)과 실제 소비자 검증 통과.
+  고정 이미지의 tools/ci/Dockerfile도 전체 빌드 실행으로 재현했다. 자세한 범위는 linux-verification.md 참고.

@@ -229,6 +229,7 @@ check:package는 실제 npm tarball을 임시 소비자 프로젝트에 설치�
 ESM·ABI·native journal 실행을 검증합니다. npm install lifecycle은 실행하지 않고 종료 후 임시 프로젝트를
 삭제합니다. 캐시는 RECANET_NPM_CACHE, 오프라인 실행은 RECANET_PACKAGE_OFFLINE=1로 지정할 수 있습니다.
 같은 OS/arch에서 빌드한 native binary를 검사하며 다른 플랫폼 인수를 대신하지 않습니다.
+Linux ARM64의 실제 실행 결과와 재현 Dockerfile 명령은 [Linux 검증 기록](docs/linux-verification.md)을 참고하세요.
 
 구현 범위와 검증은 [개발 현황](docs/progress.md), 미결 사항은 [의사결정 목록](docs/decisions.md)을 참고하세요.
 원본 C-01~C-12와 시험 증거의 대응, 실환경 실행에 필요한 승인 입력은 [인수 현황](docs/acceptance.md)에 정리했습니다.

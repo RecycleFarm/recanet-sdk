@@ -14,7 +14,7 @@
 | C-05 | dmrvn-crypto/abi/protocol, declared-methodology, java-utf8 시험 | 모든 수치/암호 사례의 Java 프로세스 교차 실행·새 Evidence 계약 승인 |
 | C-06 | dmrvn-config/chain/preflight 시험: pinned block·proxy/slot/code/domain·불일치 | 승인 배포의 현재 실측·준비 상태 |
 | C-07 | evidence, node-greenfield-storage, 공식 worker 시험: 동일 bytes·seal·원래 create hash·protobuf | 실제 SP 생성/업로드/seal·validator private read |
-| C-08 | memory/file-operation-journal, posix-lock, sponsored-submission 시험: 실제 프로세스·fsync·강제 종료·intent | 전원 차단·Linux 실행·NFS/분산 환경 |
+| C-08 | memory/file-operation-journal, posix-lock, sponsored-submission 시험: 실제 프로세스·fsync·강제 종료·intent | 전원 차단·다른 OS/arch·NFS/분산 환경 |
 | C-09 | claim-approval, submission-preparation/resolution 시험: 서명·calldata·sender·receipt/event·Claim 결속 | 실제 승인 배포의 접수 거래 |
 | C-10 | activity-request/submission, user-activity-submission 시험: 새 ID·대기·관찰 사실·UNKNOWN | 실제 회원 지갑·저장소·relay 통합 실행 |
 | C-11 | report-verifier, dmrvn-reader, result-observation 시험: quorum·변조·상태/fileHash 경계 | 실제 coordinator/validator 보고서와 독립 파일 수용 |
@@ -23,9 +23,10 @@
 시험 파일은 tests 디렉터리의 해당 이름에 .test.mjs를 붙인다.
 공식 worker 시험은 tools/greenfield/worker.test.cjs다.
 현재 npm run check는 본체 249개와 worker 14개를 실행한다.
-Node 22.12와 25.5의 macOS ARM64 실행, Java17 FileChannel과의 실제 잠금 충돌,
+Node 22.12/25.5의 macOS ARM64와 Node 22.23.4의 Linux ARM64 실행, Java17 FileChannel과의 실제 잠금 충돌,
 BC1.83 생성 HPKE 벡터 및 Java17 UTF-8 1,197,480개 corpus 비교를 수행했다.
 패키지는 npm run check:package로 별도 소비자 설치·strict 타입·ESM·ABI·native journal을 검증한다.
+Linux 환경과 재현 명령은 [검증 기록](linux-verification.md)에 보존했다.
 
 ## C-12 실행에 필요한 승인 입력
 
