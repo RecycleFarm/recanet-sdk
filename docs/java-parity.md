@@ -1,5 +1,8 @@
 # Java SDK 기능 비교
 
+후속 갱신: 이 표는 Java 기준 commit과의 비교 기록이다. 이후 2026-11-05 Page 댓글의 확정 Evidence4/PET3를
+반영해 petV3 프로필과 새 제출/조회 시험을 추가했다. 현재 구현과 미검증 범위는 [후속 계약](evidence-v4.md)을 확인한다.
+
 확인일: 2026-11-09. 비교 기준은 형제 저장소 `recanet-java`의 현재 HEAD인
 `37c78cfa01d9892ca26de61bb74df827923917cf`다.
 Java `src/main/java`의 공개 최상위 타입 39개와 내부 타입 7개를 TypeScript 공개 진입점 및 구현과 대조했다.

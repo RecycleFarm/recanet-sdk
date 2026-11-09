@@ -3,7 +3,7 @@
 **후속 정정:** 이 감사는 Page 본문을 대조했으나 상위의 2026-11-05 댓글을 빠뜨렸다.
 해당 댓글은 Evidence schema4·PET 방법론2003/3·partner101/activity1003·inputs.petBottleCount와 본문/전체 해시 계약을 확정한다.
 아래의 새 wire 전반 미결 판정과 코드 누락 미발견 결론을 이 후속 계약의 완료 근거로 사용하지 않는다.
-확정 프로필 구현 및 추가 검증/미결 범위는 [후속 계약](evidence-v4.md)에 기록한다.
+확정 프로필 구현 및 저장/직접/대납/복구/조회 로컬 시험을 추가했으며, 범위와 남은 미결은 [후속 계약](evidence-v4.md)에 기록한다.
 
 확인일: 2026-11-09. 구현 기준 Java commit은 `37c78cfa01d9892ca26de61bb74df827923917cf`,
 감사 대상 TypeScript 소스는 `fe3f09a`다. 이번 감사의 변경은 문서와 패키지 문서 포함 검사뿐이다.
@@ -139,7 +139,7 @@ Java 공개 API 이름의 대응만 확인한 [이전 감사](java-parity.md)와
 | manifest canonical hash·WASM raw hash·uint32·명시 registry callback | 대응; WASM 실행/도메인 입력 해석은 원본 SDK 책임 아님 |
 | 정확한 본문 7키·source.ownerHash·inputs 복사·본문 1MiB | 대응 |
 | 명시 Evidence 버전 미설정 시 고수준 중단·과거 3/시험999를 운영 기본값으로 사용하지 않음 | 대응 |
-| 승인된 새 wire·입력 프로필·registry 원천·validator 수용·표준 JCS 전환 | 보류 D-02·17·19·30; 임의 버전으로 대체하지 않음 |
+| 후속 댓글의 Evidence4/PET3 구조·서명/전체 hash | petV3 프로필과 새 로컬 시험으로 반영. 값 규칙·승인 패키지·registry 원천·validator bytes 수용·표준 JCS 전환은 여전히 미결 |
 
 ## 10. DMRVN 해시·서명·ABI — C-05
 

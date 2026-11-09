@@ -22,7 +22,7 @@
 
 시험 파일은 tests 디렉터리의 해당 이름에 .test.mjs를 붙인다.
 공식 worker 시험은 tools/greenfield/worker.test.cjs다.
-현재 npm run check는 본체 253개와 worker 14개를 실행하며 macOS ARM64/Node 25.5에서 통과했다.
+현재 npm run check는 본체 267개와 worker 14개를 실행하며 macOS ARM64/Node 25.5에서 통과했다.
 이전 263개 시험은 Node 22.12/25.5의 macOS ARM64와 Node 22.23.4의 Linux ARM64에서 실행했다.
 Java17 FileChannel과의 실제 잠금 충돌,
 BC1.83 생성 HPKE 벡터 및 Java17 UTF-8 1,197,480개 corpus 비교를 수행했다.
@@ -30,6 +30,7 @@ BC1.83 생성 HPKE 벡터 및 Java17 UTF-8 1,197,480개 corpus 비교를 수행�
 Linux 환경과 재현 명령은 [검증 기록](linux-verification.md)에 보존했다.
 공개 API의 Java 대응 및 보류 범위는 [기능 비교](java-parity.md)에 정리했다.
 원본 상세 명세의 기능·불변식별 판정과 이번 문서 보완은 [명세 감사](spec-audit.md)에 있다.
+상위 Page 댓글의 확정 Evidence4/PET3 후속 계약과 로컬 적용·미검증 범위는 [후속 계약 기록](evidence-v4.md)이 우선한다.
 
 ## C-12 실행에 필요한 승인 입력
 
@@ -44,7 +45,7 @@ C-12는 미실행 상태로 유지하며, 이 답변을 환경 선택·권한 �
 | 입력 | 확인할 내용 | 관련 결정 |
 | --- | --- | --- |
 | 배포 manifest와 RPC | chainId·proxy·forwarder·admin·owner·승인 implementation/release/code hash와 현재 수용 출처 | D-19·20 |
-| Evidence 계약 | 승인 schemaVersion·파트너 입력 프로필·manifest/WASM/hash·실제 registry 조회 adapter | D-02·17·19·30 |
+| Evidence 계약 | 이번 PET의 schema4·방법론2003/3·partner101/activity1003·petBottleCount 구조는 확정. 승인 manifest/WASM/hash·값 규칙·공통 canonical bytes·실제 registry 조회 adapter는 필요 | D-02·17·19·30 |
 | Privy 앱·지갑·승인키 | 테스트 앱 권한·JWT 검증 원천·operator wallet ID/주소·파트너/회원 동의·서명 직전 철회 정책 | D-01·03·09·10·11 |
 | Greenfield | network/RPC/SP·기존 bucket/prefix·storage signer·feegrant·validator private-object 읽기 권한 | D-24 |
 | 테스트 예산 | 허용 네트워크·대상 계정·relay·직접 납부 beneficiary·storage별 비용 상한·잔액·실제 쓰기 허용 범위 | D-22·23·24 |

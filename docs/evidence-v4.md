@@ -43,3 +43,15 @@ SDK canonicalizer로 기대 바이트를 생성하지 않았지만 해시/서명
 `tests/evidence-v4-workflow.test.mjs`는 새 프로필로 고정 전체 bytes의 저장/재읽기, 직접 납부와 대납 calldata/Claim/receipt 결속,
 고수준 회원 제출, 파일 journal을 다시 연 생성 응답 유실 복구를 검증한다.
 외부 저장소·RPC·회원 지갑은 합성 adapter다. 직접/대납 거래 확인 자료도 합성이며 실제 전송 인수 결과가 아니다.
+
+`tests/evidence-v4-reader.test.mjs`는 독립 reader의 새 Evidence 출처/본문 변조 검사, journal 관찰과 접수 확인의 분리,
+새 Evidence hash·방법론3을 담아 다시 서명한 합성 INVALID 보고서의 quorum/Claim 결속을 확인한다.
+보고서가 검증돼도 실제 PET 계산·검증자 판정·metadata 독립 인증의 증거로 사용하지 않는다.
+
+## 구현과 검증 상태
+
+프로필·본문/서명/전체 hash·잘못된 설정의 사전 거부·저장/직접 납부/대납/고수준/영속 복구·독립 reader의 로컬 반영은 완료했다.
+기존 Java 호환 생성자와 과거 fixture는 유지했다. 미결 값 규칙이나 실제 배포용 패키지를 새 기본값으로 발명하지 않았다.
+최종 전체 시험은 본체267+worker14=281개이며 macOS ARM64/Node25.5에서 실패0·skip0이다.
+실제 tarball의 PET factory 실행·strict Node 타입·ESM/native와 모든 동봉 문서 링크 검사도 통과했다.
+Node22/Linux의 과거263개 기록을 이번 추가 시험의 실행 증거로 사용하지 않는다.

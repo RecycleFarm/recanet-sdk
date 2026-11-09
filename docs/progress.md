@@ -50,6 +50,7 @@
 | 6y | 공식 Greenfield SDK worker 동봉·실행 검증 (C-07) | 구현, 고정 모듈·체크섬·protobuf 생성 거래 확인·실제 자식 protocol 오프라인 시험 통과 |
 | 7 | 실제 외부 서비스 인수 (C-12) | 미실행 |
 | 8 | 패키지 실제 소비자 검증 | 통과, tarball 설치·공개 타입 strict compile·ESM/ABI/native journal 실행 |
+| 9 | 댓글 확정 Evidence4/PET3 후속 계약 | petV3 프로필·본문/전체 해시 벡터·저장/직접/대납/고수준/영속 복구·독립 출처/보고서 조회 반영. 값 규칙·승인 패키지·실환경 수용은 별도 |
 
 로컬 시험과 실제 Privy/체인/Greenfield 인수는 별개다. 모든 기능 구현 또는 운영 인수 완료를 의미하지 않는다.
 
@@ -184,5 +185,9 @@
 - Linux ARM64 Node22.23.4/JDK17.0.21에서 전체 263개 시험(fail0/skip0)과 실제 소비자 검증 통과.
   고정 이미지의 tools/ci/Dockerfile도 전체 빌드 실행으로 재현했다. 자세한 범위는 linux-verification.md 참고.
 - Java 공개 최상위 타입 39개/내부 7개 기능 비교 후 목록·회원 활동·JSON 객체 편의 호출을 보완했다.
-  각 단위 독립 리뷰 승인 및 커밋. 현재 macOS ARM64/Node25.5에서 본체253+worker14=267개 시험과
+  각 단위 독립 리뷰 승인 및 커밋. 당시 macOS ARM64/Node25.5에서 본체253+worker14=267개 시험과
   실제 패키지 소비자 검증 통과. 보류/표현 차이·검증 범위는 [기능 비교](java-parity.md) 참고.
+- 상위 Page 댓글을 빠뜨린 감사 판단을 정정하고 확정 schema4/PET방법론3을 명시 factory로 반영했다.
+  과거 자료는 보존하고 새 합성 벡터·두 제출 mode·파일 journal 재개·독립 reader/quorum 시험을 추가했다.
+  현재 본체267+worker14=281개와 실제 패키지 소비자 검증을 macOS ARM64/Node25.5에서 통과했고 운영 인수와 구분한다.
+  확정 내용·합성 자료의 출처·남은 계약은 [후속 계약](evidence-v4.md)에 기록했다.
