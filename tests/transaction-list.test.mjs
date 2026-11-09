@@ -42,6 +42,31 @@ function chain(head = 10) {
   return { client: new EvmTransactionClient(1, rpc), blocks, calls, state };
 }
 
+test('Java 편의 목록 호출은 genesis/latest 범위와 cursor를 유지하고 취소를 전달한다', async () => {
+  const item = chain(1);
+  item.blocks.get(1).transactions = [transaction(1, 0), transaction(1, 1)];
+  item.blocks.get(0).transactions = [transaction(0, 0)];
+  const first = await item.client.listTransactions(address, 1);
+  assert.deepEqual(first, await chainWithTransactions().client.listTransactions(address,
+    { fromBlock: 0n, toBlock: null, limit: 1 }));
+  const second = await item.client.listTransactions(address, 100, first.nextCursor);
+  assert.deepEqual(second.transactions.map(tx => tx.blockNumber), [1n, 0n]);
+  assert.equal(second.nextCursor, null);
+  assert.equal(second.fromBlock, 0n);
+  assert.equal(second.toBlock, 1n);
+  const before = item.calls.length;
+  for (const limit of [0, 101, 1.5, NaN]) await assert.rejects(item.client.listTransactions(address, limit), TypeError);
+  await assert.rejects(item.client.listTransactions(address, 1, 'invalid'), TypeError);
+  await assert.rejects(item.client.listTransactions(address, 1, null, AbortSignal.abort()), code('INTERRUPTED'));
+  assert.equal(item.calls.length, before);
+  function chainWithTransactions() {
+    const expected = chain(1);
+    expected.blocks.get(1).transactions = [transaction(1, 0), transaction(1, 1)];
+    expected.blocks.get(0).transactions = [transaction(0, 0)];
+    return expected;
+  }
+});
+
 test('명세 cursor 발급 벡터 3개의 ASCII·base64url bytes가 일치한다', async () => {
   const fixture = JSON.parse(await readFile(new URL('./fixtures/transaction-cursors.json', import.meta.url), 'utf8'));
   for (const entry of fixture.cases) {

@@ -20,6 +20,7 @@
 | 5b | ETH 잔액·전송 (C-04 일부) | 구현, 정확한 wei·호출 순서·실패 경계 시험 통과 |
 | 5c | 거래 상세/상태 (C-04 일부) | 구현, 상태·receipt/블록 결속·수치 경계·snapshot 시험 통과 |
 | 5d | 발신 거래 목록/cursor (C-04 일부) | 구현, 블록 내부/100블록 페이지·anchor·reorg·cursor 벡터 시험 통과 |
+| 5e | Java 거래 목록 편의 호출 | 구현, genesis/latest 기본 범위·cursor 재개·입력/취소·패키지 소비자 타입 검증 통과 |
 | 6a | DMRVN 암호·JSON (C-05 일부) | 구현, 복구/JSON/escape 고정 벡터 시험 통과 |
 | 6b | ABI (C-05 일부) | 구현, selector/topic·과거 calldata·strict decode 시험 통과 |
 | 6c | EIP-712·provenance·commitment (C-05 일부) | 구현, 6개 타입/3개 digest·PET 해시/서명/calldata 시험 통과 |

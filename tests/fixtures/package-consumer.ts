@@ -1,11 +1,15 @@
 import {
   ActivityRequest, BackendWalletRegistration, DmrvnAbi, DmrvnCrypto, FileOperationJournal,
-  PrivyClient, memberExternalId,
+  EvmTransactionClient, PrivyClient, memberExternalId,
 } from 'recanet-typescript';
 
 const client = new PrivyClient({ appId: 'offline-test', appSecret: 'offline-test' });
 const exporter: (id: string, key: BackendWalletRegistration) => Promise<string> = client.exportWalletPrivateKey.bind(client);
 void exporter; // Type-check only: no service request or key export.
+const transactions = new EvmTransactionClient(1, { async call() { throw new Error('type-check only'); } });
+const list: (address: string, limit: number, cursor?: string | null, signal?: AbortSignal) => ReturnType<EvmTransactionClient['listTransactions']>
+  = transactions.listTransactions.bind(transactions);
+void list;
 const request = new ActivityRequest('user', 'event', {});
 if (request.gas !== '900000') throw new Error('ActivityRequest defaults');
 if (memberExternalId('service', 'user').length === 0) throw new Error('member ID');

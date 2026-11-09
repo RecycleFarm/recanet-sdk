@@ -138,6 +138,8 @@ do {
 한 페이지는 최대 100개 블록을 읽으므로 **빈 페이지라도 cursor가 있으면 계속** 조회합니다.
 실제 지갑 사용 시작 블록부터 범위를 좁히세요. 입금·내부 호출·pending 목록은 포함하지 않습니다.
 `CHAIN_CHANGED`이면 cursor 없이 새 snapshot부터 조회해야 합니다.
+Java와 같은 `listTransactions(address, limit, cursor)` 편의 호출도 제공합니다.
+이 호출의 범위는 genesis부터 첫 페이지의 latest까지이며, 취소 신호는 네 번째 인수로 전달합니다.
 
 DMRVN의 순수 계산 계층은 `DmrvnCrypto`, `DmrvnJson`, `DmrvnAbi`로 제공합니다.
 `DmrvnJson.parse`의 소수는 `DmrvnDecimal`이며 해시·복사에는 SDK의 JSON 함수를 사용하세요.

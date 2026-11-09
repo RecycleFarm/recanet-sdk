@@ -45,7 +45,14 @@ export class EvmTransactionClient {
   }
 
   /** 최신 순으로 블록에 포함된 최상위 발신 거래만 탐색한다. 빈 페이지에도 cursor가 있을 수 있다. */
-  async listTransactions(walletAddress: string, query: EvmTransactionQuery, signal?: AbortSignal): Promise<EvmTransactionPage> {
+  listTransactions(walletAddress: string, query: EvmTransactionQuery, signal?: AbortSignal): Promise<EvmTransactionPage>;
+  /** Java 편의 호출과 같이 genesis부터 첫 페이지의 latest까지 탐색한다. */
+  listTransactions(walletAddress: string, limit: number, cursor?: string | null, signal?: AbortSignal): Promise<EvmTransactionPage>;
+  async listTransactions(walletAddress: string, queryOrLimit: EvmTransactionQuery | number,
+    cursorOrSignal?: string | null | AbortSignal, cancellation?: AbortSignal): Promise<EvmTransactionPage> {
+    const query = typeof queryOrLimit === 'number'
+      ? { fromBlock: 0n, toBlock: null, limit: queryOrLimit, cursor: (cursorOrSignal ?? null) as string | null } : queryOrLimit;
+    const signal = typeof queryOrLimit === 'number' ? cancellation : cursorOrSignal as AbortSignal | undefined;
     const address = evmHex(walletAddress, 20).toLowerCase();
     const range = transactionRange(query);
     let cursor = range.cursor === null ? null : decodeCursor(range.cursor, this.#chain, address, range);
