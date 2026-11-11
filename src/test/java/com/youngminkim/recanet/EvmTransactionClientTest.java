@@ -206,10 +206,8 @@ class EvmTransactionClientTest {
         var failing = new EvmTransactionClient(1, (method, params) -> {
             throw new IllegalStateException("secret-rpc-key and sensitive response");
         });
-        var error = assertThrows(TransactionQueryException.class, () -> failing.getTransactionStatus(TX));
-        assertEquals(RPC_UNAVAILABLE, error.code());
-        assertFalse(error.toString().contains("secret"));
-        assertNull(error.getCause());
+        var error = assertThrows(IllegalStateException.class, () -> failing.getTransactionStatus(TX));
+        assertEquals("secret-rpc-key and sensitive response", error.getMessage());
         assertCode(WRONG_CHAIN, () -> new EvmTransactionClient(2, rpc).getTransactionStatus(TX));
         var malformed = new EvmTransactionClient(1, (method, params) -> method.equals("eth_chainId") ? "0x1" : "bad");
         assertCode(INVALID_RESPONSE, () -> malformed.getTransaction(TX));
@@ -228,7 +226,8 @@ class EvmTransactionClientTest {
             throw new RuntimeException(new InterruptedException());
         });
         try {
-            assertCode(INTERRUPTED, () -> interrupted.getTransaction(TX));
+            var error = assertThrows(RuntimeException.class, () -> interrupted.getTransaction(TX));
+            assertInstanceOf(InterruptedException.class, error.getCause());
             assertTrue(Thread.currentThread().isInterrupted());
         } finally { Thread.interrupted(); }
     }
@@ -260,8 +259,11 @@ class EvmTransactionClientTest {
             assertTrue(client.getTransaction(hash(999)).isEmpty());
             assertTrue(rpc.methods.stream().allMatch(m -> Set.of("eth_chainId", "eth_blockNumber",
                     "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getBlockByNumber").contains(m)));
-            error.set("sensitive provider failure");
-            assertCode(RPC_UNAVAILABLE, () -> client.getTransactionStatus(TX));
+            error.set("original provider failure");
+            var failure = assertThrows(com.youngminkim.recanet.dmrvn.UpstreamException.class,
+                    () -> client.getTransactionStatus(TX));
+            assertEquals(-32000, failure.code());
+            assertEquals("original provider failure", failure.getMessage());
         } finally { server.stop(0); }
     }
 

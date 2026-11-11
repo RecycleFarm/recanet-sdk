@@ -9,16 +9,16 @@ public final class DmrvnProtocol {
     /** Verifies source bytes against the stored Claim approver; no current role is consulted. */
     public static String verifyProvenance(
             Map<String, Object> evidence, String evidenceHash, String storedApprover) {
-        require(Json.hash(evidence).equals(Crypto.bytes32(evidenceHash)), Code.SIGNATURE_INVALID);
+        require(Json.hash(evidence).equals(Crypto.bytes32(evidenceHash, "evidenceHash")), Code.SIGNATURE_INVALID);
         var body = Json.copy(evidence);
         var provenance = Json.map(body.remove("provenance"));
         String recovered =
                 Crypto.recover(
                         Crypto.messageDigest("DMRVN v4 source:" + Json.hash(body)),
-                        Json.str(provenance.get("sourceSignature")));
+                        Json.str(provenance.get("sourceSignature"), "sourceSignature"));
         require(
-                recovered.equals(Crypto.address(Json.str(provenance.get("signer"))))
-                        && recovered.equals(Crypto.address(storedApprover)),
+                recovered.equals(Crypto.address(Json.str(provenance.get("signer"), "signer"), "signer"))
+                        && recovered.equals(Crypto.address(storedApprover, "storedApprover")),
                 Code.SIGNATURE_INVALID);
         return recovered;
     }
@@ -74,7 +74,8 @@ public final class DmrvnProtocol {
     }
 
     public static Map<String, Object> domain(long chainId, String contract, boolean forwarder) {
-        require(chainId > 0 && chainId <= 9007199254740991L, Code.INVALID_INPUT);
+        require(chainId > 0 && chainId <= 9007199254740991L, Code.INVALID_INPUT,
+                "chainId", "must be between 1 and 9007199254740991 inclusive");
         return Json.obj(
                 "name",
                 forwarder ? "DMRVNForwarder" : "DMRVNClaimContract",
@@ -83,12 +84,12 @@ public final class DmrvnProtocol {
                 "chainId",
                 chainId,
                 "verifyingContract",
-                Crypto.address(contract));
+                Crypto.address(contract, "verifyingContract"));
     }
 
     public static Map<String, Object> typedData(
             String type, Map<String, Object> domain, Map<String, Object> message) {
-        require(TYPES.containsKey(type), Code.INVALID_INPUT);
+        require(TYPES.containsKey(type), Code.INVALID_INPUT, "primaryType", "must be a supported EIP-712 type");
         var types = new LinkedHashMap<String, Object>();
         types.put("EIP712Domain", typeFields("EIP712Domain"));
         types.put(type, typeFields(type));
@@ -115,7 +116,8 @@ public final class DmrvnProtocol {
     }
 
     public static String structHash(String type, Map<String, Object> message) {
-        require(TYPES.containsKey(type), Code.INVALID_INPUT);
+        require(TYPES.containsKey(type), Code.INVALID_INPUT, "primaryType", "must be a supported EIP-712 type");
+        require(message != null, Code.INVALID_INPUT, type, "must be an object");
         String desc =
                 description(type)
                         + (type.equals("ClaimRequest") ? description("EvidenceLocation") : "");
@@ -123,14 +125,15 @@ public final class DmrvnProtocol {
         bytes.writeBytes(Crypto.hex(Crypto.textHash(desc)));
         for (var f : TYPES.get(type)) {
             Object v = message.get(f.name());
-            require(v != null, Code.INVALID_INPUT);
+            require(v != null, Code.INVALID_INPUT, type + "." + f.name(), "is required and must not be null");
             if (TYPES.containsKey(f.type()))
-                bytes.writeBytes(Crypto.hex(structHash(f.type(), Json.map(v))));
+                bytes.writeBytes(Crypto.hex(input(type + "." + f.name(),
+                        () -> structHash(f.type(), Json.map(v)))));
             else if (f.type().equals("string"))
-                bytes.writeBytes(Crypto.hex(Crypto.textHash(Json.str(v))));
+                bytes.writeBytes(Crypto.hex(Crypto.textHash(Json.str(v, type + "." + f.name()))));
             else if (f.type().equals("bytes"))
-                bytes.writeBytes(Crypto.hex(Crypto.hash(Crypto.hex(Json.str(v)))));
-            else bytes.writeBytes(Abi.tuple(List.of(f), Map.of(f.name(), v)));
+                bytes.writeBytes(Crypto.hex(Crypto.hash(input(type + "." + f.name(), () -> Crypto.hex(Json.str(v))))));
+            else bytes.writeBytes(input(type, () -> Abi.tuple(List.of(f), Map.of(f.name(), v))));
         }
         return Crypto.hash(bytes.toByteArray());
     }
@@ -148,7 +151,7 @@ public final class DmrvnProtocol {
     }
 
     public static String ownerHash(String beneficiary) {
-        return Crypto.textHash(Crypto.address(beneficiary));
+        return Crypto.textHash(Crypto.address(beneficiary, "beneficiary"));
     }
 
     public static String evidenceLocationHash(Map<String, Object> location) {

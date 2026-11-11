@@ -10,6 +10,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import com.youngminkim.recanet.telemetry.SdkTelemetry;
 
 /** Balance and transfer of the SDK's currently supported asset: Arbitrum Sepolia ETH. */
 public final class AssetClient {
@@ -18,20 +19,37 @@ public final class AssetClient {
     public static final int DECIMALS = 18;
     private static final BigInteger MAX_UINT256 = BigInteger.ONE.shiftLeft(256).subtract(BigInteger.ONE);
     private final EvmRpc rpc;
+    private final SdkTelemetry telemetry;
 
     public AssetClient(URI rpcUri) {
         this(new HttpEvmRpc(rpcUri));
     }
 
     public AssetClient(EvmRpc rpc) {
-        this.rpc = Objects.requireNonNull(rpc, "rpc");
+        this(rpc, SdkTelemetry.local());
+    }
+
+    public AssetClient(URI rpcUri, SdkTelemetry telemetry) {
+        this(new HttpEvmRpc(rpcUri, telemetry), telemetry);
+    }
+
+    public AssetClient(EvmRpc rpc, SdkTelemetry telemetry) {
+        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
+        this.rpc = telemetry.instrumentRpc(Objects.requireNonNull(rpc, "rpc"));
     }
 
     /** Returns the latest confirmed-on-the-RPC balance in wei for a blockchain address. */
     public BigInteger getBalance(String address) {
+        return telemetry.observe("AssetClient.getBalance", null,
+                () -> getBalanceImpl(address));
+    }
+
+    private BigInteger getBalanceImpl(String address) {
         checkAddress(address);
         verifyChain();
-        return number(rpc.call("eth_getBalance", List.of(address, "latest")));
+        var balance = number(rpc.call("eth_getBalance", List.of(address, "latest")));
+        telemetry.checkpoint(SdkTelemetry.State.BALANCE_READ);
+        return balance;
     }
 
     /**
@@ -40,6 +58,11 @@ public final class AssetClient {
      * A returned hash does not imply that the transaction succeeded or was finalized.
      */
     public String transfer(EvmSigner signer, String recipient, BigInteger amountWei, String idempotencyKey) {
+        return telemetry.observe("AssetClient.transfer", idempotencyKey,
+                () -> transferImpl(signer, recipient, amountWei, idempotencyKey));
+    }
+
+    private String transferImpl(EvmSigner signer, String recipient, BigInteger amountWei, String idempotencyKey) {
         Objects.requireNonNull(signer, "signer");
         checkAddress(signer.address());
         checkAddress(recipient);
@@ -56,21 +79,21 @@ public final class AssetClient {
         if (gas.signum() == 0 || price.signum() == 0) throw new DmrvnException(DmrvnException.Code.RPC_UNAVAILABLE);
         var transaction = Map.<String, Object>of("to", recipient, "value", quantity(amountWei),
                 "data", "0x", "gas", quantity(gas), "gasPrice", quantity(price), "nonce", quantity(nonce));
-        String hash;
-        try {
-            hash = signer.sendTransaction(CHAIN_ID, transaction, idempotencyKey);
-        } catch (RuntimeException e) {
-            // The request may have reached the signer even when its response was lost.
-            throw new DmrvnException(DmrvnException.Code.SUBMISSION_UNRESOLVED);
-        }
-        if (hash == null || !hash.matches("0x[0-9a-fA-F]{64}"))
-            throw new DmrvnException(DmrvnException.Code.SUBMISSION_UNRESOLVED);
-        return hash;
+        return telemetry.step("AssetClient.submitTransaction", () -> {
+            telemetry.submissionAttempt();
+            String hash = signer.sendTransaction(CHAIN_ID, transaction, idempotencyKey);
+            if (hash == null || !hash.matches("0x[0-9a-fA-F]{64}"))
+                throw new DmrvnException(DmrvnException.Code.SUBMISSION_UNRESOLVED);
+            telemetry.submissionAccepted();
+            telemetry.checkpoint(SdkTelemetry.State.SUBMITTED);
+            return hash;
+        });
     }
 
     private void verifyChain() {
         if (!number(rpc.call("eth_chainId", List.of())).equals(BigInteger.valueOf(CHAIN_ID)))
             throw new DmrvnException(DmrvnException.Code.WRONG_CHAIN);
+        telemetry.checkpoint(SdkTelemetry.State.CHAIN_VERIFIED);
     }
 
     private static void checkAddress(String address) {

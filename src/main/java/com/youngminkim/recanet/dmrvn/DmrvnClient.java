@@ -3,7 +3,7 @@ package com.youngminkim.recanet.dmrvn;
 import static com.youngminkim.recanet.dmrvn.DmrvnException.*;
 
 import com.youngminkim.recanet.UserWalletClient;
-import com.youngminkim.recanet.PrivyApiException;
+import com.youngminkim.recanet.telemetry.SdkTelemetry;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.function.Supplier;
@@ -18,6 +18,7 @@ public final class DmrvnClient {
     private final GreenfieldStorage storage;
     private final DeclaredMethodology methodology;
     private final OperationJournal journal;
+    private final SdkTelemetry telemetry;
     private final Map<String, Map<String, Object>> observations = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** One operating wallet signs provenance/approval and pays Relay gas. No durable journal needed. */
@@ -30,16 +31,23 @@ public final class DmrvnClient {
     public DmrvnClient(DmrvnConfig config, EvmRpc rpc, EvmSigner operator,
                        GreenfieldStorage storage, DeclaredMethodology methodology,
                        OperationJournal journal) {
+        this(config, rpc, operator, storage, methodology, journal, SdkTelemetry.local());
+    }
+
+    public DmrvnClient(DmrvnConfig config, EvmRpc rpc, EvmSigner operator,
+                       GreenfieldStorage storage, DeclaredMethodology methodology,
+                       OperationJournal journal, SdkTelemetry telemetry) {
         this.config = Objects.requireNonNull(config);
-        this.rpc = Objects.requireNonNull(rpc);
-        this.chain = new Chain(config, rpc);
-        this.operator = Objects.requireNonNull(operator);
-        this.storage = Objects.requireNonNull(storage);
+        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
+        this.rpc = telemetry.instrumentRpc(Objects.requireNonNull(rpc));
+        this.chain = new Chain(config, this.rpc);
+        this.operator = telemetry.instrumentSigner(Objects.requireNonNull(operator));
+        this.storage = telemetry.instrumentStorage(Objects.requireNonNull(storage));
         this.methodology = Objects.requireNonNull(methodology);
         this.suppliedJournal = journal;
         this.journal = journal == null ? new MemoryOperationJournal() : journal;
-        Crypto.address(operator.address());
-        Crypto.address(storage.address());
+        Crypto.address(operator.address(), "operator.address");
+        Crypto.address(storage.address(), "storage.address");
         require(config.greenfieldChainId().equals(storage.chainId()), Code.WRONG_CHAIN);
     }
 
@@ -53,8 +61,9 @@ public final class DmrvnClient {
 
     private static EvmSigner sameOperator(EvmSigner approver, EvmSigner relay) {
         require(approver != null && relay != null
-                && Crypto.address(approver.address()).equals(Crypto.address(relay.address())),
-                Code.INVALID_INPUT);
+                && Crypto.address(approver.address(), "approver.address")
+                        .equals(Crypto.address(relay.address(), "relay.address")),
+                Code.INVALID_INPUT, "approver/relay", "must specify the same non-null operating wallet");
         return approver;
     }
 
@@ -62,6 +71,11 @@ public final class DmrvnClient {
      * Performs reads only. Storage write/read and validator access require an actual object test.
      */
     public Map<String, Object> preflight() {
+        return telemetry.observe("DmrvnClient.preflight", null,
+                () -> preflightImpl());
+    }
+
+    private Map<String, Object> preflightImpl() {
         var checks = new LinkedHashMap<String, Object>();
         check(
                 checks,
@@ -109,7 +123,7 @@ public final class DmrvnClient {
                         .map(Json::map)
                         .allMatch(v -> Boolean.TRUE.equals(v.get("ok"))),
                 "verifiedMetadata",
-                Json.map(checks.get("deployment")).get("value"),
+                Json.map(checks.get("deployment"), "deployment").get("value"),
                 "approver",
                 Crypto.address(operator.address()),
                 "relay",
@@ -120,16 +134,17 @@ public final class DmrvnClient {
                 checks);
     }
 
-    private static void check(Map<String, Object> result, String name, Supplier<Object> fn) {
+    private void check(Map<String, Object> result, String name, Supplier<Object> fn) {
         try {
-            result.put(name, Json.obj("ok", true, "value", fn.get()));
+            result.put(name, Json.obj("ok", true, "value", telemetry.step("DmrvnClient.preflight." + name, fn)));
         } catch (DmrvnException e) {
-            result.put(name, Json.obj("ok", false, "code", e.code().name()));
+            result.put(name, Json.obj("ok", false, "code", e.code().name(), "message", e.getMessage()));
         }
     }
 
     private static String operationKey(String id) {
-        require(id != null && id.matches("[A-Za-z0-9:_-]{1,128}"), Code.INVALID_INPUT);
+        require(id != null && id.matches("[A-Za-z0-9:_-]{1,128}"), Code.INVALID_INPUT,
+                "operationId", "must contain 1 to 128 letters, digits, colons, underscores or hyphens");
         return "operation:" + id;
     }
 
@@ -173,6 +188,7 @@ public final class DmrvnClient {
         require(
                 configurationFingerprint().equals(s.get("configurationFingerprint")),
                 Code.OPERATION_INPUT_CHANGED);
+        logKnownState(s);
         return s;
     }
 
@@ -184,7 +200,7 @@ public final class DmrvnClient {
         try {
             if (writing) config.deployment().requireWritable();
             if (state.containsKey("deployment"))
-                config.deployment().assertCompatible(Json.map(state.get("deployment")));
+                config.deployment().assertCompatible(Json.map(state.get("deployment"), "deployment"));
             var verified = chain.verifyDeployment();
             // Pre-migration direct records can be enriched only from their exact original route.
             if (!state.containsKey("deployment")) {
@@ -233,8 +249,8 @@ public final class DmrvnClient {
     }
 
     private void verifyBeforeSubmission(Map<String, Object> state) {
-        var approved = Json.map(state.get("approved"));
-        var request = Json.map(approved.get("claimRequest"));
+        var approved = Json.map(state.get("approved"), "approved");
+        var request = Json.map(approved.get("claimRequest"), "claimRequest");
         String signer =
                 Crypto.recover(
                         DmrvnProtocol.digest(
@@ -242,9 +258,9 @@ public final class DmrvnClient {
                                 DmrvnProtocol.domain(
                                         config.chainId(), config.claimAddress(), false),
                                 request),
-                        Json.str(approved.get("approvalSignature")));
+                        Json.str(approved.get("approvalSignature"), "approvalSignature"));
         DmrvnProtocol.verifyProvenance(
-                Json.map(state.get("evidence")), Json.str(request.get("evidenceHash")), signer);
+                Json.map(state.get("evidence"), "evidence"), Json.str(request.get("evidenceHash"), "evidenceHash"), signer);
         chain.verifyApprover(signer);
         validateCurrent(request);
     }
@@ -256,9 +272,22 @@ public final class DmrvnClient {
     }
 
     private void save(String key, Map<String, Object> state) {
+        logKnownState(state);
         // Preserve observed facts even if the consumer's optional journal write fails.
         observations.put(key, Json.copy(state));
         journal.store(key, Json.copy(state));
+    }
+
+    private void logKnownState(Map<String, Object> state) {
+        Object phase = state.get("phase");
+        if (phase instanceof String name) {
+            try { telemetry.checkpoint(SdkTelemetry.State.valueOf(name)); }
+            catch (IllegalArgumentException ignored) { /* unknown journal fields are not logged */ }
+        }
+        if ("CONFIRMED".equals(state.get("submissionStatus"))) {
+            telemetry.submissionConfirmed();
+            telemetry.checkpoint(SdkTelemetry.State.SUBMISSION_CONFIRMED);
+        }
     }
 
     private static void reserve(OperationJournal journal, String key, String operation) {
@@ -279,11 +308,21 @@ public final class DmrvnClient {
             String beneficiary,
             String objectName,
             Map<String, Object> evidenceBody) {
+        return telemetry.observe("DmrvnClient.prepareEvidence", operationId,
+                () -> prepareEvidenceImpl(operationId, claimId, beneficiary, objectName, evidenceBody));
+    }
+
+    private Map<String, Object> prepareEvidenceImpl(
+            String operationId,
+            String claimId,
+            String beneficiary,
+            String objectName,
+            Map<String, Object> evidenceBody) {
         String key = operationKey(operationId),
-                id = Crypto.bytes32(claimId),
-                user = Crypto.address(beneficiary);
+                id = Crypto.bytes32(claimId, "claimId"),
+                user = Crypto.address(beneficiary, "beneficiary");
         config.checkObject(objectName);
-        var body = Json.copy(evidenceBody);
+        var body = Json.copy(evidenceBody, "evidenceBody");
         methodology.validate(body, config.partnerId(), user);
         String fingerprint =
                 Json.hash(
@@ -389,7 +428,8 @@ public final class DmrvnClient {
                                         operator.address(),
                                         "sourceSignature",
                                         signature));
-                        require(Json.bytes(evidence).length <= 1024 * 1024, Code.INVALID_INPUT);
+                        require(Json.bytes(evidence).length <= 1024 * 1024, Code.INVALID_INPUT,
+                                "evidence", "serialized Evidence including provenance must not exceed 1048576 bytes");
                         state.put("evidence", evidence);
                         state.put("phase", "EVIDENCE_SIGNED");
                         save(key, state);
@@ -407,32 +447,21 @@ public final class DmrvnClient {
                                     objectName);
                     state.put("evidenceLocation", location);
                     save(key, state);
-                    var head = storage.head(location);
-                    if (!head.exists()) {
-                        // A previous create attempt may still be pending. Absence is not proof it
-                        // was never sent.
-                        require(!state.containsKey("createIntent"), Code.STORAGE_CREATE_UNRESOLVED);
+                    // New objects are created explicitly. A failed HEAD must never be interpreted
+                    // as permission to create, and a failed create must not trigger recovery.
+                    if (!state.containsKey("createIntent") && !state.containsKey("createTxHash")) {
                         state.put("createIntent", true);
                         save(key, state);
-                        String txHash;
-                        try {
-                            txHash = storage.create(location, bytes);
-                        } catch (DmrvnException e) {
-                            if (e.definitelyNotBroadcast() || e.definitelyRejected()) {
-                                state.remove("createIntent");
-                                state.put("lastStorageError", e.code().name());
-                                save(key, state);
-                            }
-                            throw e;
-                        }
+                        String txHash = storage.create(location, bytes);
                         require(
                                 txHash != null && !txHash.isBlank(),
                                 Code.STORAGE_CREATE_UNRESOLVED);
                         state.put("createTxHash", txHash);
                         state.put("phase", "EVIDENCE_CREATE_BROADCAST");
                         save(key, state);
-                        head = storage.head(location);
                     }
+                    require(state.get("createTxHash") instanceof String, Code.STORAGE_CREATE_UNRESOLVED);
+                    var head = storage.head(location);
                     if (head.exists()) {
                         state.put("objectExists", true);
                         save(key, state);
@@ -441,7 +470,7 @@ public final class DmrvnClient {
                         require(
                                 state.get("createTxHash") instanceof String,
                                 Code.STORAGE_CREATE_UNRESOLVED);
-                        storage.upload(location, bytes, Json.str(state.get("createTxHash")));
+                        storage.upload(location, bytes, Json.str(state.get("createTxHash"), "createTxHash"));
                     }
                     require(storage.head(location).sealed(), Code.OBJECT_UNSEALED);
                     require(Arrays.equals(bytes, storage.read(location)), Code.STORAGE_MISMATCH);
@@ -457,7 +486,6 @@ public final class DmrvnClient {
                                     "SEALED");
                     state.put("upload", upload);
                     state.put("phase", "EVIDENCE_SEALED");
-                    state.remove("lastStorageError");
                     save(key, state);
                     return Json.copy(state);
                 });
@@ -468,6 +496,11 @@ public final class DmrvnClient {
      * again.
      */
     public void recoverCreateTransaction(String operationId, String createTxHash) {
+        telemetry.observeVoid("DmrvnClient.recoverCreateTransaction", operationId,
+                () -> recoverCreateTransactionImpl(operationId, createTxHash));
+    }
+
+    private void recoverCreateTransactionImpl(String operationId, String createTxHash) {
         String key = operationKey(operationId);
         journal.withLock(
                 key,
@@ -478,7 +511,7 @@ public final class DmrvnClient {
                             Code.OPERATION_NOT_PREPARED);
                     require(
                             storage.matchesCreateTransaction(
-                                    Json.map(s.get("evidenceLocation")), createTxHash),
+                                    Json.map(s.get("evidenceLocation"), "evidenceLocation"), createTxHash),
                             Code.STORAGE_MISMATCH);
                     if (s.containsKey("createTxHash"))
                         require(
@@ -494,6 +527,11 @@ public final class DmrvnClient {
      * Creates one common Claim approval after checking actual storage and the approved methodology.
      */
     public Map<String, Object> approveClaim(String operationId) {
+        return telemetry.observe("DmrvnClient.approveClaim", operationId,
+                () -> approveClaimImpl(operationId));
+    }
+
+    private Map<String, Object> approveClaimImpl(String operationId) {
         String key = operationKey(operationId);
         return journal.withLock(
                 key,
@@ -501,20 +539,20 @@ public final class DmrvnClient {
                     var s = required(key);
                     require(s.containsKey("upload"), Code.OPERATION_NOT_PREPARED);
                     verifyState(key, s, true);
-                    if (s.containsKey("approved")) return Json.copy(Json.map(s.get("approved")));
+                    if (s.containsKey("approved")) return Json.copy(Json.map(s.get("approved"), "approved"));
                     chain.verifyApprover(operator.address());
                     DmrvnProtocol.verifyProvenance(
-                            Json.map(s.get("evidence")),
+                            Json.map(s.get("evidence"), "evidence"),
                             Json.hash(s.get("evidence")),
                             operator.address());
                     methodology.verifyActive();
-                    var location = Json.map(s.get("evidenceLocation"));
+                    var location = Json.map(s.get("evidenceLocation"), "evidenceLocation");
                     require(storage.head(location).sealed(), Code.OBJECT_UNSEALED);
                     require(
                             Arrays.equals(Json.bytes(s.get("evidence")), storage.read(location)),
                             Code.STORAGE_MISMATCH);
-                    String user = Json.str(s.get("beneficiary"));
-                    methodology.validate(Json.map(s.get("body")), config.partnerId(), user);
+                    String user = Json.str(s.get("beneficiary"), "beneficiary");
+                    methodology.validate(Json.map(s.get("body"), "body"), config.partnerId(), user);
                     return journal.withLock(
                             beneficiaryKey(user),
                             () -> {
@@ -548,7 +586,7 @@ public final class DmrvnClient {
                                     s.put("claimRequest", request);
                                     save(key, s);
                                 }
-                                var request = Json.map(s.get("claimRequest"));
+                                var request = Json.map(s.get("claimRequest"), "claimRequest");
                                 validateCurrent(request);
                                 var domain =
                                         DmrvnProtocol.domain(
@@ -588,124 +626,76 @@ public final class DmrvnClient {
             String beneficiary,
             String objectName,
             Map<String, Object> evidenceBody) {
+        return telemetry.observe("DmrvnClient.prepare", operationId,
+                () -> prepareImpl(operationId, claimId, beneficiary, objectName, evidenceBody));
+    }
+
+    private Map<String, Object> prepareImpl(
+            String operationId,
+            String claimId,
+            String beneficiary,
+            String objectName,
+            Map<String, Object> evidenceBody) {
         prepareEvidence(operationId, claimId, beneficiary, objectName, evidenceBody);
         return approveClaim(operationId);
     }
 
     /**
      * One call: authorized wallet lookup/creation, Evidence construction, Greenfield seal/read,
-     * approval, beneficiary signature, Relay send and bounded receipt/Claim confirmation.
+     * approval, beneficiary signature, Relay send and one receipt/Claim confirmation check.
      * Each invocation is independent: no automatic retries, restart recovery or deduplication.
-     * UNKNOWN is not proof of failure and must not trigger blind resubmission.
-     * Only confirmed facts are returned; no reusable signatures are exposed.
+     * Errors propagate to the caller unchanged; no FAILED/UNKNOWN outcome is synthesized.
+     * Only successful confirmation returns a result; no reusable signatures are exposed.
      */
     public Map<String, Object> submitActivity(BeneficiaryWallets wallets, ActivityRequest request) {
+        String operationId = UUID.randomUUID().toString();
+        return telemetry.observe("DmrvnClient.submitActivity", operationId,
+                () -> submitActivityImpl(wallets, request, operationId));
+    }
+
+    private Map<String, Object> submitActivityImpl(
+            BeneficiaryWallets wallets, ActivityRequest request, String operationId) {
         Objects.requireNonNull(wallets);
         Objects.requireNonNull(request);
-        String operationId = UUID.randomUUID().toString();
         String claimId = request.claimId() == null
                 ? Crypto.textHash(config.deploymentId() + ":" + operationId) : request.claimId();
         String objectName = request.objectName() == null
                 ? config.objectPrefix() + "activities/" + methodology.activityId() + "/"
                         + operationId + "/evidence.json" : request.objectName();
         // Volatile state is call-scoped. A supplied journal records steps for the consumer only.
-        var run = new DmrvnClient(config, rpc, operator, storage, methodology, suppliedJournal);
+        var run = new DmrvnClient(config, rpc, operator, storage, methodology, suppliedJournal, telemetry);
         Map<String, Object> known = Json.obj("deploymentId", config.deploymentId(),
                 "chainId", config.chainId(), "claimAddress", config.claimAddress(),
                 "claimId", claimId, "operationId", operationId, "sourceEventId", request.sourceEventId());
         var requested = Json.obj("evidenceLocation", Json.obj("storageType", 1,
                 "chainId", config.greenfieldChainId(), "bucketName", config.bucketName(),
                 "objectName", objectName));
-        String stage = "REQUEST_ACCEPTED";
-        try {
-            config.checkObject(objectName);
-            methodology.requireExplicitEvidenceVersion();
-            EvmSigner user = Objects.requireNonNull(
-                    wallets.getOrCreateSigner(config.partnerId(), request.userId()));
-            known.put("beneficiary", Crypto.address(user.address()));
-            stage = "BENEFICIARY_READY";
-            var body = methodology.evidenceBody(config.partnerId(), user.address(),
-                    request.sourceEventId(), request.inputs());
-            var sent = run.submitActivity(user, operationId, claimId, objectName, body, request.gas());
-            if (!"CONFIRMED".equals(sent.get("status"))) {
-                long until = System.nanoTime() + request.confirmationTimeout().toNanos();
-                while (true) {
-                    try {
-                        sent = run.resolveSubmission(operationId, (String) sent.get("txHash"));
-                        break;
-                    } catch (DmrvnException e) {
-                        if (e.code() != Code.SUBMISSION_UNRESOLVED) throw e;
-                        long remaining = until - System.nanoTime();
-                        if (remaining <= 0) throw e;
-                        try {
-                            java.util.concurrent.TimeUnit.NANOSECONDS.sleep(
-                                    Math.min(remaining, request.pollInterval().toNanos()));
-                        } catch (InterruptedException interrupted) {
-                            Thread.currentThread().interrupt();
-                            throw new DmrvnException(Code.INTERRUPTED);
-                        }
-                    }
-                }
-            }
-            var state = run.observations.get(operationKey(operationId));
-            addConfirmedFacts(known, state);
-            return Json.obj("outcome", "CONFIRMED", "lastConfirmedStage", "SUBMISSION_CONFIRMED",
-                    "confirmed", known, "requested", requested);
-        } catch (RuntimeException error) {
-            // Never expose arbitrary adapter messages, causes, credentials or signature snapshots.
-            var state = run.observations.get(operationKey(operationId));
-            Code code = error instanceof DmrvnException e ? e.code()
-                    : error instanceof IllegalArgumentException ? Code.INVALID_INPUT
-                    : error instanceof SecurityException ? Code.UNAUTHORIZED_SIGNER : Code.RPC_UNAVAILABLE;
-            boolean uncertain = code == Code.SUBMISSION_UNRESOLVED
-                    || code == Code.STORAGE_CREATE_UNRESOLVED
-                    || ("REQUEST_ACCEPTED".equals(stage)
-                        && (code == Code.RPC_UNAVAILABLE || code == Code.INTERRUPTED));
-            if (error instanceof PrivyApiException e) {
-                code = switch (e.code()) {
-                    case INVALID_CREDENTIALS, FORBIDDEN -> Code.UNAUTHORIZED_SIGNER;
-                    case INTERRUPTED -> Code.INTERRUPTED;
-                    default -> Code.RPC_UNAVAILABLE;
-                };
-                uncertain = "REQUEST_ACCEPTED".equals(stage)
-                        && switch (e.code()) {
-                            case UNAVAILABLE, INVALID_RESPONSE, INTERRUPTED -> true;
-                            default -> false;
-                        };
-            }
-            if (state != null) {
-                addConfirmedFacts(known, state);
-                stage = confirmedStage(state, stage);
-                uncertain = state.containsKey("submitFromBlock")
-                        || (state.containsKey("createIntent") && !state.containsKey("upload"));
-            }
-            return Json.obj("outcome", "SUBMISSION_CONFIRMED".equals(stage) ? "CONFIRMED"
-                            : uncertain ? "UNKNOWN" : "FAILED",
-                    "lastConfirmedStage", stage, "confirmed", known, "requested", requested,
-                    "errorCode", code.name());
+        config.checkObject(objectName);
+        methodology.requireExplicitEvidenceVersion();
+        EvmSigner user = telemetry.step("BeneficiaryWallets.getOrCreateSigner", () -> Objects.requireNonNull(
+                wallets.getOrCreateSigner(config.partnerId(), request.userId())));
+        known.put("beneficiary", Crypto.address(user.address()));
+        var body = telemetry.step("Evidence.build", () -> methodology.evidenceBody(config.partnerId(), user.address(),
+                request.sourceEventId(), request.inputs()));
+        var sent = run.submitActivity(user, operationId, claimId, objectName, body, request.gas());
+        if (!"CONFIRMED".equals(sent.get("status"))) {
+            sent = run.resolveSubmission(operationId, (String) sent.get("txHash"));
         }
-    }
-
-    private static String confirmedStage(Map<String, Object> state, String fallback) {
-        if ("CONFIRMED".equals(state.get("submissionStatus"))) return "SUBMISSION_CONFIRMED";
-        if (state.containsKey("txHash")) return "SUBMISSION_BROADCAST";
-        if (state.containsKey("userSignature")) return "BENEFICIARY_SIGNED";
-        if (state.containsKey("approved")) return "CLAIM_APPROVED";
-        if (state.containsKey("upload")) return "EVIDENCE_SEALED";
-        if (state.containsKey("createTxHash")) return "EVIDENCE_CREATE_BROADCAST";
-        if (state.containsKey("evidence")) return "EVIDENCE_SIGNED";
-        return fallback;
+        var state = run.observations.get(operationKey(operationId));
+        addConfirmedFacts(known, state);
+        return Json.obj("outcome", "CONFIRMED", "lastConfirmedStage", "SUBMISSION_CONFIRMED",
+                "confirmed", known, "requested", requested);
     }
 
     private static void addConfirmedFacts(Map<String, Object> known, Map<String, Object> state) {
         if (state.containsKey("evidence")) known.put("evidenceHash", Json.hash(state.get("evidence")));
         if (state.containsKey("createTxHash")) known.put("createTxHash", state.get("createTxHash"));
         if (Boolean.TRUE.equals(state.get("objectExists")) || state.containsKey("upload"))
-            known.put("evidenceLocation", Json.copy(Json.map(state.get("evidenceLocation"))));
+            known.put("evidenceLocation", Json.copy(Json.map(state.get("evidenceLocation"), "evidenceLocation")));
         if (state.containsKey("upload")) known.put("storageStatus", "SEALED");
         if (state.containsKey("submitFromBlock")) known.put("submissionFromBlock", state.get("submitFromBlock"));
         if (state.containsKey("txHash")) known.put("txHash", state.get("txHash"));
-        if (state.containsKey("receipt")) known.put("receipt", Json.copy(Json.map(state.get("receipt"))));
+        if (state.containsKey("receipt")) known.put("receipt", Json.copy(Json.map(state.get("receipt"), "receipt")));
         if (state.containsKey("chainStatus")) known.put("chainStatus", state.get("chainStatus"));
     }
 
@@ -718,6 +708,18 @@ public final class DmrvnClient {
      * to recover without resending an unresolved transaction.
      */
     public Map<String, Object> submitActivity(
+            UserWalletClient wallets,
+            String userId,
+            String operationId,
+            String claimId,
+            String objectName,
+            Map<String, Object> evidenceBody,
+            String gas) {
+        return telemetry.observe("DmrvnClient.submitActivity", operationId,
+                () -> submitActivityImpl(wallets, userId, operationId, claimId, objectName, evidenceBody, gas));
+    }
+
+    private Map<String, Object> submitActivityImpl(
             UserWalletClient wallets,
             String userId,
             String operationId,
@@ -738,15 +740,26 @@ public final class DmrvnClient {
             String objectName,
             Map<String, Object> evidenceBody,
             String gas) {
+        return telemetry.observe("DmrvnClient.submitActivity", operationId,
+                () -> submitActivityImpl(telemetry.instrumentSigner(userSigner), operationId, claimId, objectName, evidenceBody, gas));
+    }
+
+    private Map<String, Object> submitActivityImpl(
+            EvmSigner userSigner,
+            String operationId,
+            String claimId,
+            String objectName,
+            Map<String, Object> evidenceBody,
+            String gas) {
         Objects.requireNonNull(userSigner);
         String key = operationKey(operationId);
-        BigInteger gasValue = Crypto.uint(gas, 256);
+        BigInteger gasValue = Crypto.uint(gas, 256, "gas");
         require(
                 gasValue.compareTo(BigInteger.valueOf(100000)) >= 0
                         && gasValue.compareTo(BigInteger.valueOf(2000000)) <= 0,
-                Code.INVALID_INPUT);
-        var body = Json.copy(evidenceBody);
-        String beneficiary = Crypto.address(userSigner.address());
+                Code.INVALID_INPUT, "gas", "must be between 100000 and 2000000 inclusive");
+        var body = Json.copy(evidenceBody, "evidenceBody");
+        String beneficiary = Crypto.address(userSigner.address(), "beneficiary");
         // A separate workflow lock serializes signing across composed calls without recursively
         // acquiring the operation lock used by each existing durable step.
         return journal.withLock(
@@ -760,20 +773,20 @@ public final class DmrvnClient {
                         // broadcast intent. Only reconcile the exact original submission.
                         require("SPONSORED".equals(state.get("submissionMode")),
                                 Code.SUBMISSION_INPUT_CHANGED);
-                        signingRequest = Json.map(state.get("sponsored"));
-                        require(gas.equals(Json.map(signingRequest.get("forwardRequest")).get("gas")),
+                        signingRequest = Json.map(state.get("sponsored"), "sponsored");
+                        require(gas.equals(Json.map(signingRequest.get("forwardRequest"), "forwardRequest").get("gas")),
                                 Code.SUBMISSION_INPUT_CHANGED);
                     } else {
                         approveClaim(operationId);
                         signingRequest = prepareSponsored(operationId, gas);
                     }
-                    var forward = Json.map(signingRequest.get("forwardRequest"));
+                    var forward = Json.map(signingRequest.get("forwardRequest"), "forwardRequest");
                     String signature = (String) state.get("userSignature");
                     if (signature == null) {
                         require(!state.containsKey("submitFromBlock"), Code.SUBMISSION_UNRESOLVED);
                         signature = userSigner.signTypedData(
                                 DmrvnProtocol.typedData(
-                                        "ForwardRequest", Json.map(signingRequest.get("domain")), forward));
+                                        "ForwardRequest", Json.map(signingRequest.get("domain"), "domain"), forward));
                         recordSponsoredSignature(operationId, forward, signature);
                     }
                     return submitSponsored(operationId, forward, signature);
@@ -782,13 +795,13 @@ public final class DmrvnClient {
 
     private void validateCurrent(Map<String, Object> request) {
         require(
-                Crypto.uint(request.get("deadline"), 64)
+                Crypto.uint(request.get("deadline"), 64, "deadline")
                                 .compareTo(BigInteger.valueOf(chain.timestamp()))
                         > 0,
                 Code.REQUEST_EXPIRED);
         require(
-                chain.nonce(Json.str(request.get("beneficiary")), false)
-                        .equals(Crypto.uint(request.get("nonce"), 256)),
+                chain.nonce(Json.str(request.get("beneficiary"), "beneficiary"), false)
+                        .equals(Crypto.uint(request.get("nonce"), 256, "nonce")),
                 Code.NONCE_CONFLICT);
     }
 
@@ -809,12 +822,17 @@ public final class DmrvnClient {
      * rewritten.
      */
     public Map<String, Object> prepareSponsored(String operationId, String gas) {
+        return telemetry.observe("DmrvnClient.prepareSponsored", operationId,
+                () -> prepareSponsoredImpl(operationId, gas));
+    }
+
+    private Map<String, Object> prepareSponsoredImpl(String operationId, String gas) {
         String key = operationKey(operationId);
-        BigInteger gasValue = Crypto.uint(gas, 256);
+        BigInteger gasValue = Crypto.uint(gas, 256, "gas");
         require(
                 gasValue.compareTo(BigInteger.valueOf(100000)) >= 0
                         && gasValue.compareTo(BigInteger.valueOf(2000000)) <= 0,
-                Code.INVALID_INPUT);
+                Code.INVALID_INPUT, "gas", "must be between 100000 and 2000000 inclusive");
         return journal.withLock(
                 key,
                 () -> {
@@ -824,14 +842,14 @@ public final class DmrvnClient {
                             !"SELF_PAID".equals(s.get("submissionMode")),
                             Code.SUBMISSION_INPUT_CHANGED);
                     if (s.containsKey("sponsored")) {
-                        var existing = Json.map(s.get("sponsored"));
+                        var existing = Json.map(s.get("sponsored"), "sponsored");
                         require(
-                                gas.equals(Json.map(existing.get("forwardRequest")).get("gas")),
+                                gas.equals(Json.map(existing.get("forwardRequest"), "forwardRequest").get("gas")),
                                 Code.SUBMISSION_INPUT_CHANGED);
                         return Json.copy(existing);
                     }
-                    var a = Json.map(s.get("approved"));
-                    var request = Json.map(a.get("claimRequest"));
+                    var a = Json.map(s.get("approved"), "approved");
+                    var request = Json.map(a.get("claimRequest"), "claimRequest");
                     verifyBeforeSubmission(s);
                     var forward =
                             Json.obj(
@@ -844,7 +862,7 @@ public final class DmrvnClient {
                                     "gas",
                                     gas,
                                     "nonce",
-                                    chain.nonce(Json.str(request.get("beneficiary")), true)
+                                    chain.nonce(Json.str(request.get("beneficiary"), "beneficiary"), true)
                                             .toString(),
                                     "deadline",
                                     request.get("deadline"),
@@ -877,6 +895,11 @@ public final class DmrvnClient {
      * transaction.
      */
     public Map<String, Object> prepareSelfPaid(String operationId) {
+        return telemetry.observe("DmrvnClient.prepareSelfPaid", operationId,
+                () -> prepareSelfPaidImpl(operationId));
+    }
+
+    private Map<String, Object> prepareSelfPaidImpl(String operationId) {
         String key = operationKey(operationId);
         return journal.withLock(
                 key,
@@ -893,7 +916,7 @@ public final class DmrvnClient {
                         s.put("phase", "BROADCAST_INTENT");
                         save(key, s);
                     }
-                    return selfPaid(Json.map(s.get("approved")));
+                    return selfPaid(Json.map(s.get("approved"), "approved"));
                 });
     }
 
@@ -902,8 +925,14 @@ public final class DmrvnClient {
      */
     public Map<String, Object> recordSponsoredSignature(
             String operationId, Map<String, Object> forwardRequest, String userSignature) {
+        return telemetry.observe("DmrvnClient.recordSponsoredSignature", operationId,
+                () -> recordSponsoredSignatureImpl(operationId, forwardRequest, userSignature));
+    }
+
+    private Map<String, Object> recordSponsoredSignatureImpl(
+            String operationId, Map<String, Object> forwardRequest, String userSignature) {
         String key = operationKey(operationId);
-        var forward = Json.copy(forwardRequest);
+        var forward = Json.copy(forwardRequest, "forwardRequest");
         return journal.withLock(
                 key,
                 () -> {
@@ -916,7 +945,7 @@ public final class DmrvnClient {
                             Json.hash(forward)
                                     .equals(
                                             Json.hash(
-                                                    Json.map(s.get("sponsored"))
+                                                    Json.map(s.get("sponsored"), "sponsored")
                                                             .get("forwardRequest"))),
                             Code.SUBMISSION_INPUT_CHANGED);
                     verifyState(key, s, true);
@@ -929,11 +958,11 @@ public final class DmrvnClient {
                                     forward);
                     require(
                             Crypto.recover(digest, userSignature)
-                                    .equals(Crypto.address(Json.str(forward.get("from")))),
+                                    .equals(Crypto.address(Json.str(forward.get("from"), "from"), "from")),
                             Code.SIGNATURE_INVALID);
                     require(
-                            chain.nonce(Json.str(forward.get("from")), true)
-                                    .equals(Crypto.uint(forward.get("nonce"), 256)),
+                            chain.nonce(Json.str(forward.get("from"), "from"), true)
+                                    .equals(Crypto.uint(forward.get("nonce"), 256, "nonce")),
                             Code.NONCE_CONFLICT);
                     persistSignature(key, s, forward, userSignature, digest);
                     return Json.obj(
@@ -944,7 +973,7 @@ public final class DmrvnClient {
                             "forwardDigest",
                             digest,
                             "deployment",
-                            Json.copy(Json.map(s.get("deployment"))));
+                            Json.copy(Json.map(s.get("deployment"), "deployment")));
                 });
     }
 
@@ -970,8 +999,14 @@ public final class DmrvnClient {
     /** Verifies the saved app signature and sends at most once; upgrades never regenerate it. */
     public Map<String, Object> submitSponsored(
             String operationId, Map<String, Object> forwardRequest, String userSignature) {
+        return telemetry.observe("DmrvnClient.submitSponsored", operationId,
+                () -> submitSponsoredImpl(operationId, forwardRequest, userSignature));
+    }
+
+    private Map<String, Object> submitSponsoredImpl(
+            String operationId, Map<String, Object> forwardRequest, String userSignature) {
         String key = operationKey(operationId);
-        var forward = Json.copy(forwardRequest);
+        var forward = Json.copy(forwardRequest, "forwardRequest");
         String fingerprint =
                 Json.hash(Json.obj("forwardRequest", forward, "userSignature", userSignature));
         return journal.withLock(
@@ -986,7 +1021,7 @@ public final class DmrvnClient {
                             Json.hash(forward)
                                     .equals(
                                             Json.hash(
-                                                    Json.map(s.get("sponsored"))
+                                                    Json.map(s.get("sponsored"), "sponsored")
                                                             .get("forwardRequest"))),
                             Code.SUBMISSION_INPUT_CHANGED);
                     if (s.containsKey("submissionFingerprint"))
@@ -994,9 +1029,8 @@ public final class DmrvnClient {
                                 fingerprint.equals(s.get("submissionFingerprint")),
                                 Code.SUBMISSION_INPUT_CHANGED);
                     if (s.containsKey("submitFromBlock")) {
-                        var found = resolveLocked(key, s, null);
-                        if (found != null) return found;
-                        throw new DmrvnException(Code.SUBMISSION_UNRESOLVED);
+                        throw new DmrvnException(Code.SUBMISSION_UNRESOLVED,
+                                "SUBMISSION_UNRESOLVED: submission intent already exists; use resolveSubmission explicitly to inspect the existing transaction");
                     }
                     verifyState(key, s, true);
                     verifyBeforeSubmission(s);
@@ -1008,11 +1042,11 @@ public final class DmrvnClient {
                                     forward);
                     require(
                             Crypto.recover(digest, userSignature)
-                                    .equals(Crypto.address(Json.str(forward.get("from")))),
+                                    .equals(Crypto.address(Json.str(forward.get("from"), "from"), "from")),
                             Code.SIGNATURE_INVALID);
                     require(
-                            chain.nonce(Json.str(forward.get("from")), true)
-                                    .equals(Crypto.uint(forward.get("nonce"), 256)),
+                            chain.nonce(Json.str(forward.get("from"), "from"), true)
+                                    .equals(Crypto.uint(forward.get("nonce"), 256, "nonce")),
                             Code.NONCE_CONFLICT);
                     var call = DmrvnProtocol.forwardCall(forward, userSignature);
                     require(
@@ -1103,31 +1137,27 @@ public final class DmrvnClient {
                                                         + ":"
                                                         + fingerprint));
                                 save(key, s);
-                                try {
-                                    String txHash =
-                                            operator.sendTransaction(
-                                                    config.chainId(),
-                                                    Json.copy(tx),
-                                                    Json.str(s.get("relayIdempotencyKey")));
-                                    s.put("txHash", Crypto.bytes32(txHash));
-                                    s.put("phase", "SUBMITTED");
-                                    save(key, s);
-                                    return Json.obj(
-                                            "operationId",
-                                            operationId,
-                                            "deploymentId",
-                                            config.deploymentId(),
-                                            "claimId",
-                                            s.get("claimId"),
-                                            "txHash",
-                                            txHash,
-                                            "status",
-                                            "BROADCAST",
-                                            "recovered",
-                                            false);
-                                } catch (RuntimeException error) {
-                                    throw new DmrvnException(Code.SUBMISSION_UNRESOLVED);
-                                }
+                                String txHash =
+                                        operator.sendTransaction(
+                                                config.chainId(),
+                                                Json.copy(tx),
+                                                Json.str(s.get("relayIdempotencyKey"), "relayIdempotencyKey"));
+                                s.put("txHash", Crypto.bytes32(txHash, "txHash"));
+                                s.put("phase", "SUBMITTED");
+                                save(key, s);
+                                return Json.obj(
+                                        "operationId",
+                                        operationId,
+                                        "deploymentId",
+                                        config.deploymentId(),
+                                        "claimId",
+                                        s.get("claimId"),
+                                        "txHash",
+                                        txHash,
+                                        "status",
+                                        "BROADCAST",
+                                        "recovered",
+                                        false);
                             });
                 });
     }
@@ -1137,6 +1167,11 @@ public final class DmrvnClient {
      * transaction is sent.
      */
     public Map<String, Object> resolveSubmission(String operationId, String txHash) {
+        return telemetry.observe("DmrvnClient.resolveSubmission", operationId,
+                () -> resolveSubmissionImpl(operationId, txHash));
+    }
+
+    private Map<String, Object> resolveSubmissionImpl(String operationId, String txHash) {
         String key = operationKey(operationId);
         return journal.withLock(
                 key,
@@ -1144,7 +1179,8 @@ public final class DmrvnClient {
                     var s = approved(key);
                     require(s.containsKey("submitFromBlock"), Code.OPERATION_NOT_PREPARED);
                     var result = resolveLocked(key, s, txHash);
-                    if (result == null) throw new DmrvnException(Code.SUBMISSION_UNRESOLVED);
+                    if (result == null) throw new DmrvnException(Code.SUBMISSION_UNRESOLVED,
+                            "SUBMISSION_UNRESOLVED: Claim, transaction or receipt is not yet confirmed; automatic polling is disabled");
                     return result;
                 });
     }
@@ -1153,14 +1189,14 @@ public final class DmrvnClient {
             String key, Map<String, Object> s, String suppliedHash) {
         verifyState(key, s, false);
         long head = chain.confirmedHead();
-        var a = Json.map(s.get("approved"));
-        var request = Json.map(a.get("claimRequest"));
-        String id = Json.str(request.get("claimId"));
+        var a = Json.map(s.get("approved"), "approved");
+        var request = Json.map(a.get("claimRequest"), "claimRequest");
+        String id = Json.str(request.get("claimId"), "claimId");
         String txHash =
-                suppliedHash != null ? Crypto.bytes32(suppliedHash) : (String) s.get("txHash");
+                suppliedHash != null ? Crypto.bytes32(suppliedHash, "txHash") : (String) s.get("txHash");
         if (s.containsKey("txHash") && txHash != null)
             require(
-                    txHash.equalsIgnoreCase(Json.str(s.get("txHash"))),
+                    txHash.equalsIgnoreCase(Json.str(s.get("txHash"), "txHash")),
                     Code.SUBMISSION_INPUT_CHANGED);
         var claim = chain.claim(id, head);
         if ("0".equals(String.valueOf(claim.get("status")))) return null;
@@ -1176,8 +1212,8 @@ public final class DmrvnClient {
                     String.valueOf(request.get(field)).equals(String.valueOf(claim.get(field))),
                     Code.SUBMISSION_INPUT_CHANGED);
         require(
-                Crypto.address(Json.str(request.get("beneficiary")))
-                        .equals(Crypto.address(Json.str(claim.get("beneficiary")))),
+                Crypto.address(Json.str(request.get("beneficiary"), "beneficiary"), "beneficiary")
+                        .equals(Crypto.address(Json.str(claim.get("beneficiary"), "beneficiary"), "beneficiary")),
                 Code.SUBMISSION_INPUT_CHANGED);
         String signer =
                 Crypto.recover(
@@ -1186,19 +1222,19 @@ public final class DmrvnClient {
                                 DmrvnProtocol.domain(
                                         config.chainId(), config.claimAddress(), false),
                                 request),
-                        Json.str(a.get("approvalSignature")));
+                        Json.str(a.get("approvalSignature"), "approvalSignature"));
         require(
-                signer.equals(Crypto.address(Json.str(claim.get("approver"))))
+                signer.equals(Crypto.address(Json.str(claim.get("approver"), "approver"), "approver"))
                         && DmrvnProtocol.evidenceLocationHash(
-                                        Json.map(request.get("evidenceLocation")))
+                                        Json.map(request.get("evidenceLocation"), "evidenceLocation"))
                                 .equals(claim.get("evidenceLocationHash"))
                         && Json.hash(request.get("evidenceLocation"))
                                 .equals(Json.hash(claim.get("evidenceLocation"))),
                 Code.SUBMISSION_INPUT_CHANGED);
         DmrvnProtocol.verifyProvenance(
-                Json.map(s.get("evidence")),
-                Json.str(claim.get("evidenceHash")),
-                Json.str(claim.get("approver")));
+                Json.map(s.get("evidence"), "evidence"),
+                Json.str(claim.get("evidenceHash"), "evidenceHash"),
+                Json.str(claim.get("approver"), "approver"));
         if (txHash == null)
             txHash =
                     chain.findTransaction(
@@ -1207,7 +1243,7 @@ public final class DmrvnClient {
                             ((Number) s.get("submitFromBlock")).longValue(),
                             head,
                             "nonce",
-                            Json.str(request.get("nonce")));
+                            Json.str(request.get("nonce"), "nonce"));
         if (txHash == null) return null;
         var receipt = chain.receipt(txHash, head);
         if (receipt == null) return null;
@@ -1218,7 +1254,7 @@ public final class DmrvnClient {
         if (txObject == null) return null;
         var tx = Json.map(txObject);
         require(
-                txHash.equalsIgnoreCase(Json.str(tx.get("hash")))
+                txHash.equalsIgnoreCase(Json.str(tx.get("hash"), "hash"))
                         && Objects.equals(tx.get("blockHash"), receipt.get("blockHash")),
                 Code.SUBMISSION_INPUT_CHANGED);
         var event = chain.event("MrvClaimRequested", receipt, id);
@@ -1243,34 +1279,34 @@ public final class DmrvnClient {
         boolean sponsored = "SPONSORED".equals(s.get("submissionMode"));
         String target = sponsored ? config.forwarderAddress() : config.claimAddress(),
                 sender =
-                        sponsored ? Json.str(s.get("relay")) : Json.str(request.get("beneficiary"));
+                        sponsored ? Json.str(s.get("relay"), "relay") : Json.str(request.get("beneficiary"), "beneficiary");
         String data =
                 sponsored
                         ? DmrvnProtocol.executeCalldata(
-                                Json.map(s.get("forwardRequest")), Json.str(s.get("userSignature")))
+                                Json.map(s.get("forwardRequest"), "forwardRequest"), Json.str(s.get("userSignature"), "userSignature"))
                         : DmrvnProtocol.submitCalldata(a);
         require(
-                target.equalsIgnoreCase(Json.str(receipt.get("to")))
-                        && target.equalsIgnoreCase(Json.str(tx.get("to")))
-                        && sender.equalsIgnoreCase(Json.str(receipt.get("from")))
-                        && sender.equalsIgnoreCase(Json.str(tx.get("from")))
-                        && data.equalsIgnoreCase(Json.str(tx.get("input")))
+                target.equalsIgnoreCase(Json.str(receipt.get("to"), "to"))
+                        && target.equalsIgnoreCase(Json.str(tx.get("to"), "to"))
+                        && sender.equalsIgnoreCase(Json.str(receipt.get("from"), "from"))
+                        && sender.equalsIgnoreCase(Json.str(tx.get("from"), "from"))
+                        && data.equalsIgnoreCase(Json.str(tx.get("input"), "input"))
                         && Chain.number(tx.get("value")).signum() == 0,
                 Code.SUBMISSION_INPUT_CHANGED);
         if (sponsored) {
             boolean found = false;
-            for (Object raw : Json.list(receipt.get("logs"))) {
+            for (Object raw : Json.list(receipt.get("logs"), "logs")) {
                 var log = Json.map(raw);
                 if (!config.forwarderAddress().equalsIgnoreCase(String.valueOf(log.get("address"))))
                     continue;
-                var topics = Json.list(log.get("topics"));
+                var topics = Json.list(log.get("topics"), "topics");
                 if (topics.isEmpty()
                         || !DmrvnProtocol.FORWARDER
                                 .topic("ExecutedForwardRequest")
                                 .equals(topics.get(0))) continue;
                 var e = DmrvnProtocol.FORWARDER.decodeEvent("ExecutedForwardRequest", log);
-                var f = Json.map(s.get("forwardRequest"));
-                if (Json.str(e.get("signer")).equalsIgnoreCase(Json.str(f.get("from")))
+                var f = Json.map(s.get("forwardRequest"), "forwardRequest");
+                if (Json.str(e.get("signer"), "signer").equalsIgnoreCase(Json.str(f.get("from"), "from"))
                         && String.valueOf(e.get("nonce")).equals(f.get("nonce"))
                         && Boolean.TRUE.equals(e.get("success"))) found = true;
             }
@@ -1280,14 +1316,14 @@ public final class DmrvnClient {
         s.put("receipt", receipt);
         s.put("phase", "SUBMITTED");
         s.put("submissionStatus", "CONFIRMED");
-        int status = Crypto.uint(claim.get("status"), 8).intValueExact();
+        int status = Crypto.uint(claim.get("status"), 8, "status").intValueExact();
         require(status >= 1 && status <= 4, Code.SUBMISSION_INPUT_CHANGED);
         s.put("chainStatus", List.of("NONE", "PENDING", "VALID", "INVALID", "REVOKED").get(status));
         save(key, s);
         release(
-                beneficiaryKey(Json.str(request.get("beneficiary"))),
-                Json.str(s.get("operationId")));
-        if (sponsored) release(relayKey(), Json.str(s.get("operationId")));
+                beneficiaryKey(Json.str(request.get("beneficiary"), "beneficiary")),
+                Json.str(s.get("operationId"), "operationId"));
+        if (sponsored) release(relayKey(), Json.str(s.get("operationId"), "operationId"));
         return Json.obj(
                 "operationId",
                 s.get("operationId"),
@@ -1323,6 +1359,11 @@ public final class DmrvnClient {
     }
 
     public Map<String, Object> operation(String operationId) {
+        return telemetry.observe("DmrvnClient.operation", operationId,
+                () -> operationImpl(operationId));
+    }
+
+    private Map<String, Object> operationImpl(String operationId) {
         return Json.copy(required(operationKey(operationId)));
     }
 
@@ -1330,6 +1371,16 @@ public final class DmrvnClient {
      * Saves the independent reader's observation, including report errors, in the partner journal.
      */
     public Map<String, Object> readResult(
+            String operationId,
+            DmrvnReader reader,
+            Long fromBlock,
+            String reportTxHash,
+            boolean waitTimedOut) {
+        return telemetry.observe("DmrvnClient.readResult", operationId,
+                () -> readResultImpl(operationId, reader, fromBlock, reportTxHash, waitTimedOut));
+    }
+
+    private Map<String, Object> readResultImpl(
             String operationId,
             DmrvnReader reader,
             Long fromBlock,
@@ -1347,7 +1398,7 @@ public final class DmrvnClient {
                     try {
                         result =
                                 reader.readResult(
-                                        Json.str(s.get("claimId")),
+                                        Json.str(s.get("claimId"), "claimId"),
                                         fromBlock,
                                         hash,
                                         waitTimedOut,
@@ -1365,16 +1416,16 @@ public final class DmrvnClient {
                     require(
                             config.deploymentId().equals(result.get("deploymentId")),
                             Code.WRONG_CHAIN);
-                    var stored = Json.map(result.get("claim"));
+                    var stored = Json.map(result.get("claim"), "claim");
                     if (!"0".equals(String.valueOf(stored.get("status")))) {
                         DmrvnProtocol.verifyProvenance(
-                                Json.map(s.get("evidence")),
-                                Json.str(stored.get("evidenceHash")),
-                                Json.str(stored.get("approver")));
+                                Json.map(s.get("evidence"), "evidence"),
+                                Json.str(stored.get("evidenceHash"), "evidenceHash"),
+                                Json.str(stored.get("approver"), "approver"));
                         result.put("provenanceVerified", true);
                     }
                     s.put("verifiedMetadata", result.get("verifiedMetadata"));
-                    result.put("deployment", Json.copy(Json.map(s.get("deployment"))));
+                    result.put("deployment", Json.copy(Json.map(s.get("deployment"), "deployment")));
                     s.put("result", result);
                     if (result.containsKey("reportTxHash"))
                         s.put("reportTxHash", result.get("reportTxHash"));

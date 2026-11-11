@@ -59,7 +59,7 @@ final class PrivyHttpTransport implements HTTPClient {
             throw e;
         } catch (ExecutionException e) {
             if (e.getCause() instanceof IOException io) throw io;
-            throw new IOException("Privy HTTP transport failed");
+            throw new IOException(e.getCause().getMessage(), e.getCause());
         }
     }
 

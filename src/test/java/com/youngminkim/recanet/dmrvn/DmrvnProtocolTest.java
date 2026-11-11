@@ -40,6 +40,45 @@ class DmrvnProtocolTest {
     }
 
     @Test
+    void schemaFourSignsBodyAndCommitsCompleteEvidence() {
+        var signer = new TestSupport.Signer(2);
+        var body = Json.obj(
+                "schemaVersion", 4, "sourceEventId", "event-4", "partnerId", 101,
+                "activityId", 1003, "methodology", Json.obj("id", 2003, "version", 3),
+                "source", Json.obj("ownerHash", DmrvnProtocol.ownerHash(signer.address())),
+                "inputs", Json.obj("petBottleCount", 3));
+        String bodyHash = Json.hash(body);
+        var evidence = Json.copy(body);
+        evidence.put("provenance", Json.obj("signer", signer.address(), "sourceSignature",
+                signer.signMessage("DMRVN v4 source:" + bodyHash)));
+        String evidenceHash = Crypto.hash(Json.bytes(evidence));
+        assertNotEquals(bodyHash, evidenceHash);
+        assertEquals(signer.address(),
+                DmrvnProtocol.verifyProvenance(evidence, evidenceHash, signer.address()));
+        assertThrows(DmrvnException.class,
+                () -> DmrvnProtocol.verifyProvenance(evidence, bodyHash, signer.address()));
+
+        var keys = new ArrayList<>(evidence.keySet());
+        Collections.reverse(keys);
+        var reordered = new LinkedHashMap<String, Object>();
+        keys.forEach(key -> reordered.put(key, evidence.get(key)));
+        assertArrayEquals(Json.bytes(evidence), Json.bytes(reordered));
+        assertEquals(signer.address(),
+                DmrvnProtocol.verifyProvenance(reordered, evidenceHash, signer.address()));
+
+        var tampered = Json.copy(evidence);
+        Json.map(tampered.get("inputs")).put("petBottleCount", 4);
+        // Even a matching complete-object hash cannot make a modified body signature valid.
+        assertThrows(DmrvnException.class, () -> DmrvnProtocol.verifyProvenance(
+                tampered, Json.hash(tampered), signer.address()));
+        var wrongSignature = Json.copy(evidence);
+        Json.map(wrongSignature.get("provenance")).put("sourceSignature",
+                signer.signMessage("DMRVN v4 source:" + evidenceHash));
+        assertThrows(DmrvnException.class, () -> DmrvnProtocol.verifyProvenance(
+                wrongSignature, Json.hash(wrongSignature), signer.address()));
+    }
+
+    @Test
     void rejectsUnsafeJsonAndDuplicateKeys() {
         for (Object value :
                 Arrays.asList(Double.NaN, Double.POSITIVE_INFINITY, 9007199254740992L, "\ud800", new Object()))

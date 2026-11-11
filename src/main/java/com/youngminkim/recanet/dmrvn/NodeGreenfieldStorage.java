@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
+import com.youngminkim.recanet.telemetry.SdkTelemetry;
 
 /**
  * Uses the bundled official Greenfield JS SDK worker (Node >=22); no EVM/Privy secrets are passed.
@@ -16,6 +17,7 @@ public final class NodeGreenfieldStorage implements GreenfieldStorage {
     private final URI rpc;
     private final String chain, address, keyEnv, feeGranter;
     private final Duration timeout;
+    private final SdkTelemetry telemetry;
 
     public NodeGreenfieldStorage(
             Path node,
@@ -26,17 +28,25 @@ public final class NodeGreenfieldStorage implements GreenfieldStorage {
             String keyEnvironmentVariable,
             String feeGranter,
             Duration timeout) {
+        this(node, worker, rpc, chainId, address, keyEnvironmentVariable, feeGranter, timeout, SdkTelemetry.local());
+    }
+
+    public NodeGreenfieldStorage(Path node, Path worker, URI rpc, String chainId, String address,
+                                 String keyEnvironmentVariable, String feeGranter, Duration timeout,
+                                 SdkTelemetry telemetry) {
+        this.telemetry = Objects.requireNonNull(telemetry);
         this.node = node.toAbsolutePath();
         this.worker = worker.toAbsolutePath();
-        DmrvnConfig.checkUri(rpc);
+        DmrvnConfig.checkUri(rpc, "greenfieldRpcUrl");
         this.rpc = rpc;
-        this.chain = Crypto.uint(chainId, 64).toString();
-        this.address = Crypto.address(address);
+        this.chain = Crypto.uint(chainId, 64, "greenfieldChainId").toString();
+        this.address = Crypto.address(address, "storage.address");
         this.keyEnv = Objects.requireNonNull(keyEnvironmentVariable);
         this.feeGranter =
-                feeGranter == null || feeGranter.isEmpty() ? "" : Crypto.address(feeGranter);
+                feeGranter == null || feeGranter.isEmpty() ? "" : Crypto.address(feeGranter, "feeGranter");
         this.timeout = timeout;
-        require(timeout.toMillis() > 0, Code.INVALID_INPUT);
+        require(timeout != null && timeout.toMillis() > 0, Code.INVALID_INPUT,
+                "workerTimeout", "must be at least 1 millisecond");
     }
 
     @Override
@@ -51,29 +61,47 @@ public final class NodeGreenfieldStorage implements GreenfieldStorage {
 
     @Override
     public Head head(Map<String, Object> location) {
+        return telemetry.step("GreenfieldStorage.head", () -> headImpl(location));
+    }
+
+    private Head headImpl(Map<String, Object> location) {
         var r = invoke("head", location, null, null);
         return new Head(Boolean.TRUE.equals(r.get("exists")), Boolean.TRUE.equals(r.get("sealed")));
     }
 
     @Override
     public String create(Map<String, Object> location, byte[] bytes) {
-        return Json.str(invoke("create", location, bytes, null).get("createTxHash"));
+        return telemetry.step("GreenfieldStorage.create", () -> {
+            telemetry.submissionAttempt();
+            String hash = Json.str(invoke("create", location, bytes, null).get("createTxHash"), "createTxHash");
+            if (!hash.isBlank()) {
+                telemetry.submissionAccepted();
+                telemetry.checkpoint(SdkTelemetry.State.EVIDENCE_CREATE_BROADCAST);
+            }
+            return hash;
+        });
     }
 
     @Override
     public void upload(Map<String, Object> location, byte[] bytes, String hash) {
-        invoke("upload", location, bytes, hash);
+        telemetry.step("GreenfieldStorage.upload", () -> {
+            telemetry.submissionAttempt();
+            invoke("upload", location, bytes, hash);
+            telemetry.submissionAccepted();
+            return null;
+        });
     }
 
     @Override
     public byte[] read(Map<String, Object> location) {
-        return Base64.getDecoder()
-                .decode(Json.str(invoke("read", location, null, null).get("bytes")));
+        return telemetry.step("GreenfieldStorage.read", () -> Base64.getDecoder()
+                .decode(Json.str(invoke("read", location, null, null).get("bytes"), "bytes")));
     }
 
     @Override
     public boolean matchesCreateTransaction(Map<String, Object> location, String hash) {
-        return Boolean.TRUE.equals(invoke("verifyCreate", location, null, hash).get("matches"));
+        return telemetry.step("GreenfieldStorage.matchesCreateTransaction",
+                () -> Boolean.TRUE.equals(invoke("verifyCreate", location, null, hash).get("matches")));
     }
 
     private Map<String, Object> invoke(
@@ -124,29 +152,30 @@ public final class NodeGreenfieldStorage implements GreenfieldStorage {
             }
             byte[] response = output.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
             require(process.waitFor(1000, TimeUnit.MILLISECONDS), Code.STORAGE_UNAVAILABLE);
-            var result = Json.object(response);
+            var result = Json.map(new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(response, Object.class));
             if (!Boolean.TRUE.equals(result.get("ok"))) {
-                Code code;
-                try {
-                    code = Code.valueOf(Json.str(result.get("code")));
-                } catch (Exception e) {
-                    code = Code.STORAGE_UNAVAILABLE;
-                }
-                throw new DmrvnException(
-                        code,
+                Object status = result.get("statusCode");
+                throw new UpstreamException(
+                        UpstreamException.Source.GREENFIELD, result.get("code"),
+                        status instanceof Number n ? n.intValue() : 0,
+                        (String) result.get("message"),
+                        new String(response, java.nio.charset.StandardCharsets.UTF_8),
                         "create".equals(op)
                                 && Boolean.TRUE.equals(result.get("definitelyNotBroadcast")),
                         "create".equals(op)
                                 && Boolean.TRUE.equals(result.get("definitelyRejected")));
             }
-            return Json.map(result.get("data"));
+            return Json.map(result.get("data"), "data");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new DmrvnException(Code.INTERRUPTED);
+            throw UpstreamException.transport(UpstreamException.Source.GREENFIELD, e);
+        } catch (UpstreamException e) {
+            throw e;
         } catch (DmrvnException e) {
             throw e;
         } catch (Exception e) {
-            throw new DmrvnException(Code.STORAGE_UNAVAILABLE);
+            throw UpstreamException.transport(UpstreamException.Source.GREENFIELD, e);
         } finally {
             if (process != null) process.destroyForcibly();
             executor.shutdownNow();

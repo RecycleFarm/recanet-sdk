@@ -4,12 +4,6 @@ import io.privy.api.models.errors.APIException;
 import io.privy.api.utils.RetryConfig;
 
 import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.Objects;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +40,7 @@ public final class PrivyClient {
     public PrivyClient(PrivyClientConfig config, HttpClient httpClient) {
         this.config = Objects.requireNonNull(config, "config");
         this.tokenVerifier = config.tokenVerification() == null ? null
-                : new PrivyTokenVerifier(config.appId(), config.tokenVerification());
+                : new PrivyTokenVerifier(config.appId(), config.tokenVerification(), config.telemetry());
         this.delegate = io.privy.api.PrivyClient.builder()
                 .appId(config.appId())
                 .appSecret(config.appSecret())
@@ -63,33 +57,31 @@ public final class PrivyClient {
      * Checks app credentials through one read-only SDK request to list at most one user.
      * Call explicitly at startup or for diagnostics, not on every incoming request.
      * A forbidden response indicates missing permission, not invalid credentials.
-     * @throws PrivyApiException if credentials, permissions, or the API request fail
+     * @throws APIException the original Privy API error, including status, body and headers
      */
     public void verifyAppCredentials() {
+        config.telemetry().observeVoid("PrivyClient.verifyAppCredentials", null,
+                () -> verifyAppCredentialsImpl());
+    }
+
+    private void verifyAppCredentialsImpl() {
         try {
             var response = delegate.users().list().limit(1.0).call();
             if (response.statusCode() != 200 || response.object().isEmpty()) {
                 throw new PrivyApiException(PrivyApiException.Code.INVALID_RESPONSE, response.statusCode(), null);
             }
         } catch (APIException e) {
-            PrivyApiException.Code code = switch (e.code()) {
-                case 401 -> PrivyApiException.Code.INVALID_CREDENTIALS;
-                case 403 -> PrivyApiException.Code.FORBIDDEN;
-                case 429 -> PrivyApiException.Code.RATE_LIMITED;
-                default -> e.code() >= 500 ? PrivyApiException.Code.UNAVAILABLE
-                        : PrivyApiException.Code.INVALID_RESPONSE;
-            };
-            throw new PrivyApiException(code, e.code(), parseRetryAfter(e.rawResponse()));
+            throw e;
         } catch (PrivyApiException e) {
             throw e;
         } catch (RuntimeException e) {
             for (Throwable cause = e; cause != null; cause = cause.getCause()) {
                 if (cause instanceof InterruptedException) {
                     Thread.currentThread().interrupt();
-                    throw new PrivyApiException(PrivyApiException.Code.INTERRUPTED, 0, null);
+                    throw e;
                 }
             }
-            throw new PrivyApiException(PrivyApiException.Code.UNAVAILABLE, 0, null);
+            throw e;
         }
     }
 
@@ -101,6 +93,11 @@ public final class PrivyClient {
      * @throws IllegalStateException if token verification was not configured
      */
     public AuthenticatedUser verifyAccessToken(String accessToken) {
+        return config.telemetry().observe("PrivyClient.verifyAccessToken", null,
+                () -> verifyAccessTokenImpl(accessToken));
+    }
+
+    private AuthenticatedUser verifyAccessTokenImpl(String accessToken) {
         return tokenVerifier().verifyAccessToken(accessToken);
     }
 
@@ -112,6 +109,11 @@ public final class PrivyClient {
      * @throws IllegalStateException if token verification was not configured
      */
     public AuthenticatedUser authenticateAuthorizationHeader(String authorizationHeader) {
+        return config.telemetry().observe("PrivyClient.authenticateAuthorizationHeader", null,
+                () -> authenticateAuthorizationHeaderImpl(authorizationHeader));
+    }
+
+    private AuthenticatedUser authenticateAuthorizationHeaderImpl(String authorizationHeader) {
         return tokenVerifier().authenticateAuthorizationHeader(authorizationHeader);
     }
 
@@ -126,6 +128,12 @@ public final class PrivyClient {
      * @return the created wallet's non-secret metadata
      */
     public BackendWallet registerBackendWallet(BackendWalletRegistration registration,
+                                               BackendWalletCreateRequest request) {
+        return config.telemetry().observe("PrivyClient.registerBackendWallet", null,
+                () -> registerBackendWalletImpl(registration, request));
+    }
+
+    private BackendWallet registerBackendWalletImpl(BackendWalletRegistration registration,
                                                BackendWalletCreateRequest request) {
         Objects.requireNonNull(registration, "registration");
         Objects.requireNonNull(request, "request");
@@ -144,12 +152,16 @@ public final class PrivyClient {
         if (request.externalId() != null) bodyBuilder.externalId(request.externalId());
 
         try {
+            config.telemetry().submissionAttempt();
             var response = delegate.wallets().create(bodyBuilder.build());
-            return response.wallet().map(PrivyClient::toBackendWallet)
+            var created = response.wallet().map(PrivyClient::toBackendWallet)
                     .orElseThrow(() -> new PrivyApiException(
                             PrivyApiException.Code.INVALID_RESPONSE, response.statusCode(), null));
+            config.telemetry().submissionAccepted();
+            config.telemetry().checkpoint(com.youngminkim.recanet.telemetry.SdkTelemetry.State.WALLET_CREATED);
+            return created;
         } catch (APIException e) {
-            throw apiFailure(e);
+            throw e;
         }
     }
 
@@ -158,6 +170,11 @@ public final class PrivyClient {
      * This check does not transmit or expose the private key.
      */
     public boolean isBackendWallet(String walletId, BackendWalletRegistration registration) {
+        return config.telemetry().observe("PrivyClient.isBackendWallet", null,
+                () -> isBackendWalletImpl(walletId, registration));
+    }
+
+    private boolean isBackendWalletImpl(String walletId, BackendWalletRegistration registration) {
         Objects.requireNonNull(walletId, "walletId");
         Objects.requireNonNull(registration, "registration");
         if (walletId.isBlank()) throw new IllegalArgumentException("walletId must not be blank");
@@ -167,7 +184,7 @@ public final class PrivyClient {
                     .map(registration.publicKey()::equals)
                     .orElse(false);
         } catch (APIException e) {
-            throw apiFailure(e);
+            throw e;
         }
     }
 
@@ -180,6 +197,11 @@ public final class PrivyClient {
      * @return matching wallet metadata
      */
     public List<BackendWallet> listWalletsByAuthorizationKey(String authorizationKey) {
+        return config.telemetry().observe("PrivyClient.listWalletsByAuthorizationKey", null,
+                () -> listWalletsByAuthorizationKeyImpl(authorizationKey));
+    }
+
+    private List<BackendWallet> listWalletsByAuthorizationKeyImpl(String authorizationKey) {
         if (authorizationKey == null || authorizationKey.isBlank()) {
             throw new IllegalArgumentException("authorizationKey must not be blank");
         }
@@ -197,7 +219,7 @@ public final class PrivyClient {
                 page.data().stream().map(PrivyClient::toBackendWallet).forEach(wallets::add);
                 cursor = page.nextCursor().orElse(null);
             } catch (APIException e) {
-                throw apiFailure(e);
+                throw e;
             }
         } while (cursor != null && !cursor.isBlank());
         return List.copyOf(wallets);
@@ -212,6 +234,11 @@ public final class PrivyClient {
      * @return an existing or newly created backend wallet
      */
     public BackendWallet ensureBackendWallet(BackendWalletCreateRequest request) {
+        return config.telemetry().observe("PrivyClient.ensureBackendWallet", null,
+                () -> ensureBackendWalletImpl(request));
+    }
+
+    private BackendWallet ensureBackendWalletImpl(BackendWalletCreateRequest request) {
         Objects.requireNonNull(request, "request");
         verifyAppCredentials();
 
@@ -242,6 +269,11 @@ public final class PrivyClient {
      * @return the exported blockchain wallet private key
      */
     public String exportWalletPrivateKey(String walletId, BackendWalletRegistration registration) {
+        return config.telemetry().observe("PrivyClient.exportWalletPrivateKey", null,
+                () -> exportWalletPrivateKeyImpl(walletId, registration));
+    }
+
+    private String exportWalletPrivateKeyImpl(String walletId, BackendWalletRegistration registration) {
         if (walletId == null || walletId.isBlank()) {
             throw new IllegalArgumentException("walletId must not be blank");
         }
@@ -250,12 +282,11 @@ public final class PrivyClient {
             return delegate.wallets().export(walletId,
                     AuthorizationContext.withAuthorizationPrivateKey(registration.privyPrivateKey()));
         } catch (APIException e) {
-            throw apiFailure(e);
+            throw e;
         } catch (Exception e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-            throw new PrivyApiException(
-                    e instanceof InterruptedException ? PrivyApiException.Code.INTERRUPTED
-                            : PrivyApiException.Code.UNAVAILABLE, 0, null);
+            if (e instanceof RuntimeException runtime) throw runtime;
+            throw new RuntimeException(e.getMessage(), e);
         }
     }
 
@@ -274,40 +305,11 @@ public final class PrivyClient {
                 wallet.publicKey().orElse(null), wallet.chainType().value());
     }
 
-    static PrivyApiException apiFailure(APIException e) {
-        PrivyApiException.Code code = switch (e.code()) {
-            case 401 -> PrivyApiException.Code.INVALID_CREDENTIALS;
-            case 403 -> PrivyApiException.Code.FORBIDDEN;
-            case 429 -> PrivyApiException.Code.RATE_LIMITED;
-            default -> e.code() >= 500 ? PrivyApiException.Code.UNAVAILABLE
-                    : PrivyApiException.Code.INVALID_RESPONSE;
-        };
-        return new PrivyApiException(code, e.code(), parseRetryAfter(e.rawResponse()));
-    }
-
     private PrivyTokenVerifier tokenVerifier() {
         if (tokenVerifier == null) {
             throw new IllegalStateException("Configure token verification with a trusted JWKS URL or verification public key");
         }
         return tokenVerifier;
-    }
-
-    private static Duration parseRetryAfter(HttpResponse<?> response) {
-        if (response == null) return null;
-        String value = response.headers().firstValue("Retry-After").orElse(null);
-        if (value == null) return null;
-        try {
-            long seconds = Long.parseLong(value.strip());
-            return seconds >= 0 ? Duration.ofSeconds(seconds) : null;
-        } catch (NumberFormatException e) {
-            try {
-                Instant retryAt = ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
-                Duration remaining = Duration.between(Instant.now(), retryAt);
-                return remaining.isNegative() ? Duration.ZERO : remaining;
-            } catch (DateTimeParseException invalidDate) {
-                return null;
-            }
-        }
     }
 
     // Internal extension point for future wrapper operations; not part of the public API.

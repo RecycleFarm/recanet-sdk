@@ -6,6 +6,22 @@
 
 공유 명세의 새 Evidence 버전·정확한 wire 규격, Privy 매핑/권한 정책, 결과 미확인 재시도 규칙은 아직 미결이다. 구현은 기존 공통 필드와 JCS/provenance 결속을 바탕으로 하며 새 버전을 임의로 정하지 않는다. 신규 고수준 API와 preflight는 명시한 `evidenceSchemaVersion`이 없으면 `EVIDENCE_CONTRACT_UNCONFIGURED`로 중단한다. 운영자가 합의한 공통 필드·JCS·버전 및 검증자 지원을 확인하고 설정해야 한다. 버전 설정만으로 새 wire 규격이나 실제 DMRVN 공동 인수가 완료되지는 않는다. 4인자 `DeclaredMethodology`는 기존 버전 값 3의 호환 경로이며 신규 고수준 API에는 사용할 수 없다. 과거 fixture·서명·저장 객체는 다시 쓰거나 재해시하지 않는다.
 
+## Evidence 서명 및 해시 규칙
+
+`canonicalJSON`과 `canonicalize`는 모두 SDK의 `Json.canonical`과 동일한 JCS 직렬화를 의미한다. 객체 키는 중첩 객체까지 정렬하고 배열 순서는 보존하며, 결과를 UTF-8로 인코딩한다. 호출자가 필드 삽입 순서를 맞출 필요는 없다.
+
+```text
+body = Evidence에서 provenance 전체를 제외한 객체
+bodyHash = keccak256(UTF8(canonicalJSON(body)))
+message = "DMRVN v4 source:" + bodyHash
+Evidence.provenance.sourceSignature = 서명자 지갑.signMessage(message)
+evidenceHash = keccak256(UTF8(canonicalize(Evidence 전체)))
+```
+
+`signMessage`에는 `0x` 접두사가 있는 본문 해시를 붙인 문자열을 전달하며 EIP-191 메시지 서명을 사용한다. `provenance`에는 `signer`와 `sourceSignature`를 넣는다. Greenfield에는 provenance를 포함한 전체 Evidence의 정규화 바이트를 저장하고, 온체인 `evidenceHash`에는 그 전체 바이트의 해시를 사용한다. 검증자는 전체 해시를 확인하고, 별도로 provenance를 제외한 본문 해시로 서명을 검증한다. 이때 같은 JCS 규칙을 사용해야 한다.
+
+예시의 `schemaVersion=4`는 `DeclaredMethodology`의 명시적 Evidence 버전으로 설정한다. `methodology.version=3`은 사용하는 manifest 및 레지스트리의 방법론 버전으로 결정되며 Evidence 버전과 별개다. 기존 객체·서명·fixture의 버전은 변경하지 않는다.
+
 ## 어디에 무엇을 저장하는가
 
 | 위치/역할 | 저장하거나 수행하는 내용 |
@@ -119,17 +135,36 @@ var submission = sdk.submitActivity(beneficiaries,
 
 `UserWalletClient.forPartner`는 서비스 namespace + partnerId + memberId의 명시적 Privy external ID 매핑을 선택하는 어댑터다. 같은 memberId도 partnerId가 다르면 별도 지갑이다. 기존 비파트너 매핑의 지갑을 자동 채택하지 않는다. 파트너 요청이 다른 partnerId를 지정하면 지갑 조회 전에 거부하고, 지갑 준비 시점과 각 서명/전송 직전에 파트너 정책을 재확인한다. 실제 자격 검증·동의/철회는 위 정책으로 연결하며 Privy wallet 소유 권한은 Privy 어댑터가 확인한다. 이 매핑은 공유 명세의 미결 사항을 확정한 표준이 아니다.
 
-기본 `ActivityRequest`는 호출마다 새 내부 operationId·claimId·objectName을 만들고, receipt 확인을 최대 60초 동안 1초 간격으로 조회한다. 전체 생성자는 선택적 claimId·objectName, 서명할 inner gas, confirmationTimeout/pollInterval을 받는다. 대기 한도는 제출 후 확인 조회의 한도이며 전체 Greenfield/Privy/RPC 처리 시간 제한은 각 어댑터에 적용된다. gas 기본값은 `900000`이고 서명 후 변경하지 않는다. 새 호출은 새 작업이므로 같은 sourceEventId로 재호출해도 복구·중복 방지·경로 재사용을 보장하지 않는다. 여러 프로세스의 같은 운영 지갑 사용과 nonce 직렬화는 소비자가 관리한다.
+기본 `ActivityRequest`는 호출마다 새 내부 operationId·claimId·objectName을 만들고, 제출 후 receipt/Claim을 한 번 확인한다. 미확인·불일치이면 `SUBMISSION_UNRESOLVED` 예외를 즉시 전달하며 자동 반복 조회나 대기를 하지 않는다. Greenfield 업로드 후 봉인 상태도 한 번 확인하고, 미봉인이면 `OBJECT_UNSEALED`를 즉시 전달한다. 전체 생성자의 confirmationTimeout/pollInterval은 소스 호환을 위해 검증·유지하지만 확인 대기를 수행하지 않는다. 각 어댑터의 외부 요청 timeout은 유지한다. gas 기본값은 `900000`이고 서명 후 변경하지 않는다. 새 호출은 새 작업이므로 같은 sourceEventId로 재호출해도 복구·중복 방지·경로 재사용을 보장하지 않는다. 여러 프로세스의 같은 운영 지갑 사용과 nonce 직렬화는 소비자가 관리한다.
 
-반환은 `outcome`, `lastConfirmedStage`, `confirmed`, `requested` 및 오류 시 `errorCode`다.
+성공 시 `outcome=CONFIRMED`, `lastConfirmedStage=SUBMISSION_CONFIRMED`, `confirmed`, `requested`를 반환한다. 성공 receipt·발신 운영 지갑·Forwarder 실행 이벤트·Claim 결속을 확인한 결과이며 `confirmed.chainStatus=PENDING`은 최종 VALID가 아니다.
 
-| outcome | 의미 |
+실패 시 SDK가 `FAILED`·`UNKNOWN` 결과나 일반화한 `errorCode`로 치환하지 않고 원래 예외를 호출자에게 전달한다. 기존 실패 Map을 검사하던 호출자는 예외 처리가 필요하다.
+
+| 오류 발생처 | 호출자가 받는 오류 |
 | --- | --- |
-| `CONFIRMED` | 성공 receipt·발신 운영 지갑·Forwarder 실행 이벤트·Claim 결속을 확인했다. `confirmed.chainStatus=PENDING`은 최종 VALID가 아니다. |
-| `FAILED` | 확인한 단계에서 다음 처리를 중단했다. 봉인 후 실패라면 저장 객체는 남을 수 있다. |
-| `UNKNOWN` | 저장/전송 결과 또는 receipt 확인이 미확인이다. 실패·미전송·안전한 재시도의 뜻이 아니다. |
+| Privy API | 공식 `io.privy.api.models.errors.APIException` 그대로. `code()`는 HTTP 상태, `bodyAsString()`은 공식 SDK가 보존한 본문이며 `message()`·`rawResponse()`도 확인할 수 있다. |
+| Greenfield / EVM RPC | `UpstreamException`. `source()`, 원래 `code()`, HTTP `statusCode()`, `getMessage()`, `responseBody()`를 보존한다. Greenfield worker의 원래 code·message·data·codespace·log도 응답 본문에 포함한다. |
+| 통신·프로세스 장애 | 원래 예외 또는 원래 메시지와 cause를 보존한 예외. 외부 서비스에서 오류 응답을 받았다고 표시하지 않는다. |
+| SDK 입력·서명·배포·내용 검증 | 해당 `DmrvnException` 또는 Java 입력 예외. 외부 서비스의 오류와 구분한다. |
 
-`confirmed`에는 실제 확인한 evidenceHash, createTxHash, evidenceLocation, storageStatus, submissionFromBlock, txHash, receipt/chainStatus만 해당 시점에 포함한다. 요청 식별자와 배포도 보존한다. `requested.evidenceLocation`은 생성 응답 유실 시 조사할 **의도한 경로**이며 저장 성공 증거가 아니다. 외부 어댑터의 원문 오류·키·토큰·재사용 서명은 반환하지 않는다. 소비자가 응답과 필요한 기록을 보존하고 장애 조사·복구를 수행한다. 결과 조회는 반환된 claimId·submissionFromBlock과 `DmrvnReader`로 journal 없이 진행할 수 있다.
+SDK가 감지한 `INVALID_INPUT`의 `getMessage()`는 `INVALID_INPUT: <field>: <reason>` 형식의 영어 설명이다. 예를 들어 `INVALID_INPUT: gas: must be between 100000 and 2000000 inclusive`처럼 실패한 필드와 조건을 표시한다. JSON 중첩 값은 `inputs.counts[1]`처럼 경로를 포함하며, 잘못된 값 자체는 메시지에 넣지 않는다. `reportError.message`와 사전 점검의 `checks.<항목>.message`에도 SDK 상세 메시지를 포함한다. 배포 manifest 검증은 기존 `DEPLOYMENT_NOT_READY` 코드를 유지하면서 원래 필드·이유를 메시지에 보존한다. 외부 Privy·Greenfield·RPC 오류의 메시지는 이 형식으로 재작성하지 않는다.
+
+```java
+try {
+    var submission = sdk.submitActivity(beneficiaries, request);
+} catch (io.privy.api.models.errors.APIException error) {
+    // error.code(), error.message(), error.bodyAsString(), error.rawResponse()
+    throw error;
+} catch (UpstreamException error) {
+    // error.source(), error.code(), error.statusCode(), error.getMessage(), error.responseBody()
+    throw error;
+}
+```
+
+거래 전송 오류를 `SUBMISSION_UNRESOLVED`로 덮어쓰지 않는다. 외부 오류의 메시지를 해석해 권한·잔액 오류로 재분류하지 않는다. 외부 호출이 실패하면 자동 재조회·복구 없이 원래 오류를 즉시 전달한다. Privy 지갑은 조회 후 없을 때 생성하며 생성 409 오류 후의 재조회는 수행하지 않는다. Greenfield의 객체 없음 오류도 성공 응답으로 바꾸지 않으며, 신규 작업은 객체 생성부터 명시적으로 수행한다. 봉인 미완료·제출 미확인·receipt 불일치는 반복 확인하지 않고 영어 메시지가 있는 예외를 즉시 던진다. 기존 전송 의도가 있는 작업에 대한 `submitSponsored` 재호출도 자동 조회·재전송 없이 예외를 던진다. 기존 거래 조사가 필요하면 호출자가 `resolveSubmission`을 명시적으로 호출한다. 실패 전에 생성된 지갑·저장 객체·거래가 남을 수 있다. 실패 시 별도의 단계·식별자 Map은 반환하지 않으므로 필요한 claimId·objectName을 호출 전에 지정하거나 선택적 journal을 사용한다.
+
+성공 응답의 `confirmed`에는 evidenceHash, createTxHash, evidenceLocation, storageStatus, submissionFromBlock, txHash, receipt/chainStatus와 요청 식별자·배포를 포함한다. 성공 응답의 claimId·submissionFromBlock과 `DmrvnReader`로 journal 없이 결과를 조회할 수 있다.
 
 기존 `submitActivity(UserWalletClient, ... evidenceBody ...)`와 `submitActivity(EvmSigner, ...)`는 사전 준비한 지갑/body를 쓰는 조합 경로로 남는다. 새 연동은 위 `BeneficiaryWallets`/`ActivityRequest` 경로를 사용한다. `prepare(...)`와 사용자 직접 가스비 납부용 단계별 API도 유지한다.
 
@@ -179,7 +214,7 @@ var result = sdk.readResult(operationId, reader, submissionStartBlock, reportTxH
 
 - PENDING → WAITING 또는 LOCAL_WAIT_TIMEOUT, taskStatus=UNKNOWN. NO_QUORUM/EXPIRED를 추정하지 않는다.
 - VALID/INVALID는 chainStatus다. INVALID의 빈 outputs/zero outputHash도 정상 결과다.
-- 보고서 읽기/검증 실패는 `reportError`로 표시하고 확인한 chainStatus는 유지한다.
+- SDK가 감지한 보고서 내용 검증 실패는 `reportError`로 표시하고 chainStatus는 유지한다. 외부 reader·Greenfield·RPC 예외는 원래 정보로 전파하며 `REPORT_READ_FAILED`로 덮어쓰지 않는다.
 - `fileHash`는 다운로드 bytes checksum이며 protocol reportHash와 다르다.
 - 외부 파일 commitment가 없으면 `fileHashVerification=DOWNLOAD_CHECKSUM_ONLY`, `metadataIndependentlyVerified=false`다. 설명 메타데이터나 실제 재활용 행위를 검증했다고 표시하지 않는다.
 
@@ -196,7 +231,7 @@ var result = sdk.readResult(operationId, reader, submissionStartBlock, reportTxH
 - 같은 operation 입력/config 변경: OPERATION_INPUT_CHANGED. 원본을 조용히 덮어쓰지 않는다.
 - 최초 전송 의도 이후: SUBMISSION_UNRESOLVED이면 **조사만** 수행한다. timeout/없는 Claim은 미전송 증거가 아니다.
 - CreateObject 응답 유실: 같은 경로를 조회하고 기존 거래를 찾는다. 원래 hash를 확보하면 `recoverCreateTransaction`이 creator/객체/성공 거래를 검증한 뒤 업로드를 재개한다. 못 찾으면 STORAGE_CREATE_UNRESOLVED를 유지한다.
-- storage adapter가 **broadcast 이전 실패** 또는 **CheckTx의 명시적 거절**을 확정한 경우 create intent를 해제하고 같은 원본으로 재시도할 수 있다. timeout/연결 단절은 여기에 해당하지 않는다.
+- storage adapter가 **broadcast 이전 실패** 또는 **CheckTx의 명시적 거절**을 알려주더라도 SDK가 create intent를 자동 해제하거나 재시도를 준비하지 않는다. 원래 오류와 증거 플래그만 전달한다. 생성 응답을 확보하지 못한 기존 작업은 자동 재생성하지 않으며, 호출자가 명시적인 조사·복구 또는 별도 작업을 결정한다.
 - 사용자/Relay 예약은 확인된 성공 receipt 이후 해제한다. 만료·실패/불명 거래의 예약 해제와 nonce/deadline 재발급은 자동 수행하지 않는다. 운영자가 기존 제출을 조사한 뒤 명시적인 새 작업/복구 절차를 마련해야 한다.
 - 별도 서비스/사용자가 같은 Relay를 동시에 쓰면 SDK journal이 제어할 수 없다. Relay를 전용으로 사용한다.
 
@@ -255,7 +290,7 @@ DMRVN_LIVE_RUN_ID=proxy-20261012 DMRVN_LIVE_WAIT_MINUTES=30 python3 tools/run-dm
 
 현재 테스트넷 Feegrant granter는 `0x812EA1e3fb2EFA004AE1308ed27EcEd0b05Cae66`이다. 업로더 잔액 0 BNB에서 CreateObject·private 업로드·SEALED·동일 bytes 재조회가 성공했다. 이 단일 CreateObject의 서명자는 업로더 1명이며 granter의 거래별 서명은 추가하지 않는다.
 
-Greenfield worker는 creator/payer/granter를 EIP-55 체크섬 주소로 통일한다. 테스트넷에서 creator/payer를 소문자로 넣으면 동일 지갑이어도 `wrong number of signers; expected 2, got 1: unauthorized`가 재현됐다. 체크섬 주소로 서명한 거래는 서명 1개로 통과했다. 이 오류는 `SIGNATURE_INVALID`로 구분하며 쓰기 권한 부족으로 표시하지 않는다.
+Greenfield worker는 creator/payer/granter를 EIP-55 체크섬 주소로 통일한다. 테스트넷에서 creator/payer를 소문자로 넣으면 동일 지갑이어도 `wrong number of signers; expected 2, got 1: unauthorized`가 재현됐다. 체크섬 주소로 서명한 거래는 서명 1개로 통과했다. 현재 오류 전달은 이 메시지를 `SIGNATURE_INVALID`로 바꾸지 않고 원래 code·message·codespace·log를 보존한다.
 
 ## 검증 범위와 미완료 사항
 

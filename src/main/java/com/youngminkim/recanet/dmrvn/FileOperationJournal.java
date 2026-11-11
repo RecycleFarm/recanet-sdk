@@ -64,7 +64,7 @@ public final class FileOperationJournal implements OperationJournal {
             } finally {
                 held.get().remove(id);
             }
-        } catch (DmrvnException e) {
+        } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
             throw new DmrvnException(Code.JOURNAL_UNAVAILABLE);
@@ -86,7 +86,7 @@ public final class FileOperationJournal implements OperationJournal {
 
     @Override
     public List<Map<String, Object>> findOperationsByClaimId(String claimId) {
-        String normalized = Crypto.bytes32(claimId);
+        String normalized = Crypto.bytes32(claimId, "claimId");
         require(held.get().contains(id("claim-id:" + normalized)), Code.JOURNAL_UNAVAILABLE);
         try (var files = Files.list(root)) {
             var records = new ArrayList<Map<String, Object>>();

@@ -150,7 +150,10 @@ class PrivyEvmSignerTest {
                     requests.stream().map(m -> m.get("method")).toList());
             assertTrue(headers.stream().allMatch(h -> h != null && !h.isBlank()));
             failure.set(1);
-            assertThrows(DmrvnException.class, () -> signer.signMessage("test"));
+            var error = assertThrows(io.privy.api.models.errors.APIException.class,
+                    () -> signer.signMessage("test"));
+            assertEquals(503, error.code());
+            assertTrue(error.bodyAsString().isPresent());
             assertEquals(4, requests.size());
         } finally {
             server.stop(0);

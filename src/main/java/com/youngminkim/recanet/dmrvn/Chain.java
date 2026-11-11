@@ -109,6 +109,7 @@ final class Chain {
         try {
             return verifyDeployment(head());
         } catch (RuntimeException e) {
+            if (e instanceof UpstreamException) throw e;
             throw deploymentFailure(e);
         }
     }
@@ -119,10 +120,10 @@ final class Chain {
                     number(call("eth_chainId")).equals(BigInteger.valueOf(config.chainId())),
                     Code.DEPLOYMENT_NOT_READY);
             String tag = quantity(height);
-            String blockHash = Crypto.bytes32(Json.str(block(height).get("hash")));
+            String blockHash = Crypto.bytes32(Json.str(block(height).get("hash"), "hash"), "hash");
             var deployment = config.deployment();
             var observed = deployment.snapshot();
-            var expectedHashes = Json.map(observed.get("codeHashes"));
+            var expectedHashes = Json.map(observed.get("codeHashes"), "codeHashes");
             var hashes = new LinkedHashMap<String, Object>();
             String targetKey = deployment.isProxy() ? "proxy" : "contract";
             hashes.put(
@@ -202,7 +203,8 @@ final class Chain {
         }
     }
 
-    private static DmrvnException deploymentFailure(RuntimeException error) {
+    private static RuntimeException deploymentFailure(RuntimeException error) {
+        if (!(error instanceof DmrvnException)) return error;
         return error instanceof DmrvnException e && e.code() == Code.UNAPPROVED_IMPLEMENTATION
                 ? e
                 : new DmrvnException(Code.DEPLOYMENT_NOT_READY);
@@ -231,7 +233,7 @@ final class Chain {
         require(
                 "0x0f".equals(actual.get("fields"))
                         && Crypto.ZERO.equals(actual.get("salt"))
-                        && Json.list(actual.get("extensions")).isEmpty(),
+                        && Json.list(actual.get("extensions"), "extensions").isEmpty(),
                 Code.DEPLOYMENT_NOT_READY);
     }
 
@@ -248,23 +250,23 @@ final class Chain {
         var r = Json.map(raw);
         long height = number(r.get("blockNumber")).longValueExact();
         if (height > head) return null;
-        require(
-                Json.str(r.get("transactionHash")).equalsIgnoreCase(hash)
-                        && Objects.equals(block(height).get("hash"), r.get("blockHash")),
-                Code.SUBMISSION_UNRESOLVED);
+        require(Json.str(r.get("transactionHash"), "transactionHash").equalsIgnoreCase(hash),
+                Code.SUBMISSION_UNRESOLVED, "receipt.transactionHash", "must match the requested transaction hash");
+        require(Objects.equals(block(height).get("hash"), r.get("blockHash")),
+                Code.SUBMISSION_UNRESOLVED, "receipt.blockHash", "must match the canonical block hash");
         return r;
     }
 
     Map<String, Object> event(String name, Map<String, Object> receipt, String claimId) {
-        for (Object raw : Json.list(receipt.get("logs"))) {
+        for (Object raw : Json.list(receipt.get("logs"), "logs")) {
             var log = Json.map(raw);
             if (!config.claimAddress().equalsIgnoreCase(String.valueOf(log.get("address"))))
                 continue;
-            var topics = Json.list(log.get("topics"));
+            var topics = Json.list(log.get("topics"), "topics");
             if (topics.isEmpty() || !DmrvnProtocol.CLAIM.topic(name).equals(topics.get(0)))
                 continue;
             var e = DmrvnProtocol.CLAIM.decodeEvent(name, log);
-            if (claimId.equalsIgnoreCase(Json.str(e.get("claimId")))) return e;
+            if (claimId.equalsIgnoreCase(Json.str(e.get("claimId"), "claimId"))) return e;
         }
         return null;
     }
@@ -286,13 +288,13 @@ final class Chain {
             for (Object item : Json.list(call("eth_getLogs", filter))) {
                 var log = Json.map(item);
                 require(
-                        config.claimAddress().equalsIgnoreCase(Json.str(log.get("address")))
+                        config.claimAddress().equalsIgnoreCase(Json.str(log.get("address"), "address"))
                                 && !Boolean.TRUE.equals(log.get("removed")),
                         Code.RPC_UNAVAILABLE);
                 var decoded = DmrvnProtocol.CLAIM.decodeEvent(event, log);
-                if (id.equalsIgnoreCase(Json.str(decoded.get("claimId")))
+                if (id.equalsIgnoreCase(Json.str(decoded.get("claimId"), "claimId"))
                         && expected.equals(String.valueOf(decoded.get(field))))
-                    return Json.str(log.get("transactionHash"));
+                    return Json.str(log.get("transactionHash"), "transactionHash");
             }
         }
         return null;

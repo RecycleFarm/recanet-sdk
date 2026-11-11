@@ -3,6 +3,7 @@ package com.youngminkim.recanet;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Objects;
+import com.youngminkim.recanet.telemetry.SdkTelemetry;
 
 /** Immutable server credentials and connection settings for the Privy wrapper. */
 public final class PrivyClientConfig {
@@ -11,6 +12,7 @@ public final class PrivyClientConfig {
     private final URI baseUri;
     private final Duration requestTimeout;
     private final PrivyTokenVerificationConfig tokenVerification;
+    private final SdkTelemetry telemetry;
 
     /**
      * Uses Privy's production API and a 30-second request timeout.
@@ -29,16 +31,17 @@ public final class PrivyClientConfig {
      * @param requestTimeout positive default timeout for SDK requests
      */
     public PrivyClientConfig(String appId, String appSecret, URI baseUri, Duration requestTimeout) {
-        this(appId, appSecret, baseUri, requestTimeout, null);
+        this(appId, appSecret, baseUri, requestTimeout, null, SdkTelemetry.local());
     }
 
     private PrivyClientConfig(String appId, String appSecret, URI baseUri, Duration requestTimeout,
-                             PrivyTokenVerificationConfig tokenVerification) {
+                             PrivyTokenVerificationConfig tokenVerification, SdkTelemetry telemetry) {
         this.appId = requireText(appId, "appId");
         this.appSecret = requireText(appSecret, "appSecret");
         this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
         this.requestTimeout = Objects.requireNonNull(requestTimeout, "requestTimeout");
         this.tokenVerification = tokenVerification;
+        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
         if ((!"https".equalsIgnoreCase(baseUri.getScheme()) && !"http".equalsIgnoreCase(baseUri.getScheme()))
                 || baseUri.getHost() == null || baseUri.getUserInfo() != null
                 || (baseUri.getPath() != null && !baseUri.getPath().isEmpty())
@@ -69,8 +72,15 @@ public final class PrivyClientConfig {
      */
     public PrivyClientConfig withTokenVerification(PrivyTokenVerificationConfig verification) {
         return new PrivyClientConfig(appId, appSecret, baseUri, requestTimeout,
-                Objects.requireNonNull(verification, "tokenVerification"));
+                Objects.requireNonNull(verification, "tokenVerification"), telemetry);
     }
+
+    /** Returns a copy using the given local/OpenTelemetry operation logger. */
+    public PrivyClientConfig withTelemetry(SdkTelemetry telemetry) {
+        return new PrivyClientConfig(appId, appSecret, baseUri, requestTimeout, tokenVerification, telemetry);
+    }
+
+    public SdkTelemetry telemetry() { return telemetry; }
 
     /** @return the Privy app ID */
     public String appId() { return appId; }

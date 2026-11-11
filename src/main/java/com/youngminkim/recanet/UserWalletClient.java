@@ -90,28 +90,31 @@ public final class UserWalletClient {
      * A deterministic, app-unique Privy external ID prevents duplicate provisioning,
      * including concurrent calls. On an ambiguous network failure, call again with the
      * same namespace/member ID to discover the wallet; creation is never blindly retried.
+     * Lookup precedes creation. A failed lookup or create, including HTTP 409, is propagated
+     * immediately without a recovery lookup.
      */
     public UserWallet getOrCreateWallet(String userId) {
+        return client.config().telemetry().observe("UserWalletClient.getOrCreateWallet", null,
+                () -> getOrCreateWalletImpl(userId));
+    }
+
+    private UserWallet getOrCreateWalletImpl(String userId) {
         String externalId = externalId(userId);
         var existing = findWallet(userId);
         if (existing.isPresent()) return existing.get();
-        try {
-            var wallet = client.registerBackendWallet(registration,
-                    new BackendWalletCreateRequest("ethereum", null, externalId));
-            if (!"ethereum".equals(wallet.chainType())) throw invalidResponse();
-            return new UserWallet(userId, wallet.id(), wallet.address(), wallet.chainType());
-        } catch (PrivyApiException e) {
-            // Another provisioner may have won the external-ID uniqueness race.
-            if (e.statusCode() == 409) {
-                var winner = findWallet(userId);
-                if (winner.isPresent()) return winner.get();
-            }
-            throw e;
-        }
+        var wallet = client.registerBackendWallet(registration,
+                new BackendWalletCreateRequest("ethereum", null, externalId));
+        if (!"ethereum".equals(wallet.chainType())) throw invalidResponse();
+        return new UserWallet(userId, wallet.id(), wallet.address(), wallet.chainType());
     }
 
     /** Finds only wallets associated with both this member and this backend authorization key. */
     public Optional<UserWallet> findWallet(String userId) {
+        return client.config().telemetry().observe("UserWalletClient.findWallet", null,
+                () -> findWalletImpl(userId));
+    }
+
+    private Optional<UserWallet> findWalletImpl(String userId) {
         String externalId = externalId(userId);
         String cursor = null;
         UserWallet found = null;
@@ -137,25 +140,35 @@ public final class UserWalletClient {
                 if (next != null && !next.isBlank() && !cursors.add(next)) throw invalidResponse();
                 cursor = next;
             } while (cursor != null && !cursor.isBlank());
+            client.config().telemetry().checkpoint(found == null
+                    ? com.youngminkim.recanet.telemetry.SdkTelemetry.State.WALLET_NOT_FOUND
+                    : com.youngminkim.recanet.telemetry.SdkTelemetry.State.WALLET_FOUND);
             return Optional.ofNullable(found);
         } catch (APIException e) {
-            throw PrivyClient.apiFailure(e);
+            throw e;
         } catch (PrivyApiException e) {
             throw e;
-        } catch (RuntimeException e) {
-            // Do not expose upstream bodies, request credentials or exception causes.
-            throw new PrivyApiException(PrivyApiException.Code.UNAVAILABLE, 0, null);
         }
     }
 
     /** Signs a personal_sign message with the member's wallet using the backend key. */
     public String signMessage(String userId, String message) {
+        return client.config().telemetry().observe("UserWalletClient.signMessage", null,
+                () -> signMessageImpl(userId, message));
+    }
+
+    private String signMessageImpl(String userId, String message) {
         Objects.requireNonNull(message, "message");
         return signer(userId).signMessage(message);
     }
 
     /** Signs EIP-712 data with the member's wallet using the backend key. */
     public String signTypedData(String userId, Map<String, Object> typedData) {
+        return client.config().telemetry().observe("UserWalletClient.signTypedData", null,
+                () -> signTypedDataImpl(userId, typedData));
+    }
+
+    private String signTypedDataImpl(String userId, Map<String, Object> typedData) {
         Objects.requireNonNull(typedData, "typedData");
         return signer(userId).signTypedData(typedData);
     }
@@ -167,6 +180,12 @@ public final class UserWalletClient {
      * a different transaction under the same key. A hash means submitted, not confirmed.
      */
     public String sendTransaction(String userId, long chainId, Map<String, Object> transaction,
+                                  String idempotencyKey) {
+        return client.config().telemetry().observe("UserWalletClient.sendTransaction", idempotencyKey,
+                () -> sendTransactionImpl(userId, chainId, transaction, idempotencyKey));
+    }
+
+    private String sendTransactionImpl(String userId, long chainId, Map<String, Object> transaction,
                                   String idempotencyKey) {
         if (chainId <= 0) throw new IllegalArgumentException("chainId must be positive");
         Objects.requireNonNull(transaction, "transaction");
@@ -180,6 +199,11 @@ public final class UserWalletClient {
      * Does not create a wallet or export its private key.
      */
     public EvmSigner signerFor(String userId) {
+        return client.config().telemetry().observe("UserWalletClient.signerFor", null,
+                () -> signerForImpl(userId));
+    }
+
+    private EvmSigner signerForImpl(String userId) {
         return signer(userId);
     }
 

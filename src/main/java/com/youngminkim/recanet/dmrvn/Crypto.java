@@ -14,7 +14,8 @@ final class Crypto {
     static final String ZERO = "0x" + "00".repeat(32);
 
     static byte[] hex(String s) {
-        require(s != null && s.matches("0x([0-9a-fA-F]{2})*"), Code.INVALID_INPUT);
+        require(s != null && s.matches("0x([0-9a-fA-F]{2})*"), Code.INVALID_INPUT,
+                "value", "must be a 0x-prefixed hexadecimal string with an even number of digits");
         return HexFormat.of().parseHex(s.substring(2));
     }
 
@@ -41,7 +42,8 @@ final class Crypto {
     }
 
     static String address(String s) {
-        require(s != null && s.matches("0x[0-9a-fA-F]{40}"), Code.INVALID_INPUT);
+        require(s != null && s.matches("0x[0-9a-fA-F]{40}"), Code.INVALID_INPUT,
+                "value", "must be a 0x-prefixed 20-byte address");
         String lower = s.substring(2).toLowerCase(Locale.ROOT);
         if (!s.substring(2).equals(lower)
                 && !s.substring(2).equals(s.substring(2).toUpperCase(Locale.ROOT))) {
@@ -53,14 +55,26 @@ final class Crypto {
                                     == (Character.digit(h.charAt(i), 16) >= 8
                                             ? Character.toUpperCase(lower.charAt(i))
                                             : lower.charAt(i)),
-                            Code.INVALID_INPUT);
+                            Code.INVALID_INPUT, "value", "mixed-case address must have a valid EIP-55 checksum");
         }
         return "0x" + lower;
     }
 
     static String bytes32(String s) {
-        require(hex(s).length == 32, Code.INVALID_INPUT);
+        require(hex(s).length == 32, Code.INVALID_INPUT, "value", "must contain exactly 32 bytes");
         return s.toLowerCase(Locale.ROOT);
+    }
+
+    static String address(String value, String field) {
+        return input(field, () -> address(value));
+    }
+
+    static String bytes32(String value, String field) {
+        return input(field, () -> bytes32(value));
+    }
+
+    static BigInteger uint(Object value, int bits, String field) {
+        return input(field, () -> uint(value, bits));
     }
 
     static BigInteger uint(Object o, int bits) {
@@ -71,16 +85,18 @@ final class Crypto {
                         || o instanceof Integer
                         || o instanceof Long
                         || o instanceof BigInteger,
-                Code.INVALID_INPUT);
+                Code.INVALID_INPUT, "value", "must be an integer or an unsigned decimal integer string");
         String s = o.toString();
-        require(s.matches("0|[1-9][0-9]*"), Code.INVALID_INPUT);
+        require(s.matches("0|[1-9][0-9]*"), Code.INVALID_INPUT,
+                "value", "must be a non-negative decimal integer without leading zeros");
         BigInteger n = new BigInteger(s);
-        require(n.bitLength() <= bits, Code.INVALID_INPUT);
+        require(n.bitLength() <= bits, Code.INVALID_INPUT, "value", "must fit in uint" + bits);
         return n;
     }
 
     static byte[] word(BigInteger n) {
-        require(n.signum() >= 0 && n.bitLength() <= 256, Code.INVALID_INPUT);
+        require(n.signum() >= 0 && n.bitLength() <= 256, Code.INVALID_INPUT,
+                "value", "must be a non-negative integer that fits in uint256");
         byte[] raw = n.toByteArray(), out = new byte[32];
         int size = Math.min(raw.length, 32);
         System.arraycopy(raw, raw.length - size, out, 32 - size, size);

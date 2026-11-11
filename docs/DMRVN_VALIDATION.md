@@ -1,5 +1,19 @@
 # DMRVN 검증 기록
 
+## 2026-11-09 외부 오류 후 자동 대응 제거: 오프라인 검증
+
+- Privy 회원 지갑은 조회 후 없을 때 생성한다. 생성 409 이후 자동 재조회는 제거했으며 원래 APIException의 상태·본문을 즉시 전달한다.
+- Greenfield HEAD의 객체 없음 오류를 성공 응답으로 바꾸지 않는다. 신규 객체는 create부터 수행하며 외부 오류 후에는 재조회·재생성·create intent 초기화를 하지 않는다. 명시적 verifyCreate 호출에서도 체인 실행 오류는 원래 코드·메시지를 전달한다.
+- 정상 응답 이후의 봉인·receipt 완료 확인 대기는 유지한다. 외부 메서드가 오류를 던지면 즉시 전파하며, 임의 RPC 어댑터의 RuntimeException도 일반 오류로 덮어쓰지 않는다.
+- `./gradlew test compileExamplesJava`: PASS. JUnit 135개, failures=0/errors=0/skipped=0. `npm test --prefix tools/greenfield`: PASS, 10개. 실제 외부 서비스 쓰기는 실행하지 않았다.
+
+## 2026-11-05 외부 오류 원문 전달: 오프라인 검증
+
+- 단일 제출의 `FAILED`·`UNKNOWN` 변환과 전송 오류의 `SUBMISSION_UNRESOLVED` 덮어쓰기를 제거했다. Privy 공식 `APIException`은 그대로 전파하고 Greenfield/RPC는 `UpstreamException`에 원래 code·message·응답을 보존한다.
+- `./gradlew test compileExamplesJava`: PASS. JUnit 134개, failures=0/errors=0/skipped=0. 원래 예외 객체·HTTP 상태·본문·헤더 보존, RPC revert, Greenfield 프로세스 경계·File journal 잠금의 오류 전달 및 자동 재전송 없음 등을 검증했다.
+- `npm test --prefix tools/greenfield`: PASS. 9개 시험에서 원래 오류 코드·메시지·data·CheckTx 증거 보존과 기존 저장 흐름을 검증했다.
+- 실제 Privy·Greenfield·체인 쓰기는 실행하지 않았다. 아래 과거 검증 기록은 당시 동작의 증거로 유지한다.
+
 ## 2026-11-04 파트너 단일 요청 계약: 오프라인 검증 PASS
 
 기준 명세: `RecycleFarm/specifications@6da7d029ca9a9dad71e5b2928de0f3c06cc5b499`. 검증 대상은 현재 Java 작업 트리이며 기존 미커밋 회원 지갑/활동 처리 기능을 포함한다.
@@ -229,6 +243,18 @@ Log: wrong number of signers; expected 2, got 1: unauthorized
 공개 RPC의 실제 `onReport` calldata에서 위원 수 및 threshold를 확인했다. SDK는 성공 receipt, Coordinator 서명, 서로 다른 위원 3명의 EIP-712 서명, 원본·방법론·출력 결속, Greenfield 최종 보고서 bytes의 reportHash와 outputHash를 검증했다. 보고서 경로는 `dmrvn/dmrvn/v4/reports/98fee8b10e1e27b08bd10a87d9a4cacee510a053c845410b868b3c0bd8bfd057.json`이다.
 
 사용자 ETH 잔액 0 및 사용자 signer의 거래 전송 호출 0 assertion도 통과했다. 최종 JUnit XML은 `build/test-results/dmrvnPetLiveTest/TEST-com.youngminkim.recanet.dmrvn.DmrvnPetLiveTest.xml`에 기록됐다. 60 gCO2e는 이제 이 신규 Claim의 실제 확정 결과다. 방법론은 `DECLARED_INPUTS_V1`이며 물리적 재활용 증명은 포함하지 않는다. 별도 fileHash 기준값이 없으므로 `fileHashVerification=DOWNLOAD_CHECKSUM_ONLY`, 설명 metadata는 `metadataIndependentlyVerified=false`로 유지한다.
+
+## 2026-11-09 입력 오류 상세 메시지 검증
+
+`INVALID_INPUT` 검증에 필드명과 영어 실패 사유를 추가했다. ActivityRequest, 설정, Evidence, JSON 중첩 경로·배열 위치, ABI·EIP-712, Greenfield worker의 자체 입력 검증을 포함한다. `reportError.message`와 사전 점검 `checks.<항목>.message`에도 상세 메시지를 전달한다. 외부 오류의 원문 전달 및 기존 오류 코드는 유지하며, manifest의 기존 `DEPLOYMENT_NOT_READY`도 필드·이유를 보존한다.
+
+`./gradlew test compileExamplesJava`가 통과했다(Java 144개, 실패 0). `node --test tools/greenfield/worker.test.cjs`도 11개 모두 통과했다. 신규 테스트는 필드별 입력 오류, 중첩 JSON 경로, UTF-8·중복 키·숫자 제한, 설정 및 Evidence 결속, reportError 메시지, 잘못된 값 미노출과 외부 예외 보존을 확인한다. 이 변경에서는 실환경 호출을 실행하지 않았다.
+
+## 2026-11-09 봉인·제출 확인의 자동 대응 제거
+
+F049의 업로드 후 봉인 상태는 한 번만 조회하고 미봉인이면 즉시 오류를 던진다. F061·F062의 제출 미확인·receipt 불일치도 반복 조회·sleep 없이 즉시 예외를 전달한다. F081의 기존 제출 의도 발견 시 자동 resolve를 제거했으며, 기존 거래 확인은 호출자가 `resolveSubmission`을 명시적으로 호출해야 한다. 오류 코드는 유지하고 구체적인 영어 메시지를 추가했다.
+
+`./gradlew test compileExamplesJava`가 통과했다(Java 146개). `node --test tools/greenfield/worker.test.cjs`는 12개 모두 통과했다. 회귀 테스트는 긴 confirmationTimeout에도 제출 확인 1회, 불일치 receipt 조회 1회, 기존 제출 재호출의 RPC 조회 0회, 미봉인 업로드의 상태 조회 1회 및 추가 업로드 0회를 확인한다. 실환경 호출은 실행하지 않았다.
 
 ## 남은 실환경 검증
 

@@ -3,7 +3,6 @@ package com.youngminkim.recanet;
 import static com.youngminkim.recanet.TransactionData.*;
 import static com.youngminkim.recanet.TransactionQueryException.Code.*;
 
-import com.youngminkim.recanet.dmrvn.DmrvnException;
 import com.youngminkim.recanet.dmrvn.EvmRpc;
 import com.youngminkim.recanet.dmrvn.HttpEvmRpc;
 
@@ -11,6 +10,7 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import com.youngminkim.recanet.telemetry.SdkTelemetry;
 
 /**
  * Read-only EVM transaction queries using a chain RPC. No Privy credentials or wallet keys are
@@ -23,6 +23,7 @@ public final class EvmTransactionClient {
     public static final int MAX_BLOCKS_PER_PAGE = 100;
     private final long chainId;
     private final EvmRpc rpc;
+    private final SdkTelemetry telemetry;
 
     public EvmTransactionClient(long chainId, URI rpcUrl) {
         this(chainId, new HttpEvmRpc(rpcUrl));
@@ -30,13 +31,27 @@ public final class EvmTransactionClient {
 
     /** Allows applications to supply their existing RPC transport. */
     public EvmTransactionClient(long chainId, EvmRpc rpc) {
+        this(chainId, rpc, SdkTelemetry.local());
+    }
+
+    public EvmTransactionClient(long chainId, URI rpcUrl, SdkTelemetry telemetry) {
+        this(chainId, new HttpEvmRpc(rpcUrl, telemetry), telemetry);
+    }
+
+    public EvmTransactionClient(long chainId, EvmRpc rpc, SdkTelemetry telemetry) {
         if (chainId <= 0) throw new IllegalArgumentException("chainId must be positive");
         this.chainId = chainId;
-        this.rpc = Objects.requireNonNull(rpc, "rpc");
+        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
+        this.rpc = telemetry.instrumentRpc(Objects.requireNonNull(rpc, "rpc"));
     }
 
     /** Returns empty only when the RPC returns null for this hash. RPC errors are thrown. */
     public Optional<EvmTransaction> getTransaction(String txHash) {
+        return telemetry.observe("EvmTransactionClient.getTransaction", null,
+                () -> getTransactionImpl(txHash));
+    }
+
+    private Optional<EvmTransaction> getTransactionImpl(String txHash) {
         String hash = argumentHex(txHash, 32, "txHash");
         verifyChain();
         Object raw = call("eth_getTransactionByHash", hash);
@@ -55,6 +70,11 @@ public final class EvmTransactionClient {
 
     /** Reads the current transaction state without submitting or retrying a transaction. */
     public EvmTransactionStatus getTransactionStatus(String txHash) {
+        return telemetry.observe("EvmTransactionClient.getTransactionStatus", null,
+                () -> getTransactionStatusImpl(txHash));
+    }
+
+    private EvmTransactionStatus getTransactionStatusImpl(String txHash) {
         String hash = argumentHex(txHash, 32, "txHash");
         return getTransaction(hash).map(EvmTransaction::status).orElseGet(() ->
                 new EvmTransactionStatus(chainId, hash, EvmTransactionStatus.State.NOT_FOUND, null, 0));
@@ -62,6 +82,11 @@ public final class EvmTransactionClient {
 
     /** Starts at the latest block and pages backwards to genesis. Prefer a bounded range. */
     public EvmTransactionPage listTransactions(String walletAddress, int limit, String cursor) {
+        return telemetry.observe("EvmTransactionClient.listTransactions", null,
+                () -> listTransactionsImpl(walletAddress, limit, cursor));
+    }
+
+    private EvmTransactionPage listTransactionsImpl(String walletAddress, int limit, String cursor) {
         return listTransactions(walletAddress, new EvmTransactionQuery(0, null, limit, cursor));
     }
 
@@ -71,6 +96,11 @@ public final class EvmTransactionClient {
      * initial block snapshot. A reorganization causes CHAIN_CHANGED instead of silent omissions.
      */
     public EvmTransactionPage listTransactions(String walletAddress, EvmTransactionQuery query) {
+        return telemetry.observe("EvmTransactionClient.listTransactions", null,
+                () -> listTransactionsImpl(walletAddress, query));
+    }
+
+    private EvmTransactionPage listTransactionsImpl(String walletAddress, EvmTransactionQuery query) {
         String address = argumentHex(walletAddress, 20, "walletAddress");
         Objects.requireNonNull(query, "query");
         Cursor cursor = query.cursor() == null ? null : decode(query.cursor(), address, query);
@@ -192,17 +222,14 @@ public final class EvmTransactionClient {
         if (Thread.currentThread().isInterrupted()) throw new TransactionQueryException(INTERRUPTED);
         try {
             return rpc.call(method, List.of(params));
-        } catch (DmrvnException e) {
-            throw new TransactionQueryException(e.code() == DmrvnException.Code.INTERRUPTED ? INTERRUPTED
-                    : e.code() == DmrvnException.Code.INVALID_INPUT ? INVALID_RESPONSE : RPC_UNAVAILABLE);
         } catch (RuntimeException e) {
             for (Throwable cause = e; cause != null; cause = cause.getCause()) {
                 if (cause instanceof InterruptedException) {
                     Thread.currentThread().interrupt();
-                    throw new TransactionQueryException(INTERRUPTED);
+                    throw e;
                 }
             }
-            throw new TransactionQueryException(RPC_UNAVAILABLE);
+            throw e;
         }
     }
 

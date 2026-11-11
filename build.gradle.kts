@@ -13,6 +13,7 @@ java {
 }
 
 dependencies {
+    api("io.opentelemetry:opentelemetry-api:1.68.0")
     implementation("io.privy.api:privy-java:0.59.0")
     implementation("com.nimbusds:nimbus-jose-jwt:10.10")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
@@ -20,6 +21,7 @@ dependencies {
     implementation("io.github.erdtman:java-json-canonicalization:1.1")
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("io.opentelemetry:opentelemetry-sdk-testing:1.68.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -44,6 +46,22 @@ publishing {
 val examples by sourceSets.creating {
     compileClasspath += sourceSets.main.get().output + configurations.runtimeClasspath.get()
     runtimeClasspath += output + compileClasspath
+}
+
+dependencies {
+    add(examples.implementationConfigurationName, "io.opentelemetry:opentelemetry-sdk-extension-autoconfigure:1.68.0")
+    add(examples.runtimeOnlyConfigurationName, "io.opentelemetry:opentelemetry-exporter-otlp:1.68.0")
+}
+
+tasks.jar {
+    manifest.attributes["Implementation-Version"] = project.version.toString()
+}
+
+tasks.register<JavaExec>("telemetrySmoke") {
+    group = "verification"
+    description = "Send mock wallet creation logs to OTLP; final create request intentionally returns HTTP 403"
+    classpath = examples.runtimeClasspath
+    mainClass.set("com.youngminkim.recanet.TelemetryExample")
 }
 
 tasks.register<JavaExec>("dmrvnDiagnostics") {

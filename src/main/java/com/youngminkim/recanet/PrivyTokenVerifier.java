@@ -29,6 +29,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import com.youngminkim.recanet.telemetry.SdkTelemetry;
 
 /** Reusable, thread-safe verifier for Privy access tokens. No app secret is required. */
 public final class PrivyTokenVerifier {
@@ -37,6 +38,7 @@ public final class PrivyTokenVerifier {
     private final String appId;
     private final PrivyTokenVerificationConfig config;
     private final Clock clock;
+    private final SdkTelemetry telemetry;
     private final DefaultJWTProcessor<SecurityContext> processor;
 
     /**
@@ -49,10 +51,19 @@ public final class PrivyTokenVerifier {
     }
 
     PrivyTokenVerifier(String appId, PrivyTokenVerificationConfig config, Clock clock) {
+        this(appId, config, clock, SdkTelemetry.local());
+    }
+
+    public PrivyTokenVerifier(String appId, PrivyTokenVerificationConfig config, SdkTelemetry telemetry) {
+        this(appId, config, Clock.systemUTC(), telemetry);
+    }
+
+    private PrivyTokenVerifier(String appId, PrivyTokenVerificationConfig config, Clock clock, SdkTelemetry telemetry) {
         if (appId == null || appId.isBlank()) throw new IllegalArgumentException("appId must not be blank");
         this.appId = appId;
         this.config = Objects.requireNonNull(config, "config");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
         processor = new DefaultJWTProcessor<>();
         processor.setJWSTypeVerifier(new DefaultJOSEObjectTypeVerifier<>(JOSEObjectType.JWT));
         processor.setJWTClaimsSetVerifier((claims, context) -> validateClaims(claims));
@@ -84,6 +95,10 @@ public final class PrivyTokenVerifier {
      * @throws PrivyAuthenticationException if verification fails
      */
     public AuthenticatedUser verifyAccessToken(String accessToken) {
+        return telemetry.step("PrivyTokenVerifier.verifyAccessToken", () -> verifyAccessTokenImpl(accessToken));
+    }
+
+    private AuthenticatedUser verifyAccessTokenImpl(String accessToken) {
         if (accessToken == null) throw failure(PrivyAuthenticationException.Code.MISSING_TOKEN);
         if (accessToken.length() > MAX_TOKEN_LENGTH) throw failure(PrivyAuthenticationException.Code.INVALID_TOKEN);
         if (accessToken.isBlank()) throw failure(PrivyAuthenticationException.Code.MISSING_TOKEN);
@@ -116,6 +131,11 @@ public final class PrivyTokenVerifier {
      * @throws PrivyAuthenticationException if the header or token is invalid
      */
     public AuthenticatedUser authenticateAuthorizationHeader(String authorizationHeader) {
+        return telemetry.step("PrivyTokenVerifier.authenticateAuthorizationHeader",
+                () -> authenticateAuthorizationHeaderImpl(authorizationHeader));
+    }
+
+    private AuthenticatedUser authenticateAuthorizationHeaderImpl(String authorizationHeader) {
         if (authorizationHeader == null) {
             throw failure(PrivyAuthenticationException.Code.MISSING_TOKEN);
         }

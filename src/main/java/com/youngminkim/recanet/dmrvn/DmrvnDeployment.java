@@ -14,50 +14,52 @@ public final class DmrvnDeployment {
 
     public static DmrvnDeployment fromManifest(Map<String, Object> input) {
         try {
-            var m = Json.copy(input);
-            long chain = Crypto.uint(m.get("chainId"), 53).longValueExact();
-            require(chain > 0, Code.INVALID_INPUT);
+            var m = Json.copy(input, "manifest");
+            long chain = Crypto.uint(m.get("chainId"), 53, "manifest.chainId").longValueExact();
+            require(chain > 0, Code.INVALID_INPUT, "manifest.chainId", "must be greater than 0");
             boolean normalized = m.containsKey("contractAddress");
             boolean proxy =
                     normalized ? "proxy".equals(m.get("deploymentKind")) : m.containsKey("proxy");
             if (normalized)
-                require(proxy || "direct".equals(m.get("deploymentKind")), Code.INVALID_INPUT);
+                require(proxy || "direct".equals(m.get("deploymentKind")), Code.INVALID_INPUT,
+                        "manifest.deploymentKind", "must be proxy or direct");
             else if (m.containsKey("deploymentKind"))
                 require(
                         (proxy ? Set.of("proxy", "transparent-proxy") : Set.of("direct"))
-                                .contains(Json.str(m.get("deploymentKind"))),
-                        Code.INVALID_INPUT);
-            var contract = normalized || proxy ? m : Json.map(m.get("contract"));
-            var forwarder = normalized || proxy ? m : Json.map(m.get("forwarder"));
+                                .contains(Json.str(m.get("deploymentKind"), "deploymentKind")),
+                        Code.INVALID_INPUT, "manifest.deploymentKind", "must match the manifest deployment structure");
+            var contract = normalized || proxy ? m : Json.map(m.get("contract"), "manifest.contract");
+            var forwarder = normalized || proxy ? m : Json.map(m.get("forwarder"), "manifest.forwarder");
             require(
                     "7"
                             .equals(
                                     normalized
                                             ? m.get("protocolVersion")
                                             : contract.get("domainVersion")),
-                    Code.INVALID_INPUT);
+                    Code.INVALID_INPUT, normalized ? "manifest.protocolVersion" : "manifest.contract.domainVersion", "must be 7");
             require(
                     !m.containsKey("domainVersion") || "7".equals(m.get("domainVersion")),
-                    Code.INVALID_INPUT);
+                    Code.INVALID_INPUT, "manifest.domainVersion", "must be 7 when present");
             require(
                     !m.containsKey("forwarderDomainVersion")
                             || "1".equals(m.get("forwarderDomainVersion")),
-                    Code.INVALID_INPUT);
+                    Code.INVALID_INPUT, "manifest.forwarderDomainVersion", "must be 1 when present");
             if (!normalized && !proxy)
-                require("1".equals(forwarder.get("domainVersion")), Code.INVALID_INPUT);
+                require("1".equals(forwarder.get("domainVersion")), Code.INVALID_INPUT,
+                        "manifest.forwarder.domainVersion", "must be 1");
             String target =
                     address(
                             normalized
                                     ? m.get("contractAddress")
-                                    : proxy ? m.get("proxy") : contract.get("address"));
+                                    : proxy ? m.get("proxy") : contract.get("address"), "manifest.contractAddress");
             String fwd =
                     address(
                             normalized
                                     ? m.get("forwarderAddress")
-                                    : proxy ? m.get("forwarder") : forwarder.get("address"));
+                                    : proxy ? m.get("forwarder") : forwarder.get("address"), "manifest.forwarderAddress");
             var hashes =
                     normalized || proxy
-                            ? Json.copy(Json.map(m.get("codeHashes")))
+                            ? Json.copy(Json.map(m.get("codeHashes"), "manifest.codeHashes"))
                             : Json.obj(
                                     "contract",
                                     contract.get("runtimeCodeHash"),
@@ -67,7 +69,7 @@ public final class DmrvnDeployment {
                     proxy
                             ? List.of("proxy", "implementation", "forwarder", "proxyAdmin")
                             : List.of("contract", "forwarder"))
-                hashes.put(key, hash(hashes.get(key)));
+                hashes.put(key, hash(hashes.get(key), "manifest.codeHashes." + key));
             var result =
                     Json.obj(
                             "chainId",
@@ -92,20 +94,21 @@ public final class DmrvnDeployment {
                             hashes);
             if (proxy) {
                 String implementation =
-                        address(m.get(normalized ? "implementationAddress" : "implementation"));
-                String admin = address(m.get(normalized ? "proxyAdminAddress" : "proxyAdmin"));
+                        address(m.get(normalized ? "implementationAddress" : "implementation"), "manifest.implementationAddress");
+                String admin = address(m.get(normalized ? "proxyAdminAddress" : "proxyAdmin"), "manifest.proxyAdminAddress");
                 String implementationHash =
                         hash(
                                 normalized
                                         ? m.get("approvedImplementationHash")
-                                        : hashes.get("implementation"));
+                                        : hashes.get("implementation"), "manifest.approvedImplementationHash");
                 require(
                         implementationHash.equals(hashes.get("implementation")),
-                        Code.INVALID_INPUT);
-                require(Set.of(target, fwd, implementation, admin).size() == 4, Code.INVALID_INPUT);
+                        Code.INVALID_INPUT, "manifest.approvedImplementationHash", "must match codeHashes.implementation");
+                require(new HashSet<>(List.of(target, fwd, implementation, admin)).size() == 4, Code.INVALID_INPUT,
+                        "manifest.contractAddress/forwarderAddress/implementationAddress/proxyAdminAddress", "must be four distinct addresses");
                 var releases = new ArrayList<Object>();
                 if (m.containsKey("approvedReleases"))
-                    releases.addAll(Json.list(m.get("approvedReleases")));
+                    releases.addAll(Json.list(m.get("approvedReleases"), "manifest.approvedReleases"));
                 releases.add(
                         Json.obj(
                                 "address",
@@ -115,23 +118,26 @@ public final class DmrvnDeployment {
                                 "contractVersion",
                                 m.get("contractVersion")));
                 var approved = new LinkedHashMap<String, Object>();
-                for (Object raw : releases) {
-                    var release = Json.map(raw);
-                    String addr = address(release.get("address"));
-                    String version = Json.str(release.get("contractVersion"));
-                    require(Set.of("1.0.0", "1.0.1").contains(version), Code.INVALID_INPUT);
-                    require(!List.of(target, fwd, admin).contains(addr), Code.INVALID_INPUT);
+                for (int index = 0; index < releases.size(); index++) {
+                    String path = index == releases.size() - 1 ? "manifest" : "manifest.approvedReleases[" + index + "]";
+                    var release = Json.map(releases.get(index), path);
+                    String addr = address(release.get("address"), path + ".address");
+                    String version = Json.str(release.get("contractVersion"), path + ".contractVersion");
+                    require(Set.of("1.0.0", "1.0.1").contains(version), Code.INVALID_INPUT,
+                            path + ".contractVersion", "must be 1.0.0 or 1.0.1");
+                    require(!List.of(target, fwd, admin).contains(addr), Code.INVALID_INPUT,
+                            path + ".address", "must differ from the contract, forwarder and proxy admin addresses");
                     var value =
                             Json.obj(
                                     "address",
                                     addr,
                                     "codeHash",
-                                    hash(release.get("codeHash")),
+                                    hash(release.get("codeHash"), path + ".codeHash"),
                                     "contractVersion",
                                     version);
                     require(
                             !approved.containsKey(addr) || approved.get(addr).equals(value),
-                            Code.INVALID_INPUT);
+                            Code.INVALID_INPUT, path, "duplicate release address has conflicting codeHash or contractVersion");
                     approved.put(addr, value);
                 }
                 result.putAll(
@@ -141,7 +147,7 @@ public final class DmrvnDeployment {
                                 "proxyAdminAddress",
                                 admin,
                                 "owner",
-                                address(m.get("owner")),
+                                address(m.get("owner"), "manifest.owner"),
                                 "approvedImplementationHash",
                                 implementationHash,
                                 "contractVersion",
@@ -151,11 +157,14 @@ public final class DmrvnDeployment {
             } else {
                 require(
                         m.get("contractVersion") == null && m.get("implementationAddress") == null,
-                        Code.INVALID_INPUT);
+                        Code.INVALID_INPUT, "manifest.contractVersion/implementationAddress", "must not be set for a direct deployment");
             }
             if (m.containsKey("deployment"))
-                result.put("deployment", Json.copy(Json.map(m.get("deployment"))));
+                result.put("deployment", Json.copy(Json.map(m.get("deployment"), "manifest.deployment")));
             return new DmrvnDeployment(result);
+        } catch (DmrvnException e) {
+            throw new DmrvnException(Code.DEPLOYMENT_NOT_READY,
+                    "DEPLOYMENT_NOT_READY: " + e.getMessage());
         } catch (RuntimeException e) {
             throw new DmrvnException(Code.DEPLOYMENT_NOT_READY);
         }
@@ -180,14 +189,23 @@ public final class DmrvnDeployment {
 
     static String address(Object value) {
         String result = Crypto.address(Json.str(value));
-        require(!result.equals("0x" + "00".repeat(20)), Code.INVALID_INPUT);
+        require(!result.equals("0x" + "00".repeat(20)), Code.INVALID_INPUT,
+                "value", "address must not be the zero address");
         return result;
     }
 
     private static String hash(Object value) {
         String result = Crypto.bytes32(Json.str(value));
-        require(!result.equals(Crypto.ZERO), Code.INVALID_INPUT);
+        require(!result.equals(Crypto.ZERO), Code.INVALID_INPUT, "value", "hash must not be zero");
         return result;
+    }
+
+    private static String address(Object value, String field) {
+        return input(field, () -> address(value));
+    }
+
+    private static String hash(Object value, String field) {
+        return input(field, () -> hash(value));
     }
 
     public Map<String, Object> snapshot() {
@@ -199,11 +217,11 @@ public final class DmrvnDeployment {
     }
 
     public String contractAddress() {
-        return Json.str(metadata.get("contractAddress"));
+        return Json.str(metadata.get("contractAddress"), "contractAddress");
     }
 
     public String forwarderAddress() {
-        return Json.str(metadata.get("forwarderAddress"));
+        return Json.str(metadata.get("forwarderAddress"), "forwarderAddress");
     }
 
     public boolean isProxy() {
@@ -211,7 +229,7 @@ public final class DmrvnDeployment {
     }
 
     public String runtimeCodeHash() {
-        return Json.str(Json.map(metadata.get("codeHashes")).get(isProxy() ? "proxy" : "contract"));
+        return Json.str(Json.map(metadata.get("codeHashes"), "codeHashes").get(isProxy() ? "proxy" : "contract"), "codeHashes");
     }
 
     void requireWritable() {
@@ -230,7 +248,7 @@ public final class DmrvnDeployment {
                     String.valueOf(metadata.get(field)).equals(String.valueOf(saved.get(field))),
                     Code.DEPLOYMENT_COLLISION);
         if (isProxy()) {
-            var release = release(Json.str(saved.get("implementationAddress")));
+            var release = release(Json.str(saved.get("implementationAddress"), "implementationAddress"));
             require(
                     release != null
                             && release.get("codeHash")
@@ -242,7 +260,7 @@ public final class DmrvnDeployment {
 
     Map<String, Object> release(String address) {
         if (!isProxy()) return null;
-        return Json.list(metadata.get("approvedReleases")).stream()
+        return Json.list(metadata.get("approvedReleases"), "approvedReleases").stream()
                 .map(Json::map)
                 .filter(r -> r.get("address").equals(address))
                 .findFirst()

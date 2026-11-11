@@ -39,6 +39,8 @@ public final class DmrvnException extends RuntimeException {
     private final Code code;
     private final boolean definitelyNotBroadcast;
     private final boolean definitelyRejected;
+    private final String inputField;
+    private final String inputReason;
 
     public DmrvnException(Code code) {
         this(code, false);
@@ -49,10 +51,21 @@ public final class DmrvnException extends RuntimeException {
     }
 
     DmrvnException(Code code, boolean definitelyNotBroadcast, boolean definitelyRejected) {
-        super(code.name());
+        this(code, code.name(), definitelyNotBroadcast, definitelyRejected, null, null);
+    }
+
+    public DmrvnException(Code code, String message) {
+        this(code, message, false, false, null, null);
+    }
+
+    private DmrvnException(Code code, String message, boolean definitelyNotBroadcast,
+                           boolean definitelyRejected, String inputField, String inputReason) {
+        super(message);
         this.code = code;
         this.definitelyNotBroadcast = definitelyNotBroadcast;
         this.definitelyRejected = definitelyRejected;
+        this.inputField = inputField;
+        this.inputReason = inputReason;
     }
 
     /** True only for a storage adapter failure proven to precede broadcast. */
@@ -94,5 +107,31 @@ public final class DmrvnException extends RuntimeException {
 
     static void require(boolean condition, Code code) {
         if (!condition) throw new DmrvnException(code);
+    }
+
+    static void require(boolean condition, Code code, String field, String reason) {
+        if (!condition) {
+            if (code == Code.INVALID_INPUT) throw invalidInput(field, reason);
+            throw new DmrvnException(code, code.name() + ": " + field + ": " + reason);
+        }
+    }
+
+    static DmrvnException invalidInput(String field, String reason) {
+        return new DmrvnException(Code.INVALID_INPUT, "INVALID_INPUT: " + field + ": " + reason,
+                false, false, field, reason);
+    }
+
+    /** Adds the caller's field path without copying rejected values or upstream messages. */
+    static <T> T input(String field, java.util.function.Supplier<T> operation) {
+        try {
+            return operation.get();
+        } catch (DmrvnException e) {
+            if (e.code != Code.INVALID_INPUT) throw e;
+            String nested = e.inputField;
+            String path = nested == null || nested.equals("value") || nested.equals("$")
+                    || nested.equals(field) ? field
+                    : nested.startsWith("$") ? field + nested.substring(1) : field + "." + nested;
+            throw invalidInput(path, e.inputReason == null ? "failed input validation" : e.inputReason);
+        }
     }
 }

@@ -39,20 +39,20 @@ final class ReportVerifier {
             byte[] bytes,
             String expectedFileHash) {
         match(event != null);
-        match(config.claimAddress().equalsIgnoreCase(Json.str(tx.get("to"))));
+        match(config.claimAddress().equalsIgnoreCase(Json.str(tx.get("to"), "to")));
         for (String key : List.of("status", "outputHash", "reportHash"))
             same(event.get(key), stored.get(key));
-        var call = DmrvnProtocol.CLAIM.decodeCall("onReport", Json.str(tx.get("input")));
-        var assignment = Json.map(call.get("assignment"));
-        var observation = Json.map(call.get("observation"));
-        var committee = Json.list(call.get("committee"));
+        var call = DmrvnProtocol.CLAIM.decodeCall("onReport", Json.str(tx.get("input"), "input"));
+        var assignment = Json.map(call.get("assignment"), "assignment");
+        var observation = Json.map(call.get("observation"), "observation");
+        var committee = Json.list(call.get("committee"), "committee");
         var domain = DmrvnProtocol.domain(config.chainId(), config.claimAddress(), false);
         same(assignment.get("claimId"), claimId);
         same(observation.get("claimId"), claimId);
         same(assignment.get("taskId"), observation.get("taskId"));
         same(event.get("taskId"), assignment.get("taskId"));
         same(event.get("committeeHash"), assignment.get("committeeHash"));
-        int threshold = Crypto.uint(assignment.get("threshold"), 8).intValueExact();
+        int threshold = Crypto.uint(assignment.get("threshold"), 8, "threshold").intValueExact();
         same(assignment.get("committeeSize"), committee.size());
         match(threshold > 0 && threshold <= committee.size());
         match(DmrvnProtocol.sortedAddresses(committee).equals(committee));
@@ -70,16 +70,16 @@ final class ReportVerifier {
                         "evidenceLocationHash",
                         "outputHash")) same(stored.get(k), observation.get(k));
         same(
-                DmrvnProtocol.evidenceLocationHash(Json.map(stored.get("evidenceLocation"))),
+                DmrvnProtocol.evidenceLocationHash(Json.map(stored.get("evidenceLocation"), "evidenceLocation")),
                 stored.get("evidenceLocationHash"));
         same(observation.get("result"), stored.get("status"));
         String coordinator =
                 Crypto.recover(
                         DmrvnProtocol.digest("TaskAssignment", domain, assignment),
-                        Json.str(call.get("coordinatorSignature")));
+                        Json.str(call.get("coordinatorSignature"), "coordinatorSignature"));
         String digest = DmrvnProtocol.digest("MrvObservation", domain, observation);
         var signers =
-                Json.list(call.get("observationSignatures")).stream()
+                Json.list(call.get("observationSignatures"), "observationSignatures").stream()
                         .map(s -> Crypto.recover(digest, Json.str(s)))
                         .toList();
         match(
@@ -91,7 +91,7 @@ final class ReportVerifier {
                 DmrvnProtocol.reportHash(assignment, observation, signers, domain),
                 stored.get("reportHash"));
         String fileHash = Crypto.hash(bytes);
-        if (expectedFileHash != null) same(fileHash, Crypto.bytes32(expectedFileHash));
+        if (expectedFileHash != null) same(fileHash, Crypto.bytes32(expectedFileHash, "expectedFileHash"));
         var report = Json.object(bytes);
         for (String key : List.of("evidenceHash", "methodologyHash", "reportHash"))
             same(report.get(key), stored.get(key));
@@ -100,7 +100,7 @@ final class ReportVerifier {
         same(report.get("committeeHash"), assignment.get("committeeHash"));
         same(report.get("schemaVersion"), 1);
         same(report.get("result"), stored.get("status"));
-        var outputs = Json.map(report.get("outputs"));
+        var outputs = Json.map(report.get("outputs"), "outputs");
         if ("2".equals(String.valueOf(stored.get("status")))) {
             same(Json.hash(outputs), stored.get("outputHash"));
             match(!Crypto.ZERO.equals(stored.get("outputHash")));
@@ -112,29 +112,29 @@ final class ReportVerifier {
             var output = Json.map(raw);
             match(output.keySet().equals(Set.of("value", "unit", "scale")));
             match(
-                    Json.str(output.get("value")).matches("-?(0|[1-9][0-9]*)")
-                            && !Json.str(output.get("unit")).isBlank());
-            Crypto.uint(output.get("scale"), 32);
+                    Json.str(output.get("value"), "value").matches("-?(0|[1-9][0-9]*)")
+                            && !Json.str(output.get("unit"), "unit").isBlank());
+            Crypto.uint(output.get("scale"), 32, "scale");
         }
-        var source = Json.map(report.get("source"));
+        var source = Json.map(report.get("source"), "source");
         same(
-                Crypto.address(Json.str(source.get("approver"))),
-                Crypto.address(Json.str(stored.get("approver"))));
+                Crypto.address(Json.str(source.get("approver"), "approver"), "approver"),
+                Crypto.address(Json.str(stored.get("approver"), "approver"), "approver"));
         same(
-                DmrvnProtocol.evidenceLocationHash(Json.map(source.get("evidenceLocation"))),
+                DmrvnProtocol.evidenceLocationHash(Json.map(source.get("evidenceLocation"), "evidenceLocation")),
                 stored.get("evidenceLocationHash"));
         same(source.get("evidenceLocationHash"), stored.get("evidenceLocationHash"));
-        var entries = Json.list(report.get("observations"));
+        var entries = Json.list(report.get("observations"), "observations");
         match(entries.size() == signers.size());
         var reportSigners = new ArrayList<String>();
         for (Object raw : entries) {
             var entry = Json.map(raw);
             String d =
                     DmrvnProtocol.digest(
-                            "MrvObservation", domain, Json.map(entry.get("observation")));
+                            "MrvObservation", domain, Json.map(entry.get("observation"), "observation"));
             same(d, digest);
-            String recovered = Crypto.recover(d, Json.str(entry.get("signature")));
-            same(recovered, Crypto.address(Json.str(entry.get("signer"))));
+            String recovered = Crypto.recover(d, Json.str(entry.get("signature"), "signature"));
+            same(recovered, Crypto.address(Json.str(entry.get("signer"), "signer"), "signer"));
             reportSigners.add(recovered);
         }
         match(

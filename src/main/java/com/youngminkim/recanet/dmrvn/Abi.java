@@ -53,11 +53,11 @@ final class Abi {
     }
 
     List<Field> inputs(String name) {
-        return fields(Json.list(definition(name).get("inputs")));
+        return fields(Json.list(definition(name).get("inputs"), "inputs"));
     }
 
     List<Field> outputs(String name) {
-        return fields(Json.list(definition(name).get("outputs")));
+        return fields(Json.list(definition(name).get("outputs"), "outputs"));
     }
 
     static List<Field> fields(List<Object> values) {
@@ -66,10 +66,10 @@ final class Abi {
                 .map(
                         v ->
                                 new Field(
-                                        Json.str(v.get("name")),
-                                        Json.str(v.get("type")),
+                                        Json.str(v.get("name"), "name"),
+                                        Json.str(v.get("type"), "type"),
                                         v.containsKey("components")
-                                                ? fields(Json.list(v.get("components")))
+                                                ? fields(Json.list(v.get("components"), "components"))
                                                 : List.of()))
                 .toList();
     }
@@ -91,11 +91,12 @@ final class Abi {
 
     Map<String, Object> decodeCall(String name, String data) {
         require(
-                data.length() >= 10
+                data != null && data.length() >= 10
                         && data.substring(0, 10).equalsIgnoreCase(topic(name).substring(0, 10)),
-                Code.INVALID_INPUT);
+                Code.INVALID_INPUT, "calldata", "must start with the expected function selector for " + name);
         var decoded = decode(inputs(name), Crypto.hex("0x" + data.substring(10)), 0);
-        require(encode(name, decoded).equalsIgnoreCase(data), Code.INVALID_INPUT);
+        require(encode(name, decoded).equalsIgnoreCase(data), Code.INVALID_INPUT,
+                "calldata", "must be a canonical ABI encoding of " + name);
         return decoded;
     }
 
@@ -104,23 +105,24 @@ final class Abi {
     }
 
     Map<String, Object> decodeEvent(String name, Map<String, Object> log) {
-        List<Object> topics = Json.list(log.get("topics"));
+        List<Object> topics = Json.list(log.get("topics"), "topics");
         require(
                 !topics.isEmpty() && topic(name).equalsIgnoreCase(Json.str(topics.get(0))),
-                Code.INVALID_INPUT);
+                Code.INVALID_INPUT, "log.topics[0]", "must match the expected event signature for " + name);
         List<Field> normal = new ArrayList<>();
         var out = new LinkedHashMap<String, Object>();
         int i = 1;
-        for (var d : Json.list(definition(name).get("inputs"))) {
+        for (var d : Json.list(definition(name).get("inputs"), "inputs")) {
             var m = Json.map(d);
             Field f = fields(List.of(d)).get(0);
             if (Boolean.TRUE.equals(m.get("indexed"))) {
-                require(i < topics.size(), Code.INVALID_INPUT);
+                require(i < topics.size(), Code.INVALID_INPUT,
+                        "log.topics", "must include the indexed event field " + f.name());
                 out.put(f.name(), read(f, Crypto.hex(Json.str(topics.get(i++))), 0));
             } else normal.add(f);
         }
-        require(i == topics.size(), Code.INVALID_INPUT);
-        out.putAll(decode(normal, Crypto.hex(Json.str(log.get("data"))), 0));
+        require(i == topics.size(), Code.INVALID_INPUT, "log.topics", "contains unexpected indexed topics");
+        out.putAll(decode(normal, Crypto.hex(Json.str(log.get("data"), "data")), 0));
         return out;
     }
 
@@ -130,7 +132,8 @@ final class Abi {
                 fields.stream()
                         .map(
                                 f -> {
-                                    require(values.containsKey(f.name), Code.INVALID_INPUT);
+                                    require(values != null && values.containsKey(f.name), Code.INVALID_INPUT,
+                                            f.name, "required ABI field is missing");
                                     return values.get(f.name);
                                 })
                         .toList());
@@ -152,11 +155,15 @@ final class Abi {
     }
 
     private static byte[] write(Field f, Object v) {
+        return input(f.name.isEmpty() ? "value" : f.name, () -> writeValue(f, v));
+    }
+
+    private static byte[] writeValue(Field f, Object v) {
         String t = f.type;
         if (t.equals("tuple")) return tuple(f.children, Json.map(v));
         if (t.endsWith("[]")) {
             var list = Json.list(v);
-            require(list.size() <= 1024, Code.INVALID_INPUT);
+            require(list.size() <= 1024, Code.INVALID_INPUT, "value", "ABI array must not exceed 1024 elements");
             return Crypto.join(
                     Crypto.word(BigInteger.valueOf(list.size())),
                     sequence(Collections.nCopies(list.size(), f.element()), list));
@@ -173,13 +180,13 @@ final class Abi {
         if (t.equals("bytes32")) return Crypto.hex(Crypto.bytes32(Json.str(v)));
         if (t.equals("bytes1")) {
             byte[] value = Crypto.hex(Json.str(v));
-            require(value.length == 1, Code.INVALID_INPUT);
+            require(value.length == 1, Code.INVALID_INPUT, "value", "must contain exactly 1 byte");
             return Arrays.copyOf(value, 32);
         }
         if (t.equals("address"))
             return Crypto.word(new BigInteger(Crypto.address(Json.str(v)).substring(2), 16));
         if (t.equals("bool")) {
-            require(v instanceof Boolean, Code.INVALID_INPUT);
+            require(v instanceof Boolean, Code.INVALID_INPUT, "value", "must be a boolean");
             return Crypto.word(Boolean.TRUE.equals(v) ? BigInteger.ONE : BigInteger.ZERO);
         }
         if (t.startsWith("uint"))
@@ -200,26 +207,32 @@ final class Abi {
 
     private static int offset(byte[] b, int i) {
         int n = new BigInteger(1, slice(b, i, 32)).intValueExact();
-        require(n >= 0, Code.INVALID_INPUT);
+        require(n >= 0, Code.INVALID_INPUT, "abi.offset", "must be non-negative");
         return n;
     }
 
     private static byte[] slice(byte[] b, int start, int len) {
-        require(start >= 0 && len >= 0 && start <= b.length - len, Code.INVALID_INPUT);
+        require(start >= 0 && len >= 0 && start <= b.length - len, Code.INVALID_INPUT,
+                "abi.data", "is too short for the requested offset and length");
         return Arrays.copyOfRange(b, start, start + len);
     }
 
     private static Object read(Field f, byte[] b, int start) {
+        return input(f.name.isEmpty() ? "value" : f.name, () -> readValue(f, b, start));
+    }
+
+    private static Object readValue(Field f, byte[] b, int start) {
         String t = f.type;
         if (t.equals("bytes1")) {
             byte[] word = slice(b, start, 32);
-            for (int i = 1; i < word.length; i++) require(word[i] == 0, Code.INVALID_INPUT);
+            for (int i = 1; i < word.length; i++) require(word[i] == 0, Code.INVALID_INPUT,
+                    "value", "bytes1 ABI padding must be zero");
             return Crypto.hex(new byte[] {word[0]});
         }
         if (t.equals("tuple")) return decode(f.children, b, start);
         if (t.endsWith("[]")) {
             int count = offset(b, start);
-            require(count <= 1024, Code.INVALID_INPUT);
+            require(count <= 1024, Code.INVALID_INPUT, "value", "ABI array must not exceed 1024 elements");
             var fields = new ArrayList<Field>();
             for (int i = 0; i < count; i++)
                 fields.add(new Field(Integer.toString(i), f.element().type, f.children));
@@ -234,23 +247,23 @@ final class Abi {
                         .decode(java.nio.ByteBuffer.wrap(raw))
                         .toString();
             } catch (Exception e) {
-                throw new DmrvnException(Code.INVALID_INPUT);
+                throw invalidInput("value", "ABI string must contain valid UTF-8");
             }
         }
         byte[] word = slice(b, start, 32);
         BigInteger n = new BigInteger(1, word);
         if (t.equals("bytes32")) return Crypto.hex(word);
         if (t.equals("address")) {
-            require(n.bitLength() <= 160, Code.INVALID_INPUT);
+            require(n.bitLength() <= 160, Code.INVALID_INPUT, "value", "ABI address must fit in 160 bits");
             return Crypto.hex(Arrays.copyOfRange(word, 12, 32));
         }
         if (t.equals("bool")) {
-            require(n.bitLength() <= 1, Code.INVALID_INPUT);
+            require(n.bitLength() <= 1, Code.INVALID_INPUT, "value", "ABI boolean must be 0 or 1");
             return n.equals(BigInteger.ONE);
         }
         if (t.startsWith("uint")) {
             int bits = Integer.parseInt(t.substring(4));
-            require(n.bitLength() <= bits, Code.INVALID_INPUT);
+            require(n.bitLength() <= bits, Code.INVALID_INPUT, "value", "must fit in uint" + bits);
             return bits <= 32 ? n.longValueExact() : n.toString();
         }
         throw new IllegalArgumentException("Unsupported ABI type");

@@ -87,72 +87,159 @@ class DmrvnActivityTest {
         assertFalse(Json.canonical(result).contains("approvalSignature"));
     }
 
-    @Test void noReceiptReturnsUnknownWithoutRetryingOrCallingItFinalFailure() {
+    @Test void noReceiptThrowsConfirmationErrorWithoutResending() {
         confirm = false;
-        var result = client().submitActivity(wallets, request(Map.of()));
-        assertEquals("UNKNOWN", result.get("outcome"));
-        assertEquals("SUBMISSION_BROADCAST", result.get("lastConfirmedStage"));
-        var known = Json.map(result.get("confirmed"));
-        assertEquals(TestSupport.TX, known.get("txHash"));
-        assertEquals("SEALED", known.get("storageStatus"));
-        assertFalse(known.containsKey("chainStatus"));
+        var error = assertThrows(DmrvnException.class,
+                () -> client().submitActivity(wallets, request(Map.of())));
+        assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED, error.code());
         assertEquals(1, operator.sends);
     }
 
-    @Test void lostSendResponseKeepsSealedFactsAndDoesNotInventTransactionHash() {
+    @Test void unconfirmedClaimIsCheckedOnceEvenWithLongConfirmationTimeout() {
+        confirm = false;
+        var reads = new java.util.concurrent.atomic.AtomicInteger();
+        String selector = DmrvnProtocol.CLAIM.topic("getClaim").substring(0, 10);
+        EvmRpc tracked = (method, params) -> {
+            if (operator.sends > 0 && method.equals("eth_call")
+                    && Json.str(Json.map(params.get(0)).get("data")).startsWith(selector))
+                assertEquals(1, reads.incrementAndGet(), "No second confirmation attempt is allowed");
+            return rpc.call(method, params);
+        };
+        var sdk = new DmrvnClient(rpc.config, tracked, operator, storage, methodology);
+        var request = new ActivityRequest("member", "partner-event", Map.of(), null, null, "900000",
+                Duration.ofMinutes(10), Duration.ofMillis(1));
+        var error = assertThrows(DmrvnException.class, () -> sdk.submitActivity(wallets, request));
+        assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED, error.code());
+        assertTrue(error.getMessage().contains("automatic polling is disabled"));
+        assertEquals(1, reads.get());
+        assertEquals(1, operator.sends);
+    }
+
+    @Test void inconsistentReceiptThrowsWithoutAnotherReceiptQuery() {
+        afterConfirm = () -> rpc.receipt.put("transactionHash", "0x" + "ff".repeat(32));
+        var reads = new java.util.concurrent.atomic.AtomicInteger();
+        EvmRpc tracked = (method, params) -> {
+            if (method.equals("eth_getTransactionReceipt"))
+                assertEquals(1, reads.incrementAndGet(), "No receipt retry is allowed");
+            return rpc.call(method, params);
+        };
+        var sdk = new DmrvnClient(rpc.config, tracked, operator, storage, methodology);
+        var error = assertThrows(DmrvnException.class, () -> sdk.submitActivity(wallets, request(Map.of())));
+        assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED, error.code());
+        assertTrue(error.getMessage().contains("receipt.transactionHash"));
+        assertEquals(1, reads.get());
+        assertEquals(1, operator.sends);
+    }
+
+    @Test void lostSendResponsePropagatesOriginalErrorWithoutResending() {
         operator.failure = new DmrvnException(DmrvnException.Code.RPC_UNAVAILABLE);
-        var result = client().submitActivity(wallets, request(Map.of("arbitrary", -25)));
-        assertEquals("UNKNOWN", result.get("outcome"));
-        assertEquals("BENEFICIARY_SIGNED", result.get("lastConfirmedStage"));
-        var known = Json.map(result.get("confirmed"));
-        assertEquals("SEALED", known.get("storageStatus"));
-        assertTrue(known.containsKey("evidenceLocation"));
-        assertFalse(known.containsKey("txHash"));
+        assertSame(operator.failure, assertThrows(DmrvnException.class,
+                () -> client().submitActivity(wallets, request(Map.of("arbitrary", -25)))));
+        assertTrue(storage.sealed);
         assertEquals(1, operator.sends);
     }
 
-    @Test void failureAfterSealingReturnsStoredIdentifiersWithoutClaimSuccess() {
+    @Test void originalPrivyResponseSurvivesWalletLookupAndRelaySend(
+            @org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) {
+        String body = "{\"code\":\"wallet_not_authorized\",\"message\":\"Original Privy explanation\"}";
+        var response = new java.net.http.HttpResponse<java.io.InputStream>() {
+            public int statusCode() { return 403; }
+            public java.net.http.HttpRequest request() { return java.net.http.HttpRequest.newBuilder(uri()).build(); }
+            public Optional<java.net.http.HttpResponse<java.io.InputStream>> previousResponse() { return Optional.empty(); }
+            public java.net.http.HttpHeaders headers() { return java.net.http.HttpHeaders.of(Map.of(), (k,v) -> true); }
+            public java.io.InputStream body() { return new java.io.ByteArrayInputStream(body.getBytes()); }
+            public Optional<javax.net.ssl.SSLSession> sslSession() { return Optional.empty(); }
+            public java.net.URI uri() { return java.net.URI.create("http://127.0.0.1"); }
+            public java.net.http.HttpClient.Version version() { return java.net.http.HttpClient.Version.HTTP_1_1; }
+        };
+        var original = new io.privy.api.models.errors.APIException("Privy rejected wallet use", 403,
+                body.getBytes(java.nio.charset.StandardCharsets.UTF_8), response, null);
+        assertSame(original, assertThrows(io.privy.api.models.errors.APIException.class,
+                () -> client().submitActivity((p, u) -> { throw original; }, request(Map.of()))));
+        assertEquals(0, storage.creates);
+        operator.failure = original;
+        var error = assertThrows(io.privy.api.models.errors.APIException.class,
+                () -> new DmrvnClient(rpc.config, rpc, operator, storage, methodology,
+                        new FileOperationJournal(directory)).submitActivity(wallets, request(Map.of())));
+        assertSame(original, error);
+        assertEquals(body, error.bodyAsString().orElseThrow());
+        assertEquals(403, error.code());
+        assertEquals(1, operator.sends);
+    }
+
+    @Test void greenfieldRejectionPropagatesWithoutRecoveryOrIntentCleanup() {
+        var original = new UpstreamException(UpstreamException.Source.GREENFIELD, 4, 0,
+                "original signer rejection", "{\"codespace\":\"sdk\"}", false, true);
+        var rejected = new TestSupport.Storage() {
+            @Override public String create(Map<String, Object> location, byte[] bytes) { throw original; }
+        };
+        var journal = new MemoryOperationJournal();
+        String claimId = Crypto.textHash("rejected-create");
+        var request = new ActivityRequest("member", "partner-event", Map.of(), claimId, null,
+                "900000", Duration.ZERO, Duration.ofMillis(1));
+        assertSame(original, assertThrows(UpstreamException.class,
+                () -> new DmrvnClient(rpc.config, rpc, operator, rejected, methodology, journal)
+                        .submitActivity(wallets, request)));
+        var state = journal.findOperationsByClaimId(claimId).get(0);
+        assertTrue(state.containsKey("createIntent"));
+        assertFalse(state.containsKey("lastStorageError"));
+        // No Claim transaction or automatic retry follows the rejected create.
+        assertEquals(0, operator.sends);
+    }
+
+    @Test void newObjectCreatesBeforeHeadAndHeadFailureStopsWithoutRecovery() {
+        var calls = new ArrayList<String>();
+        var original = new UpstreamException(UpstreamException.Source.GREENFIELD, "NoSuchObject", 404,
+                "No such object", "original response");
+        var failing = new TestSupport.Storage() {
+            @Override public String create(Map<String, Object> location, byte[] bytes) {
+                calls.add("create");
+                return super.create(location, bytes);
+            }
+            @Override public GreenfieldStorage.Head head(Map<String, Object> location) {
+                calls.add("head");
+                throw original;
+            }
+        };
+        assertSame(original, assertThrows(UpstreamException.class,
+                () -> new DmrvnClient(rpc.config, rpc, operator, failing, methodology)
+                        .submitActivity(wallets, request(Map.of()))));
+        assertEquals(List.of("create", "head"), calls);
+        assertEquals(0, failing.uploads);
+        assertEquals(0, operator.sends);
+    }
+
+    @Test void failureAfterSealingThrowsOriginalSimulationError() {
         rpc.simulationFailure = true;
-        var result = client().submitActivity(wallets, request(Map.of()));
-        assertEquals("FAILED", result.get("outcome"));
-        assertEquals("GAS_ESTIMATION_FAILED", result.get("errorCode"));
-        var known = Json.map(result.get("confirmed"));
-        assertEquals("SEALED", known.get("storageStatus"));
-        assertTrue(known.containsKey("evidenceLocation"));
-        assertTrue(known.containsKey("createTxHash"));
-        assertFalse(known.containsKey("txHash"));
+        var error = assertThrows(DmrvnException.class,
+                () -> client().submitActivity(wallets, request(Map.of())));
+        assertEquals(DmrvnException.Code.GAS_ESTIMATION_FAILED, error.code());
+        assertTrue(storage.sealed);
         assertEquals(0, operator.sends);
     }
 
-    @Test void createResponseLossExposesRequestedPathWithoutClaimingStorageSuccess() {
+    @Test void createResponseLossThrowsStorageErrorWithoutSendingClaim() {
         storage.loseCreate = true;
-        var result = client().submitActivity(wallets, request(Map.of()));
-        assertEquals("UNKNOWN", result.get("outcome"));
-        assertEquals("EVIDENCE_SIGNED", result.get("lastConfirmedStage"));
-        var known = Json.map(result.get("confirmed"));
-        assertFalse(known.containsKey("createTxHash"));
-        assertFalse(known.containsKey("storageStatus"));
-        assertFalse(known.containsKey("evidenceLocation"));
-        assertNotNull(Json.map(result.get("requested")).get("evidenceLocation"));
+        var error = assertThrows(DmrvnException.class,
+                () -> client().submitActivity(wallets, request(Map.of())));
+        assertEquals(DmrvnException.Code.STORAGE_UNAVAILABLE, error.code());
+        assertEquals(1, storage.creates);
         assertEquals(0, operator.sends);
     }
 
-    @Test void authorizationFailureIsSanitizedAndStopsBeforeEvidenceSideEffects() {
-        var result = client().submitActivity((p, u) -> {
-            throw new SecurityException("sensitive partner credential");
-        }, request(Map.of()));
-        assertEquals("FAILED", result.get("outcome"));
-        assertEquals("UNAUTHORIZED_SIGNER", result.get("errorCode"));
-        assertEquals("REQUEST_ACCEPTED", result.get("lastConfirmedStage"));
+    @Test void authorizationFailurePropagatesUnchangedBeforeEvidenceSideEffects() {
+        var original = new SecurityException("member wallet use denied");
+        assertSame(original, assertThrows(SecurityException.class,
+                () -> client().submitActivity((p, u) -> { throw original; }, request(Map.of()))));
         assertEquals(0, operator.messages);
         assertEquals(0, storage.creates);
-        assertFalse(Json.canonical(result).contains("sensitive"));
     }
 
     @Test void missingExplicitWireVersionFailsBeforeWalletProvisioning() throws Exception {
         var sdk = new DmrvnClient(rpc.config, rpc, operator, storage, TestSupport.methodology());
-        var result = sdk.submitActivity(wallets, request(Map.of()));
-        assertEquals("EVIDENCE_CONTRACT_UNCONFIGURED", result.get("errorCode"));
+        var error = assertThrows(DmrvnException.class,
+                () -> sdk.submitActivity(wallets, request(Map.of())));
+        assertEquals(DmrvnException.Code.EVIDENCE_CONTRACT_UNCONFIGURED, error.code());
         assertEquals(0, walletRequests);
         assertEquals(0, storage.creates);
     }
@@ -168,11 +255,11 @@ class DmrvnActivityTest {
                 delegate.store(k, s);
             }
         };
-        var result = new DmrvnClient(rpc.config, rpc, operator, storage, methodology, failing)
-                .submitActivity(wallets, request(Map.of()));
-        assertEquals("FAILED", result.get("outcome"));
-        assertEquals("EVIDENCE_SEALED", result.get("lastConfirmedStage"));
-        assertEquals("SEALED", Json.map(result.get("confirmed")).get("storageStatus"));
+        var error = assertThrows(DmrvnException.class,
+                () -> new DmrvnClient(rpc.config, rpc, operator, storage, methodology, failing)
+                        .submitActivity(wallets, request(Map.of())));
+        assertEquals(DmrvnException.Code.JOURNAL_UNAVAILABLE, error.code());
+        assertTrue(storage.sealed);
         assertEquals(0, operator.sends);
     }
 
@@ -198,10 +285,9 @@ class DmrvnActivityTest {
 
     @Test void receiptSenderMismatchNeverBecomesConfirmed() {
         afterConfirm = () -> rpc.receipt.put("from", user.address());
-        var result = client().submitActivity(wallets, request(Map.of()));
-        assertEquals("UNKNOWN", result.get("outcome"));
-        assertEquals("SUBMISSION_INPUT_CHANGED", result.get("errorCode"));
-        assertFalse(Json.map(result.get("confirmed")).containsKey("chainStatus"));
+        var error = assertThrows(DmrvnException.class,
+                () -> client().submitActivity(wallets, request(Map.of())));
+        assertEquals(DmrvnException.Code.SUBMISSION_INPUT_CHANGED, error.code());
         assertEquals(1, operator.sends);
     }
 

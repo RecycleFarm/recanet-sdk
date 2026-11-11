@@ -36,10 +36,11 @@ public final class DeclaredMethodology {
 
     private DeclaredMethodology(byte[] manifestBytes, byte[] wasmBytes, String expectedHash,
                                 Registry registry, int evidenceSchemaVersion, boolean explicit) {
-        this.manifest = Json.object(manifestBytes);
-        this.hash = Crypto.bytes32(expectedHash);
+        this.manifest = input("manifest", () -> Json.object(manifestBytes));
+        this.hash = Crypto.bytes32(expectedHash, "expectedHash");
         this.registry = Objects.requireNonNull(registry);
-        require(evidenceSchemaVersion > 0, Code.INVALID_INPUT);
+        require(evidenceSchemaVersion > 0, Code.INVALID_INPUT,
+                "evidenceSchemaVersion", "must be greater than 0");
         this.evidenceSchemaVersion = evidenceSchemaVersion;
         this.explicitEvidenceVersion = explicit;
         require(
@@ -57,15 +58,17 @@ public final class DeclaredMethodology {
     }
 
     public long activityId() {
-        return Crypto.uint(manifest.get("activityId"), 32).longValueExact();
+        return Crypto.uint(manifest.get("activityId"), 32, "manifest.activityId").longValueExact();
     }
 
     public long id() {
-        return Crypto.uint(Json.map(manifest.get("methodology")).get("id"), 32).longValueExact();
+        return Crypto.uint(Json.map(manifest.get("methodology"), "manifest.methodology").get("id"),
+                32, "manifest.methodology.id").longValueExact();
     }
 
     public long version() {
-        return Crypto.uint(Json.map(manifest.get("methodology")).get("version"), 32)
+        return Crypto.uint(Json.map(manifest.get("methodology"), "manifest.methodology").get("version"),
+                        32, "manifest.methodology.version")
                 .longValueExact();
     }
 
@@ -94,7 +97,7 @@ public final class DeclaredMethodology {
                         "methodology",
                         Json.obj("id", id(), "version", version()),
                         "inputs",
-                        Json.copy(inputs),
+                        Json.copy(inputs, "inputs"),
                         "source",
                         Json.obj(
                                 "ownerHash",
@@ -104,6 +107,7 @@ public final class DeclaredMethodology {
     }
 
     void validate(Map<String, Object> body, long partnerId, String beneficiary) {
+        require(body != null, Code.INVALID_INPUT, "evidence", "must be a JSON object");
         require(
                 body.keySet()
                         .equals(
@@ -115,20 +119,21 @@ public final class DeclaredMethodology {
                                         "methodology",
                                         "inputs",
                                         "source")),
-                Code.INVALID_INPUT);
+                Code.INVALID_INPUT, "evidence", "must contain exactly schemaVersion, sourceEventId, partnerId, activityId, methodology, inputs and source");
         require(
-                Integer.toString(evidenceSchemaVersion).equals(String.valueOf(body.get("schemaVersion")))
-                        && Long.toString(partnerId).equals(String.valueOf(body.get("partnerId")))
-                        && Long.toString(activityId())
-                                .equals(String.valueOf(body.get("activityId"))),
-                Code.INVALID_INPUT);
+                Integer.toString(evidenceSchemaVersion).equals(String.valueOf(body.get("schemaVersion"))),
+                Code.INVALID_INPUT, "evidence.schemaVersion", "must match the configured Evidence schema version");
+        require(Long.toString(partnerId).equals(String.valueOf(body.get("partnerId"))),
+                Code.INVALID_INPUT, "evidence.partnerId", "must match the configured partner ID");
+        require(Long.toString(activityId()).equals(String.valueOf(body.get("activityId"))),
+                Code.INVALID_INPUT, "evidence.activityId", "must match the declared methodology activity ID");
         require(
                 Json.hash(body.get("methodology"))
                         .equals(Json.hash(Json.obj("id", id(), "version", version()))),
-                Code.INVALID_INPUT);
+                Code.INVALID_INPUT, "evidence.methodology", "must match the declared methodology id and version exactly");
         require(
-                Json.str(body.get("sourceEventId")).matches("[A-Za-z0-9:_-]{1,128}"),
-                Code.INVALID_INPUT);
+                Json.str(body.get("sourceEventId"), "evidence.sourceEventId").matches("[A-Za-z0-9:_-]{1,128}"),
+                Code.INVALID_INPUT, "evidence.sourceEventId", "must contain 1 to 128 letters, digits, colons, underscores or hyphens");
         require(
                 Json.hash(body.get("source"))
                         .equals(
@@ -136,8 +141,9 @@ public final class DeclaredMethodology {
                                         Json.obj(
                                                 "ownerHash",
                                                 DmrvnProtocol.ownerHash(beneficiary)))),
-                Code.INVALID_INPUT);
-        Json.map(body.get("inputs"));
-        require(Json.bytes(body).length <= 1024 * 1024, Code.INVALID_INPUT);
+                Code.INVALID_INPUT, "evidence.source.ownerHash", "source must contain only ownerHash and it must match the beneficiary wallet");
+        Json.map(body.get("inputs"), "evidence.inputs");
+        require(Json.bytes(body).length <= 1024 * 1024, Code.INVALID_INPUT,
+                "evidence", "serialized Evidence must not exceed 1048576 bytes");
     }
 }

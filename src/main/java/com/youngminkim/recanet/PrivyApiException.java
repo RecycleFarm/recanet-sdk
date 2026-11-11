@@ -3,7 +3,7 @@ package com.youngminkim.recanet;
 import java.time.Duration;
 import java.util.Optional;
 
-/** Sanitized failure from a Privy server API call. */
+/** SDK-generated Privy integration validation failure. Remote API errors propagate as APIException. */
 public final class PrivyApiException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 

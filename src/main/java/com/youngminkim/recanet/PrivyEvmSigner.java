@@ -4,7 +4,6 @@ import com.youngminkim.recanet.dmrvn.*;
 
 import io.privy.api.AuthorizationContext;
 import io.privy.api.models.components.*;
-import io.privy.api.models.errors.APIException;
 
 import java.util.*;
 
@@ -50,6 +49,16 @@ public final class PrivyEvmSigner implements EvmSigner {
 
     @Override
     public String signMessage(String message) {
+        return client.config().telemetry().observe("PrivyEvmSigner.signMessage", null,
+                () -> {
+                    String signature = signMessageImpl(message);
+                    if (signature != null) client.config().telemetry().checkpoint(
+                            com.youngminkim.recanet.telemetry.SdkTelemetry.State.SIGNATURE_CREATED);
+                    return signature;
+                });
+    }
+
+    private String signMessageImpl(String message) {
         try {
             return client.sdk()
                     .wallets()
@@ -64,6 +73,16 @@ public final class PrivyEvmSigner implements EvmSigner {
     @Override
     @SuppressWarnings("unchecked")
     public String signTypedData(Map<String, Object> typedData) {
+        return client.config().telemetry().observe("PrivyEvmSigner.signTypedData", null,
+                () -> {
+                    String signature = signTypedDataImpl(typedData);
+                    if (signature != null) client.config().telemetry().checkpoint(
+                            com.youngminkim.recanet.telemetry.SdkTelemetry.State.SIGNATURE_CREATED);
+                    return signature;
+                });
+    }
+
+    private String signTypedDataImpl(Map<String, Object> typedData) {
         try {
             var types = new LinkedHashMap<String, List<TypedDataTypeFieldInput>>();
             ((Map<String, List<Map<String, Object>>>) typedData.get("types"))
@@ -105,6 +124,11 @@ public final class PrivyEvmSigner implements EvmSigner {
 
     @Override
     public String sendTransaction(long chainId, Map<String, Object> tx, String idempotencyKey) {
+        return client.config().telemetry().observe("PrivyEvmSigner.sendTransaction", idempotencyKey,
+                () -> sendTransactionImpl(chainId, tx, idempotencyKey));
+    }
+
+    private String sendTransactionImpl(long chainId, Map<String, Object> tx, String idempotencyKey) {
         try {
             var b =
                     UnsignedStandardEthereumTransaction.builder()
@@ -116,24 +140,27 @@ public final class PrivyEvmSigner implements EvmSigner {
                             .gasLimit(Quantity.of((String) tx.get("gas")))
                             .gasPrice(Quantity.of((String) tx.get("gasPrice")))
                             .nonce(Quantity.of((String) tx.get("nonce")));
-            return client.sdk()
+            client.config().telemetry().submissionAttempt();
+            String hash = client.sdk()
                     .wallets()
                     .ethereum()
                     .sendTransaction(
                             walletId, "eip155:" + chainId, b.build(), authorization, idempotencyKey)
                     .hash();
+            if (hash != null && hash.matches("0x[0-9a-fA-F]{64}")) {
+                client.config().telemetry().submissionAccepted();
+                client.config().telemetry().checkpoint(com.youngminkim.recanet.telemetry.SdkTelemetry.State.SUBMITTED);
+            }
+            return hash;
         } catch (Exception e) {
             throw failure(e);
         }
     }
 
-    private static DmrvnException failure(Exception e) {
+    private static RuntimeException failure(Exception e) {
         if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
-            return new DmrvnException(DmrvnException.Code.INTERRUPTED);
         }
-        if (e instanceof APIException a && (a.code() == 401 || a.code() == 403))
-            return new DmrvnException(DmrvnException.Code.UNAUTHORIZED_SIGNER);
-        return new DmrvnException(DmrvnException.Code.RPC_UNAVAILABLE);
+        return e instanceof RuntimeException runtime ? runtime : new RuntimeException(e.getMessage(), e);
     }
 }

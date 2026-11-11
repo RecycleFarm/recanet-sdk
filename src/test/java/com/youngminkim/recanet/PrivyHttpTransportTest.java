@@ -67,8 +67,8 @@ class PrivyHttpTransportTest {
             var client = new PrivyClient(new PrivyClientConfig("app", "secret",
                     URI.create("http://127.0.0.1:" + server.getAddress().getPort()), Duration.ofSeconds(5)));
             Thread.currentThread().interrupt();
-            var failure = assertThrows(PrivyApiException.class, client::verifyAppCredentials);
-            assertEquals(PrivyApiException.Code.INTERRUPTED, failure.code());
+            var failure = assertThrows(RuntimeException.class, client::verifyAppCredentials);
+            assertInstanceOf(InterruptedException.class, failure.getCause());
             assertTrue(Thread.currentThread().isInterrupted());
         } finally {
             Thread.interrupted();

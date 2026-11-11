@@ -126,12 +126,15 @@ class UserWalletClientTest {
     }
 
     @Test
-    void recoversConcurrentCreationConflictWithoutRetryingCreation() throws Exception {
+    void creationConflictPropagatesWithoutFollowupLookup() throws Exception {
         try (var fixture = new Fixture()) {
             fixture.createStatus = 409; // Simulate another worker creating the wallet first.
-            var wallet = fixture.client("service", fixture.key).getOrCreateWallet("member-1");
-            assertEquals("wallet-1", wallet.id());
+            var error = assertThrows(io.privy.api.models.errors.APIException.class,
+                    () -> fixture.client("service", fixture.key).getOrCreateWallet("member-1"));
+            assertEquals(409, error.code());
+            assertTrue(error.bodyAsString().orElseThrow().contains("sensitive upstream body"));
             assertEquals(1, fixture.creates);
+            assertEquals(2, fixture.requests); // One initial lookup, then one create; no recovery lookup.
         }
     }
 
@@ -150,10 +153,10 @@ class UserWalletClientTest {
             assertThrows(RuntimeException.class, () -> wallets.signMessage("member-1", "hello"));
             assertEquals(1, fixture.methods.size());
             fixture.createStatus = 503;
-            var error = assertThrows(PrivyApiException.class, () -> wallets.getOrCreateWallet("member-2"));
-            assertEquals(503, error.statusCode());
-            assertFalse(error.toString().contains("sensitive"));
-            assertNull(error.getCause());
+            var error = assertThrows(io.privy.api.models.errors.APIException.class,
+                    () -> wallets.getOrCreateWallet("member-2"));
+            assertEquals(503, error.code());
+            assertTrue(error.bodyAsString().orElseThrow().contains("sensitive"));
             assertEquals(2, fixture.creates);
         }
     }

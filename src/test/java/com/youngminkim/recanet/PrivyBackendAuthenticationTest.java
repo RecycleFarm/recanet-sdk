@@ -1,6 +1,7 @@
 package com.youngminkim.recanet;
 
 import com.sun.net.httpserver.HttpServer;
+import io.privy.api.models.errors.APIException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -37,19 +38,18 @@ class PrivyBackendAuthenticationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"401, INVALID_CREDENTIALS", "403, FORBIDDEN", "429, RATE_LIMITED", "500, UNAVAILABLE", "503, UNAVAILABLE", "404, INVALID_RESPONSE"})
-    void exposesSanitizedErrorsWithoutRetryingRejectedCredentials(int status, PrivyApiException.Code code) throws Exception {
+    @CsvSource({"401", "403", "429", "500", "503", "404"})
+    void preservesPrivyStatusBodyAndHeadersWithoutRetrying(int status) throws Exception {
         var calls = new AtomicInteger();
-        var server = server(status, "secret-untrusted-response", status == 429 ? "3" : null,
+        String body = "{\"error\":\"wallet_access_denied\",\"message\":\"Original Privy explanation\"}";
+        var server = server(status, body, status == 429 ? "3" : null,
                 calls, new AtomicReference<>(), new AtomicReference<>());
         try {
-            var error = assertThrows(PrivyApiException.class, () -> client(server).verifyAppCredentials());
-            assertEquals(code, error.code());
-            assertEquals(status, error.statusCode());
+            var error = assertThrows(APIException.class, () -> client(server).verifyAppCredentials());
+            assertEquals(status, error.code());
+            assertEquals(body, error.bodyAsString().orElseThrow());
             assertEquals(1, calls.get());
-            assertFalse(error.toString().contains("secret"));
-            assertNull(error.getCause());
-            if (status == 429) assertEquals(Duration.ofSeconds(3), error.retryAfter().orElseThrow());
+            if (status == 429) assertEquals("3", error.rawResponse().headers().firstValue("Retry-After").orElseThrow());
         } finally { server.stop(0); }
     }
 
@@ -58,9 +58,8 @@ class PrivyBackendAuthenticationTest {
         String retryAfter = ZonedDateTime.now(ZoneOffset.UTC).plusMinutes(1).format(DateTimeFormatter.RFC_1123_DATE_TIME);
         var server = server(429, "", retryAfter, new AtomicInteger(), new AtomicReference<>(), new AtomicReference<>());
         try {
-            var error = assertThrows(PrivyApiException.class, () -> client(server).verifyAppCredentials());
-            assertTrue(error.retryAfter().orElseThrow().compareTo(Duration.ofSeconds(65)) < 0);
-            assertTrue(error.retryAfter().orElseThrow().compareTo(Duration.ofSeconds(45)) > 0);
+            var error = assertThrows(APIException.class, () -> client(server).verifyAppCredentials());
+            assertEquals(retryAfter, error.rawResponse().headers().firstValue("Retry-After").orElseThrow());
         } finally { server.stop(0); }
     }
 
@@ -68,9 +67,9 @@ class PrivyBackendAuthenticationTest {
     void rejectsMalformedSuccessResponses() throws Exception {
         var server = server(200, "not-json-with-secret", null, new AtomicInteger(), new AtomicReference<>(), new AtomicReference<>());
         try {
-            var error = assertThrows(PrivyApiException.class, () -> client(server).verifyAppCredentials());
-            assertEquals(PrivyApiException.Code.INVALID_RESPONSE, error.code());
-            assertFalse(error.toString().contains("secret"));
+            var error = assertThrows(APIException.class, () -> client(server).verifyAppCredentials());
+            assertEquals(200, error.code());
+            assertInstanceOf(com.fasterxml.jackson.core.JsonProcessingException.class, error.getCause());
         } finally { server.stop(0); }
     }
 

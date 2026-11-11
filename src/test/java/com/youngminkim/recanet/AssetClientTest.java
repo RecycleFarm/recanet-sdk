@@ -57,7 +57,7 @@ class AssetClientTest {
         assertEquals(DmrvnException.Code.WRONG_CHAIN, assertThrows(DmrvnException.class, () -> client.transfer(signer, RECIPIENT, BigInteger.ONE, "id")).code());
         assertEquals(DmrvnException.Code.RPC_UNAVAILABLE, assertThrows(DmrvnException.class, () -> new AssetClient((m,p) -> "0x00").getBalance(ADDRESS)).code());
     }
-    @Test void submissionFailureIsUnresolved() {
+    @Test void submissionFailurePreservesOriginalCode() {
         var client = new AssetClient((method, params) -> switch (method) {
             case "eth_chainId" -> "0x66eee";
             default -> "0x1";
@@ -68,7 +68,7 @@ class AssetClientTest {
             public String signTypedData(Map<String, Object> d) { return null; }
             public String sendTransaction(long c, Map<String, Object> t, String k) { throw new DmrvnException(DmrvnException.Code.RPC_UNAVAILABLE); }
         };
-        assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED,
+        assertEquals(DmrvnException.Code.RPC_UNAVAILABLE,
                 assertThrows(DmrvnException.class, () -> client.transfer(signer, RECIPIENT, BigInteger.ONE, "id")).code());
     }
 

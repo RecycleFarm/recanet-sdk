@@ -1,5 +1,12 @@
 # RecanetJava
 
+## SDK 추적 로그
+
+주요 SDK 작업은 기본적으로 로컬 구조화 로그를 남깁니다. OpenTelemetry 인스턴스를
+주입하면 단계별 로그를 Grafana Cloud 등으로 전송할 수 있습니다. SDK 트레이스는 생성하지 않습니다.
+오류 로그에는 작업 ID, 실패 단계, 오류 코드와 마스킹한 메시지, 마지막 확인 상태가 기록됩니다.
+설정, 수집 범위, 전송 예제와 파트너 권한 구성은 [추적 로그 안내](docs/TELEMETRY.md)를 참고하세요.
+
 Privy 공식 Java server SDK를 감싸는 Java backend 라이브러리입니다. 서버 API 자격 증명 확인과 사용자 access token 인증을 제공합니다.
 
 ## 환경
@@ -77,7 +84,7 @@ String typedSignature = memberWallets.signTypedData(memberId, typedData);
 
 - 서비스 구분값(namespace)과 회원 ID를 SHA-256으로 해시한 고정 `external_id`를 Privy에 저장합니다. 별도 매핑 DB 없이 회원 지갑을 찾고 재사용할 수 있으며, 필요하면 DB에 지갑 ID와 주소를 저장해도 됩니다. namespace와 회원 ID는 변경되지 않는 값을 사용하고, 여러 서비스/tenant는 서로 다른 namespace를 사용하세요. 해시는 암호화가 아닙니다.
 - `external_id`는 회원 연결 정보이며 인증 수단이 아닙니다. 조회 시 `external_id`와 서버 `authorization_key`를 함께 필터링하고, 서명 전 서버 키 권한도 확인합니다. 호출자가 임의의 지갑 ID를 지정하는 API는 제공하지 않습니다. 동일 키로 관리하는 다른 namespace의 지갑에도 키 자체의 권한은 있으므로, 서비스의 회원/tenant 접근 제어가 필요합니다.
-- Privy의 앱 내 `external_id` 유일성으로 중복 생성을 방지합니다. 생성 충돌(HTTP 409) 시 기존 지갑을 다시 조회하며, 네트워크 오류 시 생성 요청을 자동 재전송하지 않습니다. 같은 namespace와 회원 ID로 다시 호출하면 기존 지갑을 찾을 수 있습니다. 이 기능은 기존에 `external_id` 없이 생성한 지갑을 자동 연결하지 않습니다.
+- 회원 지갑은 먼저 조회하고 없을 때 생성합니다. Privy의 앱 내 `external_id` 유일성으로 중복 생성을 방지합니다. 조회·생성 오류는 HTTP 409를 포함해 그대로 전달하며, 오류 이후 자동 재조회·재생성하지 않습니다. 호출자가 같은 namespace와 회원 ID로 명시적으로 다시 호출하면 조회부터 수행합니다. 기존에 `external_id` 없이 생성한 지갑을 자동 연결하지 않습니다.
 - `findWallet(memberId)`는 없으면 빈 `Optional`을 반환합니다. 서명 메서드는 지갑이 없으면 실패하고 자동 생성하지 않습니다. authorization key는 생성 전에 안전하게 영속 보관해야 하며, 기존 키 교체/지갑 권한 이전은 별도로 처리해야 합니다.
 - `sendTransaction(memberId, chainId, transaction, operationId)`도 제공합니다. `transaction`에는 `to`, `data`와 hex 문자열 `value`, `gas`, `gasPrice`, `nonce`를 전달합니다. 요청 본문과 operation ID를 함께 보관하고, 동일 작업의 복구 시 요청 본문을 바꾸지 마세요. 같은 지갑의 nonce 관리는 서비스에서 직렬화합니다. 반환 해시는 제출 결과이며 확정 여부는 별도 조회해야 합니다.
 
@@ -106,7 +113,7 @@ String txHash = assets.transfer(signer, recipientAddress, amountWei, operationId
 
 - `operationId`는 전송별로 고유하고 안정적인 Privy idempotency key입니다. 수신 주소와 금액은 호출자가 검증하고, 같은 지갑의 전송은 애플리케이션에서 직렬화해야 pending nonce가 충돌하지 않습니다.
 - 가스 추정, 현재 gas price와 pending nonce를 이용하며 가스비도 송신 지갑의 ETH에서 차감됩니다. 반환된 해시는 제출 결과이며 성공이나 최종 확정을 뜻하지 않습니다. 아래 `EvmTransactionClient`로 상태를 확인하세요.
-- 서명/제출 중 오류 또는 유효하지 않은 해시는 `SUBMISSION_UNRESOLVED`로 반환합니다. 이미 제출되었을 수 있으므로 자동 재전송하지 말고 Privy와 체인에서 해당 작업을 먼저 확인하세요. 호출 시마다 nonce와 가스를 다시 조회하므로 동일 key로 이 메서드를 재호출하는 것은 동일한 요청의 안전한 재시도가 아닙니다.
+- 서명/제출 오류는 원래 예외를 그대로 전달합니다. 유효하지 않은 반환 해시는 SDK 검증 오류 `SUBMISSION_UNRESOLVED`입니다. 자동 재전송하지 않으며, 호출 시마다 nonce와 가스를 다시 조회하므로 동일 key로 이 메서드를 재호출하는 것은 동일 요청의 안전한 재시도가 아닙니다.
 - 이 기능은 백엔드 지갑을 대상으로 하며 HTTP 요청자의 해당 지갑에 대한 접근 권한 검증은 애플리케이션에서 수행해야 합니다. 자체 코인 발행 후에는 자산 종류와 전송 방식을 별도로 변경해야 합니다.
 
 ## Transaction 조회
@@ -233,12 +240,11 @@ HTTP 서버는 다음 오류를 자체 HTTP 응답으로 변환할 수 있습니
 | `PrivyAuthenticationException` | `MISSING_TOKEN`, `INVALID_TOKEN` | 요청 인증 거부, HTTP 401 |
 | `PrivyAuthenticationException` | `EXPIRED_TOKEN` | HTTP 401, 클라이언트에서 access token 갱신 후 재요청 |
 | `PrivyAuthenticationException` | `KEY_SOURCE_UNAVAILABLE` | 검증키 조회/갱신 실패, HTTP 503 등으로 구분 |
-| `PrivyApiException` | `INVALID_CREDENTIALS` | Privy가 서버 자격 증명을 401로 거부 |
-| `PrivyApiException` | `FORBIDDEN` | 요청 API에 대한 권한 부족; 자격 증명이 틀렸다고 단정하지 않음 |
-| `PrivyApiException` | `RATE_LIMITED` | HTTP 429, `retryAfter()`가 있으면 호출자에서 반영 |
-| `PrivyApiException` | `UNAVAILABLE`, `INVALID_RESPONSE`, `INTERRUPTED` | 서버/네트워크 장애, 응답 형식 오류 또는 호출 취소 |
+| `io.privy.api.models.errors.APIException` | `code()`의 원래 HTTP 상태 | Privy 공식 예외를 그대로 전달. `bodyAsString()`, `message()`, `rawResponse()`로 원래 응답과 헤더 확인 |
+| `UpstreamException` | `code()`의 원래 Greenfield/RPC 코드 | `source()`, `statusCode()`, `getMessage()`, `responseBody()`로 외부 오류 확인 |
+| `PrivyApiException` | `INVALID_RESPONSE` | SDK가 감지한 지갑 목록·응답 메타데이터 오류. 외부 API 오류와 구분 |
 
-오류 메시지에는 원본 token, secret, upstream response body를 넣지 않습니다. `PrivyClientConfig.toString()`도 secret을 가립니다. `verifyAccessToken`을 쓰기 전에 `withTokenVerification(...)`을 설정하지 않았다면 설정 오류인 `IllegalStateException`이 발생합니다. 이 설정 오류를 사용자 토큰 오류와 구분해서 처리하세요.
+외부 API의 코드·메시지·응답 본문은 SDK에서 일반 오류로 치환하지 않습니다. 통신 오류는 원래 예외 또는 원래 원인을 보존한 예외로 전달합니다. 이 변경은 오류 본문을 호출자에게 노출하며 자동 로그 출력은 추가하지 않습니다. `PrivyClientConfig.toString()`은 계속 secret을 가립니다. `verifyAccessToken`을 쓰기 전에 `withTokenVerification(...)`을 설정하지 않았다면 설정 오류인 `IllegalStateException`이 발생합니다.
 
 ## 최적화 및 요청 제한
 
@@ -287,7 +293,7 @@ var result = sdk.submitActivity(beneficiaries,
 
 수혜자 지갑 조회·생성, Evidence 생성, Greenfield 저장·봉인, 승인·수혜자 서명, Relay 제출과 receipt/Claim 확인까지 수행한다. `source.ownerHash`는 유지하고 `source.kind`는 제거한다. `inputs`는 파트너 JSON 객체를 보존하며 방법론별 형식·값 검증은 DMRVN에 맡긴다. 수혜자 서명을 호출자가 준비할 필요는 없다.
 
-`CONFIRMED`는 제출 receipt와 Claim을 확인했다는 뜻이며 `chainStatus=PENDING`은 최종 VALID가 아니다. 실패·미확인 응답에는 확인된 단계와 식별자를 반환한다. `UNKNOWN`을 근거로 안전한 재전송을 추정하지 않는다. 기록 보존·조사·복구와 여러 프로세스의 운영 지갑 nonce 관리는 소비자 책임이며 journal은 선택 사항이다. 기존 직접 가스비 납부·단계별 조회 기능은 유지한다.
+`CONFIRMED`는 제출 receipt와 Claim을 확인했다는 뜻이며 `chainStatus=PENDING`은 최종 VALID가 아니다. 실패 시 `FAILED`·`UNKNOWN` 결과를 생성하지 않고 원래 예외를 전달한다. Privy는 공식 `APIException`, Greenfield/RPC는 원래 코드·메시지·응답을 담은 `UpstreamException`을 확인한다. SDK 자체 검증 오류는 `DmrvnException`이다. 자동 재전송하지 않는다. 기록 보존·조사·복구와 여러 프로세스의 운영 지갑 nonce 관리는 소비자 책임이며 journal은 선택 사항이다.
 
 명세에서 새 Evidence wire 버전과 Privy 매핑·권한 방식은 미결이다. 고수준 API는 Evidence 버전을 명시하지 않으면 중단하며 파트너 권한 어댑터를 반드시 받는다. 제공된 `forPartner` 매핑은 명시적으로 선택하는 어댑터이며 기존 지갑을 자동 연결하지 않는다. 과거 QA는 새 계약의 실환경 인수 증거가 아니다.
 

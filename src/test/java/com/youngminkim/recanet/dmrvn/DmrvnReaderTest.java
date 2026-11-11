@@ -70,20 +70,17 @@ class DmrvnReaderTest {
     }
 
     @Test
-    void storageErrorPreservesFinalChainState() throws Exception {
+    void storageErrorPropagatesWithoutReplacingItsMessage() throws Exception {
         var f = DmrvnProtocolTest.fixture();
         var rpc = finalRpc(f);
-        var result =
+        var original = new RuntimeException("Original storage service explanation");
+        assertSame(original, assertThrows(RuntimeException.class, () ->
                 reader(
                                 rpc,
                                 p -> {
-                                    throw new RuntimeException("untrusted secret response");
+                                    throw original;
                                 })
-                        .readResult(id(f), null, TestSupport.TX, false, null);
-        assertEquals("VALID", result.get("chainStatus"));
-        assertEquals(false, result.get("reportVerified"));
-        assertEquals("REPORT_READ_FAILED", Json.map(result.get("reportError")).get("code"));
-        assertFalse(Json.canonical(result).contains("untrusted"));
+                        .readResult(id(f), null, TestSupport.TX, false, null)));
     }
 
     @Test

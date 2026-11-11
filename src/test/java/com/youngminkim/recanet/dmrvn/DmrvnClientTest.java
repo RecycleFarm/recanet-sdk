@@ -62,7 +62,8 @@ class DmrvnClientTest {
                 Json.str(state.get("userSignature")), relay.address());
         rpc.timestamp += 1000;
         client = make(new FileOperationJournal(dir));
-        assertEquals("CONFIRMED", submitActivity("activity").get("status"));
+        assertThrows(DmrvnException.class, () -> submitActivity("activity"));
+        assertEquals("CONFIRMED", client.resolveSubmission("activity", TestSupport.TX).get("status"));
         assertEquals(state.get("userSignature"), client.operation("activity").get("userSignature"));
         assertEquals(1, storage.uploads);
         assertEquals(1, approver.messages);
@@ -74,8 +75,8 @@ class DmrvnClientTest {
     @Test
     void activityDoesNotResendWhenRelayResponseIsLost() {
         relay.failure = new DmrvnException(DmrvnException.Code.RPC_UNAVAILABLE);
-        assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED,
-                assertThrows(DmrvnException.class, () -> submitActivity("lost-activity")).code());
+        assertSame(relay.failure,
+                assertThrows(DmrvnException.class, () -> submitActivity("lost-activity")));
         relay.failure = null;
         client = make(new FileOperationJournal(dir));
         assertEquals(DmrvnException.Code.SUBMISSION_UNRESOLVED,
@@ -83,7 +84,8 @@ class DmrvnClientTest {
         var state = client.operation("lost-activity");
         rpc.confirm(Json.map(state.get("approved")), Json.map(state.get("sponsored")),
                 Json.str(state.get("userSignature")), relay.address());
-        assertEquals("CONFIRMED", submitActivity("lost-activity").get("status"));
+        assertThrows(DmrvnException.class, () -> submitActivity("lost-activity"));
+        assertEquals("CONFIRMED", client.resolveSubmission("lost-activity", TestSupport.TX).get("status"));
         assertEquals(1, user.typed);
         assertEquals(1, relay.sends);
         assertEquals(1, storage.uploads);
@@ -430,7 +432,7 @@ class DmrvnClientTest {
     }
 
     @Test
-    void sponsoredValidatesUserSignsOnceAndResolvesInsteadOfResending() {
+    void sponsoredRepeatThrowsWithoutResolvingOrResending() {
         var a = prepare("one");
         var sponsored = client.prepareSponsored("one", "900000");
         var f = Json.map(sponsored.get("forwardRequest"));
@@ -445,8 +447,13 @@ class DmrvnClientTest {
                         .code());
         assertEquals(1, relay.sends);
         rpc.confirm(a, sponsored, signature, relay.address());
+        var noQueries = new DmrvnClient(rpc.config,
+                (method, params) -> { throw new AssertionError("Repeat submission must not query RPC"); },
+                approver, storage, methodology, new FileOperationJournal(dir));
+        var error = assertThrows(DmrvnException.class, () -> noQueries.submitSponsored("one", f, signature));
+        assertTrue(error.getMessage().contains("submission intent already exists"));
         client = make(new FileOperationJournal(dir));
-        assertEquals("CONFIRMED", client.submitSponsored("one", f, signature).get("status"));
+        assertEquals("CONFIRMED", client.resolveSubmission("one", TestSupport.TX).get("status"));
         assertEquals(1, relay.sends);
         assertEquals(
                 "SUBMITTED",
@@ -496,7 +503,8 @@ class DmrvnClientTest {
         assertThrows(DmrvnException.class, () -> client.submitSponsored("one", f, sig));
         rpc.confirm(a, s, sig, relay.address());
         relay.failure = null;
-        assertEquals("CONFIRMED", client.submitSponsored("one", f, sig).get("status"));
+        assertThrows(DmrvnException.class, () -> client.submitSponsored("one", f, sig));
+        assertEquals("CONFIRMED", client.resolveSubmission("one", TestSupport.TX).get("status"));
         assertEquals(1, relay.sends);
     }
 
@@ -548,9 +556,10 @@ class DmrvnClientTest {
 
     @Test
     void noApprovalBeforeSealAndStoredBytesMatch() {
-        storage.sealed = true;
-        storage.exists = true;
-        storage.bytes = "{}".getBytes();
+        storage = new TestSupport.Storage() {
+            @Override public byte[] read(Map<String, Object> location) { return "{}".getBytes(); }
+        };
+        client = make(journal);
         assertEquals(
                 DmrvnException.Code.STORAGE_MISMATCH,
                 assertThrows(DmrvnException.class, () -> prepare("one")).code());
@@ -558,7 +567,7 @@ class DmrvnClientTest {
     }
 
     @Test
-    void definitivePreBroadcastStorageRejectionReusesEvidenceOnRetry() {
+    void definitivePreBroadcastStorageRejectionDoesNotPrepareAnotherCreate() {
         var rejected =
                 new TestSupport.Storage() {
                     boolean first = true;
@@ -577,14 +586,17 @@ class DmrvnClientTest {
         assertEquals(
                 DmrvnException.Code.STORAGE_ACCOUNT_UNFUNDED,
                 assertThrows(DmrvnException.class, () -> prepare("one")).code());
-        assertFalse(client.operation("one").containsKey("createIntent"));
-        prepare("one");
+        assertTrue(client.operation("one").containsKey("createIntent"));
+        assertEquals(DmrvnException.Code.STORAGE_CREATE_UNRESOLVED,
+                assertThrows(DmrvnException.class, () -> prepare("one")).code());
         assertEquals(1, approver.messages);
+        assertEquals(0, rejected.creates);
+        prepare("two"); // A distinct, explicit operation can create a different object.
         assertEquals(1, rejected.creates);
     }
 
     @Test
-    void checkTxRejectionReusesEvidenceButClearsStaleErrorAfterSuccess() {
+    void checkTxRejectionDoesNotResetIntentOrRetry() {
         var rejected =
                 new TestSupport.Storage() {
                     boolean first = true;
@@ -603,12 +615,13 @@ class DmrvnClientTest {
         var error = assertThrows(DmrvnException.class, () -> prepare("one"));
         assertTrue(error.definitelyRejected());
         assertFalse(error.definitelyNotBroadcast());
-        assertFalse(client.operation("one").containsKey("createIntent"));
+        assertTrue(client.operation("one").containsKey("createIntent"));
         var original = Json.canonical(client.operation("one").get("evidence"));
-        prepare("one");
+        assertEquals(DmrvnException.Code.STORAGE_CREATE_UNRESOLVED,
+                assertThrows(DmrvnException.class, () -> prepare("one")).code());
         assertEquals(original, Json.canonical(client.operation("one").get("evidence")));
         assertFalse(client.operation("one").containsKey("lastStorageError"));
         assertEquals(1, approver.messages);
-        assertEquals(1, rejected.creates);
+        assertEquals(0, rejected.creates);
     }
 }
