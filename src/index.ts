@@ -11,8 +11,10 @@ export { DmrvnError, type DmrvnErrorCode } from './errors.js';
 export { HttpEvmRpc, type EvmRpc, type HttpEvmRpcOptions } from './evm-rpc.js';
 export { AssetClient } from './asset-client.js';
 export { EvmTransactionClient } from './evm-transaction-client.js';
-export type { EvmTransaction, EvmTransactionStatus, EvmTransactionState, EvmTransactionPage, EvmTransactionQuery,
-  ReadonlyJson, ReadonlyJsonObject } from './evm-transaction.js';
+export type {
+  EvmTransaction, EvmTransactionStatus, EvmTransactionState, EvmTransactionPage, EvmTransactionQuery,
+  ReadonlyJson, ReadonlyJsonObject
+} from './evm-transaction.js';
 export { TransactionQueryError, type TransactionQueryErrorCode } from './errors.js';
 export * as DmrvnCrypto from './dmrvn-crypto.js';
 export { DmrvnJson, DmrvnDecimal } from './dmrvn-json.js';
@@ -33,3 +35,5 @@ export type { ActivityOutcome, ActivityStage } from './activity-outcome.js';
 export { DmrvnReader, type ReportResolver } from './dmrvn-reader.js';
 export { FileOperationJournal } from './file-operation-journal.js';
 export { NodeGreenfieldStorage, type NodeGreenfieldStorageOptions } from './node-greenfield-storage.js';
+export { configureDiagnostics, withDiagnosticOperation, bindDiagnosticContext, sanitizeDiagnosticMessage } from './diagnostics.js';
+export type { DiagnosticOptions, DiagnosticRecord, DiagnosticLoggerProvider, SubmissionState } from './diagnostics.js';

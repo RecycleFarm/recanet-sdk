@@ -1,3 +1,4 @@
+import { diagnosticOperation } from './diagnostics.js';
 import { PrivyApiError } from './errors.js';
 import { requestJson, type HttpSettings } from './internal/http.js';
 import { isJavaBlank } from './member-identity.js';
@@ -55,39 +56,53 @@ export class PrivyClient {
 
   /** 미설정은 사용자 인증 실패가 아닌 구성 오류다. */
   verifyAccessToken(token: string | null | undefined): Promise<AuthenticatedUser> {
-    if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
-    return this.#verifier.verifyAccessToken(token);
+    return diagnosticOperation('privy-client.verifyAccessToken', undefined, () => {
+      if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
+      return this.#verifier.verifyAccessToken(token);
+    });
   }
 
   authenticateAuthorizationHeader(header: string | null | undefined): Promise<AuthenticatedUser> {
-    if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
-    return this.#verifier.authenticateAuthorizationHeader(header);
+    return diagnosticOperation('privy-client.authenticateAuthorizationHeader', undefined, () => {
+      if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
+      return this.#verifier.authenticateAuthorizationHeader(header);
+    });
   }
 
   /** 사용자 조회 권한을 진단한다. 지갑 쓰기 권한까지 검증하지 않는다. */
   async verifyAppCredentials(signal?: AbortSignal): Promise<void> {
-    const response = await requestJson(this.#settings, '/v1/users?limit=1', 'GET', undefined, signal);
-    if (!response || typeof response !== 'object' || !('data' in response) || !Array.isArray(response.data)) {
-      throw new PrivyApiError('INVALID_RESPONSE');
-    }
+    return diagnosticOperation('privy-client.verifyAppCredentials', undefined, async () => {
+      const response = await requestJson(this.#settings, '/v1/users?limit=1', 'GET', undefined, signal);
+      if (!response || typeof response !== 'object' || !('data' in response) || !Array.isArray(response.data)) {
+        throw new PrivyApiError('INVALID_RESPONSE');
+      }
+    });
   }
 
   registerBackendWallet(registration: BackendWalletRegistration, input: BackendWalletCreateRequest,
     signal?: AbortSignal): Promise<BackendWallet> {
-    return registerWallet(this.#request, registration, input, signal);
+    return diagnosticOperation('privy-client.registerBackendWallet', undefined, () => {
+      return registerWallet(this.#request, registration, input, signal);
+    });
   }
 
   listBackendWallets(publicKey: string, signal?: AbortSignal): Promise<readonly BackendWallet[]> {
-    return listWallets(this.#request, publicKey, signal);
+    return diagnosticOperation('privy-client.listBackendWallets', undefined, () => {
+      return listWallets(this.#request, publicKey, signal);
+    });
   }
   /** 호출 서비스의 접근 제어가 필요하다. 복호화한 블록체인 개인키를 출력/저장하지 않는다. */
   exportWalletPrivateKey(walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal): Promise<string> {
-    return exportWalletPrivateKey(this.#settings, walletId, registration, signal);
+    return diagnosticOperation('privy-client.exportWalletPrivateKey', undefined, () => {
+      return exportWalletPrivateKey(this.#settings, walletId, registration, signal);
+    });
   }
 
   /** 기존 public_key 문자열 비교 API. 서명 권한 판정과 다르다 (D-01). */
   isBackendWallet(walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal): Promise<boolean> {
-    return isBackendWallet(this.#request, walletId, registration, signal);
+    return diagnosticOperation('privy-client.isBackendWallet', undefined, () => {
+      return isBackendWallet(this.#request, walletId, registration, signal);
+    });
   }
 
   /** 인증/tenant 권한을 확인한 userId만 전달한다. 생성 전에 승인키를 영속 보관한다. */
@@ -98,7 +113,9 @@ export class PrivyClient {
 
   /** 승인키 목록으로 권한을 확인하며 지갑 개인키를 export하지 않는다. */
   signerForWallet(walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal): Promise<EvmSigner> {
-    return createPrivySigner(this.#settings, this.#request, walletId, registration, signal);
+    return diagnosticOperation('privy-client.signerForWallet', undefined, () => {
+      return createPrivySigner(this.#settings, this.#request, walletId, registration, signal);
+    });
   }
 
   #request = (path: string, method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal): Promise<unknown> =>

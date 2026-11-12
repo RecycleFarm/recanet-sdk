@@ -1,0 +1,35 @@
+# OpenTelemetry Collector Contrib. Configure inbound TLS/auth at the trusted gateway.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: ${env:OTLP_LOGS_LISTEN_ADDRESS}
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+    spike_limit_mib: 32
+  groupbyattrs/partner:
+    keys: [partner_id, environment]
+  batch:
+    timeout: 1s
+    send_batch_size: 256
+    send_batch_max_size: 512
+exporters:
+  otlphttp/loki:
+    # Base endpoint ending in /otlp; the exporter appends /v1/logs.
+    endpoint: ${env:LOKI_OTLP_ENDPOINT}
+    headers:
+      Authorization: ${env:LOKI_AUTHORIZATION}
+    sending_queue:
+      enabled: true
+      queue_size: 256
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 30s
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, groupbyattrs/partner, batch]
+      exporters: [otlphttp/loki]

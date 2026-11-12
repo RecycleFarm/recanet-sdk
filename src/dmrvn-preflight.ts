@@ -1,3 +1,4 @@
+import { diagnosticOperation, diagnosticFailure } from './diagnostics.js';
 import { DeclaredMethodology } from './declared-methodology.js';
 import { DmrvnChain } from './dmrvn-chain.js';
 import { DmrvnConfig } from './dmrvn-config.js';
@@ -48,27 +49,34 @@ export class DmrvnPreflight {
   }
 
   async run(signal?: AbortSignal): Promise<DmrvnPreflightResult> {
-    const check = async (fn: () => unknown | Promise<unknown>): Promise<PreflightCheck> => {
-      try { return { ok: true, value: await fn() }; }
-      catch (error) {
-        if (error instanceof DmrvnError) return { ok: false, code: error.code };
-        throw error;
-      }
-    };
-    const deployment = await check(async () => {
-      this.#config.deployment.requireWritable();
-      return this.#chain.verifyDeployment(undefined, signal);
-    });
-    const approverRole = await check(async () => { await this.#chain.verifyApprover(this.#operator.address, signal); return true; });
-    const methodology = await check(async () => { await this.#methodology.verifyActive(); return true; });
-    const evidenceContract = await check(() => { this.#methodology.requireExplicitEvidenceVersion(); return true; });
-    const relayBalanceWei = await check(async () => String(DmrvnChain.number(await this.#chain.call('eth_getBalance',
-      [normalizeAddress(this.#operator.address), 'latest'], signal))));
-    const checks = { deployment, approverRole, methodology, evidenceContract, relayBalanceWei,
-      greenfieldWriteRead: 'NOT_TESTED' as const, validatorReadAccess: 'OPERATOR_CONFIRMATION_REQUIRED' as const };
-    return { deploymentId: this.#config.deploymentId(), ready: [deployment, approverRole, methodology, evidenceContract, relayBalanceWei].every(value => value.ok),
-      verifiedMetadata: deployment.ok ? deployment.value as Readonly<Record<string, unknown>> : null,
-      approver: normalizeAddress(this.#operator.address), relay: normalizeAddress(this.#operator.address),
-      storageSigner: normalizeAddress(this.#storage.address), checks };
+    return diagnosticOperation('dmrvn-preflight.run', undefined, async () => {
+      const check = async (fn: () => unknown | Promise<unknown>): Promise<PreflightCheck> => {
+        try { return { ok: true, value: await fn() }; }
+        catch (error) {
+          diagnosticFailure(error);
+          if (error instanceof DmrvnError) return { ok: false, code: error.code };
+          throw error;
+        }
+      };
+      const deployment = await check(async () => {
+        this.#config.deployment.requireWritable();
+        return this.#chain.verifyDeployment(undefined, signal);
+      });
+      const approverRole = await check(async () => { await this.#chain.verifyApprover(this.#operator.address, signal); return true; });
+      const methodology = await check(async () => { await this.#methodology.verifyActive(); return true; });
+      const evidenceContract = await check(() => { this.#methodology.requireExplicitEvidenceVersion(); return true; });
+      const relayBalanceWei = await check(async () => String(DmrvnChain.number(await this.#chain.call('eth_getBalance',
+        [normalizeAddress(this.#operator.address), 'latest'], signal))));
+      const checks = {
+        deployment, approverRole, methodology, evidenceContract, relayBalanceWei,
+        greenfieldWriteRead: 'NOT_TESTED' as const, validatorReadAccess: 'OPERATOR_CONFIRMATION_REQUIRED' as const
+      };
+      return {
+        deploymentId: this.#config.deploymentId(), ready: [deployment, approverRole, methodology, evidenceContract, relayBalanceWei].every(value => value.ok),
+        verifiedMetadata: deployment.ok ? deployment.value as Readonly<Record<string, unknown>> : null,
+        approver: normalizeAddress(this.#operator.address), relay: normalizeAddress(this.#operator.address),
+        storageSigner: normalizeAddress(this.#storage.address), checks
+      };
+    }, 'preflight');
   }
 }

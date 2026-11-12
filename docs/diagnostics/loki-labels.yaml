@@ -1,0 +1,8 @@
+# Merge into the operator-managed Loki configuration; retain existing schema/storage settings.
+limits_config:
+  allow_structured_metadata: true
+  otlp_config:
+    resource_attributes:
+      attributes_config:
+        - action: index_label
+          attributes: [partner_id, environment]

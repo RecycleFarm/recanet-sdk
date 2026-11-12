@@ -32,6 +32,8 @@
     "check:package": "npm run build && node scripts/check-package.mjs"
   },
   "devDependencies": {
+    "@opentelemetry/exporter-logs-otlp-http": "0.301.1",
+    "@opentelemetry/sdk-logs": "3.1.1",
     "@types/node": "22.20.5",
     "typescript": "6.0.3"
   },

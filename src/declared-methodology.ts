@@ -1,3 +1,4 @@
+import { diagnosticOperation } from './diagnostics.js';
 import { bytes32, keccak, uint } from './dmrvn-crypto.js';
 import { DmrvnJson } from './dmrvn-json.js';
 import { DmrvnProtocol } from './dmrvn-protocol.js';
@@ -56,9 +57,12 @@ export class DeclaredMethodology {
   version(): number { return Number(uint(map(this.#manifest.methodology).version, 32)); }
 
   async verifyActive(): Promise<void> {
-    if (await this.#registry(this.activityId(), this.id(), this.version(), this.#hash) !== true) {
-      throw new DmrvnError('METHODOLOGY_UNAVAILABLE');
-    }
+    return diagnosticOperation('declared-methodology.verifyActive', undefined, async () => {
+
+      if (await this.#registry(this.activityId(), this.id(), this.version(), this.#hash) !== true) {
+        throw new DmrvnError('METHODOLOGY_UNAVAILABLE');
+      }
+    });
   }
 
   requireExplicitEvidenceVersion(): void {
@@ -73,9 +77,11 @@ export class DeclaredMethodology {
   evidenceBody(partnerId: bigint | number, beneficiary: string, sourceEventId: string,
     inputs: Readonly<Record<string, unknown>>): Record<string, unknown> {
     const partner = chainNumber(partnerId);
-    const body = { schemaVersion: this.#schema, sourceEventId, partnerId: partner, activityId: this.activityId(),
+    const body = {
+      schemaVersion: this.#schema, sourceEventId, partnerId: partner, activityId: this.activityId(),
       methodology: { id: this.id(), version: this.version() }, inputs: DmrvnJson.copy(inputs),
-      source: { ownerHash: DmrvnProtocol.ownerHash(beneficiary) } };
+      source: { ownerHash: DmrvnProtocol.ownerHash(beneficiary) }
+    };
     this.validate(body, partner, beneficiary);
     // 호출자에게 bigint 필드를 원본 Java JSON 정수와 같은 number로 전달한다.
     return map(DmrvnJson.copy(body));

@@ -1,3 +1,4 @@
+import { diagnosticOperation, diagnosticTranslated } from './diagnostics.js';
 import { DmrvnAbi } from './dmrvn-abi.js';
 import { bytes32, hexBytes, keccak, uint, ZERO_BYTES32 } from './dmrvn-crypto.js';
 import { DmrvnConfig } from './dmrvn-config.js';
@@ -34,8 +35,10 @@ export class DmrvnChain {
     Object.freeze(this);
   }
   async call(method: string, params: readonly unknown[], signal?: AbortSignal): Promise<unknown> {
-    if (signal?.aborted) throw new DmrvnError('INTERRUPTED');
-    return this.#rpc.call(method, params, signal);
+    return diagnosticOperation('dmrvn-chain.call', undefined, async () => {
+      if (signal?.aborted) throw new DmrvnError('INTERRUPTED');
+      return this.#rpc.call(method, params, signal);
+    });
   }
   static quantity(value: bigint): string { return '0x' + value.toString(16); }
   static number(value: unknown): bigint {
@@ -43,50 +46,72 @@ export class DmrvnChain {
     requireValue(/^0x[0-9a-fA-F]+$/.test(input), 'RPC_UNAVAILABLE');
     return BigInt(input);
   }
-  async head(signal?: AbortSignal): Promise<bigint> { return long(DmrvnChain.number(await this.call('eth_blockNumber', [], signal))); }
+  async head(signal?: AbortSignal): Promise<bigint> {
+    return diagnosticOperation('dmrvn-chain.head', undefined, async () => {
+      return long(DmrvnChain.number(await this.call('eth_blockNumber', [], signal)));
+    });
+  }
   async confirmedHead(signal?: AbortSignal): Promise<bigint> {
-    const head = await this.head(signal) - BigInt(this.config.confirmations) + 1n;
-    return head < 0n ? 0n : head;
+    return diagnosticOperation('dmrvn-chain.confirmedHead', undefined, async () => {
+      const head = await this.head(signal) - BigInt(this.config.confirmations) + 1n;
+      return head < 0n ? 0n : head;
+    });
   }
   async block(height: bigint, signal?: AbortSignal): Promise<Record<string, unknown>> {
-    return map(await this.call('eth_getBlockByNumber', [DmrvnChain.quantity(height), false], signal));
+    return diagnosticOperation('dmrvn-chain.block', undefined, async () => {
+      return map(await this.call('eth_getBlockByNumber', [DmrvnChain.quantity(height), false], signal));
+    });
   }
   async timestamp(signal?: AbortSignal): Promise<bigint> {
-    return long(DmrvnChain.number(map(await this.call('eth_getBlockByNumber', ['latest', false], signal)).timestamp));
+    return diagnosticOperation('dmrvn-chain.timestamp', undefined, async () => {
+      return long(DmrvnChain.number(map(await this.call('eth_getBlockByNumber', ['latest', false], signal)).timestamp));
+    });
   }
   async contract(abi: DmrvnAbi, address: string, fn: string, args: Readonly<Record<string, unknown>>, tag: string,
     signal?: AbortSignal): Promise<Record<string, unknown>> {
-    try { return abi.decodeOutput(fn, str(await this.call('eth_call', [{ to: address, data: abi.encode(fn, args) }, tag], signal))); }
-    catch (error) {
-      if (error instanceof DmrvnError && error.code === 'GAS_ESTIMATION_FAILED') throw new DmrvnError('RPC_UNAVAILABLE');
-      throw error;
-    }
+    return diagnosticOperation('dmrvn-chain.contract', undefined, async () => {
+      try { return abi.decodeOutput(fn, str(await this.call('eth_call', [{ to: address, data: abi.encode(fn, args) }, tag], signal))); }
+      catch (error) {
+        if (error instanceof DmrvnError && error.code === 'GAS_ESTIMATION_FAILED') throw diagnosticTranslated(error, new DmrvnError('RPC_UNAVAILABLE'));
+        throw error;
+      }
+    });
   }
   async view(fn: string, args: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<unknown> {
-    return Object.values(await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, fn, args, 'latest', signal))[0];
+    return diagnosticOperation('dmrvn-chain.view', undefined, async () => {
+      return Object.values(await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, fn, args, 'latest', signal))[0];
+    });
   }
   async nonce(address: string, forwarder: boolean, signal?: AbortSignal): Promise<bigint> {
-    const abi = forwarder ? DmrvnAbi.FORWARDER : DmrvnAbi.CLAIM;
-    const args = { [abi.inputs('nonces')[0]!.name]: address };
-    return uint(Object.values(await this.contract(abi, forwarder ? this.config.forwarderAddress : this.config.claimAddress,
-      'nonces', args, 'latest', signal))[0], 256);
+    return diagnosticOperation('dmrvn-chain.nonce', undefined, async () => {
+      const abi = forwarder ? DmrvnAbi.FORWARDER : DmrvnAbi.CLAIM;
+      const args = { [abi.inputs('nonces')[0]!.name]: address };
+      return uint(Object.values(await this.contract(abi, forwarder ? this.config.forwarderAddress : this.config.claimAddress,
+        'nonces', args, 'latest', signal))[0], 256);
+    });
   }
   async claim(id: string, block: bigint, signal?: AbortSignal): Promise<Record<string, unknown>> {
-    return map((await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, 'getClaim', { claimId: id }, DmrvnChain.quantity(block), signal))['']);
+    return diagnosticOperation('dmrvn-chain.claim', undefined, async () => {
+      return map((await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, 'getClaim', { claimId: id }, DmrvnChain.quantity(block), signal))['']);
+    });
   }
   async verifyApprover(address: string, signal?: AbortSignal): Promise<void> {
-    const role = await this.view('CLAIM_APPROVER_ROLE', {}, signal);
-    requireValue(await this.view('hasRole', { role, account: address }, signal) === true, 'UNAUTHORIZED_SIGNER');
+    return diagnosticOperation('dmrvn-chain.verifyApprover', undefined, async () => {
+      const role = await this.view('CLAIM_APPROVER_ROLE', {}, signal);
+      requireValue(await this.view('hasRole', { role, account: address }, signal) === true, 'UNAUTHORIZED_SIGNER');
+    });
   }
 
   async receipt(hash: string, head: bigint, signal?: AbortSignal): Promise<Record<string, unknown> | null> {
-    const raw = await this.call('eth_getTransactionReceipt', [hash], signal);
-    if (raw === null) return null;
-    const receipt = map(raw), height = long(DmrvnChain.number(receipt.blockNumber));
-    if (height > head) return null;
-    requireValue(str(receipt.transactionHash).toLowerCase() === hash.toLowerCase()
-      && (await this.block(height, signal)).hash === receipt.blockHash, 'SUBMISSION_UNRESOLVED');
-    return receipt;
+    return diagnosticOperation('dmrvn-chain.receipt', undefined, async () => {
+      const raw = await this.call('eth_getTransactionReceipt', [hash], signal);
+      if (raw === null) return null;
+      const receipt = map(raw), height = long(DmrvnChain.number(receipt.blockNumber));
+      if (height > head) return null;
+      requireValue(str(receipt.transactionHash).toLowerCase() === hash.toLowerCase()
+        && (await this.block(height, signal)).hash === receipt.blockHash, 'SUBMISSION_UNRESOLVED');
+      return receipt;
+    });
   }
 
   event(name: string, receipt: Readonly<Record<string, unknown>>, claimId: string): Record<string, unknown> | null {
@@ -104,64 +129,70 @@ export class DmrvnChain {
   /** 최대 100001개 높이를 1000블록씩 읽고 최초로 일치한 로그의 거래를 반환한다. */
   async findTransaction(event: string, id: string, from: bigint, to: bigint, field: string, expected: string,
     signal?: AbortSignal): Promise<string | null> {
-    requireValue(typeof from === 'bigint' && typeof to === 'bigint' && from >= 0n && from <= to && to - from <= 100000n,
-      'REPORT_LOOKUP_RANGE');
-    long(to);
-    for (let start = from; start <= to; start += 1000n) {
-      const end = to < start + 999n ? to : start + 999n;
-      const filter = { address: this.config.claimAddress, fromBlock: DmrvnChain.quantity(start), toBlock: DmrvnChain.quantity(end),
-        topics: [DmrvnAbi.CLAIM.topic(event), id] };
-      for (const item of list(await this.call('eth_getLogs', [filter], signal))) {
-        const log = map(item);
-        requireValue(this.config.claimAddress.toLowerCase() === str(log.address).toLowerCase() && log.removed !== true, 'RPC_UNAVAILABLE');
-        const decoded = DmrvnAbi.CLAIM.decodeEvent(event, log);
-        if (id.toLowerCase() === str(decoded.claimId).toLowerCase() && expected === String(decoded[field])) return str(log.transactionHash);
+    return diagnosticOperation('dmrvn-chain.findTransaction', undefined, async () => {
+      requireValue(typeof from === 'bigint' && typeof to === 'bigint' && from >= 0n && from <= to && to - from <= 100000n,
+        'REPORT_LOOKUP_RANGE');
+      long(to);
+      for (let start = from; start <= to; start += 1000n) {
+        const end = to < start + 999n ? to : start + 999n;
+        const filter = {
+          address: this.config.claimAddress, fromBlock: DmrvnChain.quantity(start), toBlock: DmrvnChain.quantity(end),
+          topics: [DmrvnAbi.CLAIM.topic(event), id]
+        };
+        for (const item of list(await this.call('eth_getLogs', [filter], signal))) {
+          const log = map(item);
+          requireValue(this.config.claimAddress.toLowerCase() === str(log.address).toLowerCase() && log.removed !== true, 'RPC_UNAVAILABLE');
+          const decoded = DmrvnAbi.CLAIM.decodeEvent(event, log);
+          if (id.toLowerCase() === str(decoded.claimId).toLowerCase() && expected === String(decoded[field])) return str(log.transactionHash);
+        }
       }
-    }
-    return null;
+      return null;
+    });
   }
 
   /** 코드·slot·domain을 같은 block tag로 관찰한다. 합의 최종성 증명은 아니다. */
   async verifyDeployment(height?: bigint | number, signal?: AbortSignal): Promise<Record<string, unknown>> {
-    try {
-      const observedHeight = height === undefined ? await this.head(signal) : chainNumber(height);
-      requireValue(DmrvnChain.number(await this.call('eth_chainId', [], signal)) === BigInt(this.config.chainId), 'DEPLOYMENT_NOT_READY');
-      const tag = DmrvnChain.quantity(observedHeight);
-      const blockHash = bytes32(str((await this.block(observedHeight, signal)).hash));
-      const deployment = this.config.deployment;
-      const observed = deployment.snapshot();
-      const expected = map(observed.codeHashes);
-      const hashes: Record<string, unknown> = {};
-      const key = deployment.isProxy() ? 'proxy' : 'contract';
-      hashes[key] = await this.#verifyCode(this.config.claimAddress, expected[key], tag, 'DEPLOYMENT_NOT_READY', signal);
-      hashes.forwarder = await this.#verifyCode(this.config.forwarderAddress, expected.forwarder, tag, 'DEPLOYMENT_NOT_READY', signal);
-      if (deployment.isProxy()) {
-        const implementation = await this.#slotAddress(IMPLEMENTATION_SLOT, tag, signal);
-        const release = deployment.release(implementation);
-        requireValue(release !== null, 'UNAPPROVED_IMPLEMENTATION');
-        const admin = await this.#slotAddress(ADMIN_SLOT, tag, signal);
-        requireValue(admin === observed.proxyAdminAddress, 'DEPLOYMENT_NOT_READY');
-        hashes.proxyAdmin = await this.#verifyCode(admin, expected.proxyAdmin, tag, 'DEPLOYMENT_NOT_READY', signal);
-        hashes.implementation = await this.#verifyCode(implementation, release.codeHash, tag, 'UNAPPROVED_IMPLEMENTATION', signal);
-        requireValue((await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, 'contractVersion', {}, tag, signal))[''] === release.contractVersion,
-          'UNAPPROVED_IMPLEMENTATION');
-        requireValue((await this.contract(DmrvnAbi.PROXY_ADMIN, admin, 'owner', {}, tag, signal))[''] === observed.owner, 'DEPLOYMENT_NOT_READY');
-        observed.implementationAddress = implementation;
-        observed.approvedImplementationHash = release.codeHash;
-        observed.contractVersion = release.contractVersion;
+    return diagnosticOperation('dmrvn-chain.verifyDeployment', undefined, async () => {
+      try {
+        const observedHeight = height === undefined ? await this.head(signal) : chainNumber(height);
+        requireValue(DmrvnChain.number(await this.call('eth_chainId', [], signal)) === BigInt(this.config.chainId), 'DEPLOYMENT_NOT_READY');
+        const tag = DmrvnChain.quantity(observedHeight);
+        const blockHash = bytes32(str((await this.block(observedHeight, signal)).hash));
+        const deployment = this.config.deployment;
+        const observed = deployment.snapshot();
+        const expected = map(observed.codeHashes);
+        const hashes: Record<string, unknown> = {};
+        const key = deployment.isProxy() ? 'proxy' : 'contract';
+        hashes[key] = await this.#verifyCode(this.config.claimAddress, expected[key], tag, 'DEPLOYMENT_NOT_READY', signal);
+        hashes.forwarder = await this.#verifyCode(this.config.forwarderAddress, expected.forwarder, tag, 'DEPLOYMENT_NOT_READY', signal);
+        if (deployment.isProxy()) {
+          const implementation = await this.#slotAddress(IMPLEMENTATION_SLOT, tag, signal);
+          const release = deployment.release(implementation);
+          requireValue(release !== null, 'UNAPPROVED_IMPLEMENTATION');
+          const admin = await this.#slotAddress(ADMIN_SLOT, tag, signal);
+          requireValue(admin === observed.proxyAdminAddress, 'DEPLOYMENT_NOT_READY');
+          hashes.proxyAdmin = await this.#verifyCode(admin, expected.proxyAdmin, tag, 'DEPLOYMENT_NOT_READY', signal);
+          hashes.implementation = await this.#verifyCode(implementation, release.codeHash, tag, 'UNAPPROVED_IMPLEMENTATION', signal);
+          requireValue((await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, 'contractVersion', {}, tag, signal))[''] === release.contractVersion,
+            'UNAPPROVED_IMPLEMENTATION');
+          requireValue((await this.contract(DmrvnAbi.PROXY_ADMIN, admin, 'owner', {}, tag, signal))[''] === observed.owner, 'DEPLOYMENT_NOT_READY');
+          observed.implementationAddress = implementation;
+          observed.approvedImplementationHash = release.codeHash;
+          observed.contractVersion = release.contractVersion;
+        }
+        await this.#verifyDomain(DmrvnAbi.CLAIM, this.config.claimAddress, false, tag, signal);
+        await this.#verifyDomain(DmrvnAbi.FORWARDER, this.config.forwarderAddress, true, tag, signal);
+        const field = DmrvnAbi.CLAIM.inputs('isTrustedForwarder')[0]!.name;
+        requireValue((await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, 'isTrustedForwarder',
+          { [field]: this.config.forwarderAddress }, tag, signal))[''] === true, 'DEPLOYMENT_NOT_READY');
+        // Java는 두 번째 raw hash와 첫 번째 정규화 hash를 비교한다.
+        requireValue(blockHash === (await this.block(observedHeight, signal)).hash, 'DEPLOYMENT_NOT_READY');
+        return { ...observed, codeHashes: hashes, verified: true, observedBlock: observedHeight, observedBlockHash: blockHash };
+      } catch (error) {
+        if (error instanceof DmrvnError && error.code === 'UNAPPROVED_IMPLEMENTATION') throw error;
+        throw diagnosticTranslated(error, new DmrvnError('DEPLOYMENT_NOT_READY'));
       }
-      await this.#verifyDomain(DmrvnAbi.CLAIM, this.config.claimAddress, false, tag, signal);
-      await this.#verifyDomain(DmrvnAbi.FORWARDER, this.config.forwarderAddress, true, tag, signal);
-      const field = DmrvnAbi.CLAIM.inputs('isTrustedForwarder')[0]!.name;
-      requireValue((await this.contract(DmrvnAbi.CLAIM, this.config.claimAddress, 'isTrustedForwarder',
-        { [field]: this.config.forwarderAddress }, tag, signal))[''] === true, 'DEPLOYMENT_NOT_READY');
-      // Java는 두 번째 raw hash와 첫 번째 정규화 hash를 비교한다.
-      requireValue(blockHash === (await this.block(observedHeight, signal)).hash, 'DEPLOYMENT_NOT_READY');
-      return { ...observed, codeHashes: hashes, verified: true, observedBlock: observedHeight, observedBlockHash: blockHash };
-    } catch (error) {
-      if (error instanceof DmrvnError && error.code === 'UNAPPROVED_IMPLEMENTATION') throw error;
-      throw new DmrvnError('DEPLOYMENT_NOT_READY');
-    }
+    });
   }
   async #slotAddress(slot: string, tag: string, signal?: AbortSignal): Promise<string> {
     const value = str(await this.call('eth_getStorageAt', [this.config.claimAddress, slot, tag], signal));

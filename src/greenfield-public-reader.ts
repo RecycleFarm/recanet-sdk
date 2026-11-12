@@ -1,3 +1,4 @@
+import { diagnosticOperation, diagnosticUpstream } from './diagnostics.js';
 import { javaUtf8 } from './dmrvn-crypto.js';
 import { DmrvnError } from './errors.js';
 import { dmrvnUri } from './internal/dmrvn-uri.js';
@@ -37,73 +38,76 @@ export class GreenfieldPublicReader implements ReportReader {
   }
 
   async read(location: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<Uint8Array> {
-    if (location.chainId !== this.#chainId || String(location.storageType) !== '1') throw new DmrvnError('WRONG_CHAIN');
-    if (typeof location.bucketName !== 'string' || typeof location.objectName !== 'string') throw new DmrvnError('INVALID_INPUT');
-    const parts = location.objectName.split('/');
-    // WHATWG Fetch는 dot segment를 정규화하므로 다른 객체를 읽는 대신 명시적으로 거부한다 (TS-26).
-    if ([location.bucketName, ...parts].some(part => part === '.' || part === '..')) throw new DmrvnError('INVALID_INPUT');
-    const url = this.#endpoint + '/' + encode(location.bucketName) + '/' + parts.map(encode).join('/');
-    const controller = new AbortController();
-    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let rejectStop!: (error: DmrvnError) => void;
-    const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
-    const start = performance.now();
-    let deadline = start + Math.min(this.#connect, this.#timeout);
-    const stop = (code: 'INTERRUPTED' | 'STORAGE_UNAVAILABLE') => {
-      rejectStop(new DmrvnError(code));
-      controller.abort();
-      void reader?.cancel().catch(() => {});
-    };
-    const schedule = () => {
-      const remaining = deadline - performance.now();
-      if (remaining <= 0) stop('STORAGE_UNAVAILABLE');
-      else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
-    };
-    const onAbort = () => stop('INTERRUPTED');
-    signal?.addEventListener('abort', onAbort, { once: true });
-    if (signal?.aborted) onAbort();
-    else schedule();
-    const execute = async () => {
-      if (controller.signal.aborted) throw new DmrvnError('INTERRUPTED');
-      const response = await this.#fetch(url, { method: 'GET', signal: controller.signal, redirect: 'error', credentials: 'omit' });
-      if (controller.signal.aborted) {
-        void response.body?.cancel().catch(() => {});
-        throw new DmrvnError('STORAGE_UNAVAILABLE');
-      }
-      clearTimeout(timer);
-      deadline = start + this.#timeout;
-      schedule();
-      if (controller.signal.aborted) {
-        void response.body?.cancel().catch(() => {});
-        throw new DmrvnError('STORAGE_UNAVAILABLE');
-      }
-      const chunks: Uint8Array[] = [];
-      let size = 0;
-      if (response.body) {
-        reader = response.body.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          size += value.byteLength;
-          if (size > 4194304) {
-            controller.abort(); void reader.cancel().catch(() => {});
-            throw new DmrvnError('STORAGE_UNAVAILABLE');
-          }
-          chunks.push(value);
+    return diagnosticOperation('greenfield-public-reader.read', undefined, async () => {
+      if (location.chainId !== this.#chainId || String(location.storageType) !== '1') throw new DmrvnError('WRONG_CHAIN');
+      if (typeof location.bucketName !== 'string' || typeof location.objectName !== 'string') throw new DmrvnError('INVALID_INPUT');
+      const parts = location.objectName.split('/');
+      // WHATWG Fetch는 dot segment를 정규화하므로 다른 객체를 읽는 대신 명시적으로 거부한다 (TS-26).
+      if ([location.bucketName, ...parts].some(part => part === '.' || part === '..')) throw new DmrvnError('INVALID_INPUT');
+      const url = this.#endpoint + '/' + encode(location.bucketName) + '/' + parts.map(encode).join('/');
+      const controller = new AbortController();
+      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      let rejectStop!: (error: DmrvnError) => void;
+      const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
+      const start = performance.now();
+      let deadline = start + Math.min(this.#connect, this.#timeout);
+      const stop = (code: 'INTERRUPTED' | 'STORAGE_UNAVAILABLE') => {
+        rejectStop(new DmrvnError(code));
+        controller.abort();
+        void reader?.cancel().catch(() => { });
+      };
+      const schedule = () => {
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) stop('STORAGE_UNAVAILABLE');
+        else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
+      };
+      const onAbort = () => stop('INTERRUPTED');
+      signal?.addEventListener('abort', onAbort, { once: true });
+      if (signal?.aborted) onAbort();
+      else schedule();
+      const execute = async () => {
+        if (controller.signal.aborted) throw new DmrvnError('INTERRUPTED');
+        const response = await this.#fetch(url, { method: 'GET', signal: controller.signal, redirect: 'error', credentials: 'omit' });
+        diagnosticUpstream(response.status);
+        if (controller.signal.aborted) {
+          void response.body?.cancel().catch(() => { });
+          throw new DmrvnError('STORAGE_UNAVAILABLE');
         }
+        clearTimeout(timer);
+        deadline = start + this.#timeout;
+        schedule();
+        if (controller.signal.aborted) {
+          void response.body?.cancel().catch(() => { });
+          throw new DmrvnError('STORAGE_UNAVAILABLE');
+        }
+        const chunks: Uint8Array[] = [];
+        let size = 0;
+        if (response.body) {
+          reader = response.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            size += value.byteLength;
+            if (size > 4194304) {
+              controller.abort(); void reader.cancel().catch(() => { });
+              throw new DmrvnError('STORAGE_UNAVAILABLE');
+            }
+            chunks.push(value);
+          }
+        }
+        if (response.status === 401 || response.status === 403) throw new DmrvnError('STORAGE_ACCESS_DENIED');
+        if (response.status !== 200) throw new DmrvnError('STORAGE_UNAVAILABLE');
+        return Uint8Array.from(Buffer.concat(chunks, size));
+      };
+      try { return await Promise.race([stopped, execute()]); }
+      catch (error) {
+        if (error instanceof DmrvnError) throw error;
+        throw new DmrvnError(signal?.aborted ? 'INTERRUPTED' : 'STORAGE_UNAVAILABLE');
+      } finally {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
       }
-      if (response.status === 401 || response.status === 403) throw new DmrvnError('STORAGE_ACCESS_DENIED');
-      if (response.status !== 200) throw new DmrvnError('STORAGE_UNAVAILABLE');
-      return Uint8Array.from(Buffer.concat(chunks, size));
-    };
-    try { return await Promise.race([stopped, execute()]); }
-    catch (error) {
-      if (error instanceof DmrvnError) throw error;
-      throw new DmrvnError(signal?.aborted ? 'INTERRUPTED' : 'STORAGE_UNAVAILABLE');
-    } finally {
-      clearTimeout(timer);
-      signal?.removeEventListener('abort', onAbort);
-    }
+    });
   }
 }

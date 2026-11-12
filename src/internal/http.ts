@@ -1,3 +1,4 @@
+import { diagnosticOperation, diagnosticSubmission, diagnosticTranslated, diagnosticUpstream } from '../diagnostics.js';
 import { PrivyApiError, type PrivyApiErrorCode } from '../errors.js';
 import type { SignedRequest } from './authorization.js';
 
@@ -39,82 +40,95 @@ function statusCode(status: number): PrivyApiErrorCode {
 /** 네트워크 시작부터 body 완료까지 제한한다. 자동 재시도·redirect가 없다. */
 export async function requestJson(settings: HttpSettings, path: string,
   method: 'GET' | 'POST', body?: unknown, signal?: AbortSignal, expectedStatus = 200,
-  signed?: SignedRequest): Promise<unknown> {
-  const controller = new AbortController();
-  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let rejectStop: (error: PrivyApiError) => void;
-  const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
-  const stop = (code: 'UNAVAILABLE' | 'INTERRUPTED') => {
-    controller.abort();
-    void reader?.cancel().catch(() => {});
-    rejectStop(new PrivyApiError(code));
-  };
-  const onAbort = () => stop('INTERRUPTED');
-  // Node timer의 32비트 한도를 넘는 설정도 즉시 1ms로 바뀌지 않도록 분할한다.
-  const deadline = performance.now() + settings.timeoutMs;
-  const schedule = () => {
-    const remaining = deadline - performance.now();
-    if (remaining <= 0) stop('UNAVAILABLE');
-    else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
-  };
-  signal?.addEventListener('abort', onAbort, { once: true });
-  if (signal?.aborted) onAbort();
-  else schedule();
-
-  const execute = async () => {
-    if (controller.signal.aborted) throw new PrivyApiError('INTERRUPTED');
-    const headers: Record<string, string> = {
-      authorization: 'Basic ' + Buffer.from(`${settings.appId}:${settings.appSecret}`, 'utf8').toString('base64'),
-      'privy-app-id': settings.appId,
+  signed?: SignedRequest, submissionTarget?: string): Promise<unknown> {
+  return diagnosticOperation('http.requestJson', undefined, async () => {
+    const controller = new AbortController();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let rejectStop: (error: PrivyApiError) => void;
+    const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
+    const stop = (code: 'UNAVAILABLE' | 'INTERRUPTED') => {
+      controller.abort();
+      void reader?.cancel().catch(() => { });
+      rejectStop(new PrivyApiError(code));
     };
-    const init: RequestInit = { method, headers, signal: controller.signal, redirect: 'error' };
-    if (signed !== undefined) {
-      headers['content-type'] = 'application/json';
-      headers['privy-authorization-signature'] = signed.signature;
-      if (signed.idempotencyKey !== undefined) headers['privy-idempotency-key'] = signed.idempotencyKey;
-      init.body = signed.bodyJson;
-    } else if (body !== undefined) {
-      headers['content-type'] = 'application/json';
-      init.body = JSON.stringify(body);
-    }
-    const response = await settings.fetch(settings.origin + path, init);
-    // fetch를 주입한 전송 계층도 취소 상태를 확인한다.
-    if (controller.signal.aborted) {
-      void response.body?.cancel().catch(() => {});
-      throw new PrivyApiError('UNAVAILABLE');
-    }
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    if (response.body) {
-      reader = response.body.getReader();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > MAX_BODY) {
-          controller.abort();
-          void reader.cancel().catch(() => {});
-          throw new PrivyApiError('UNAVAILABLE');
-        }
-        chunks.push(value);
+    const onAbort = () => stop('INTERRUPTED');
+    // Node timer의 32비트 한도를 넘는 설정도 즉시 1ms로 바뀌지 않도록 분할한다.
+    const deadline = performance.now() + settings.timeoutMs;
+    const schedule = () => {
+      const remaining = deadline - performance.now();
+      if (remaining <= 0) stop('UNAVAILABLE');
+      else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+    else schedule();
+
+    const execute = async () => {
+      if (controller.signal.aborted) throw new PrivyApiError('INTERRUPTED');
+      const headers: Record<string, string> = {
+        authorization: 'Basic ' + Buffer.from(`${settings.appId}:${settings.appSecret}`, 'utf8').toString('base64'),
+        'privy-app-id': settings.appId,
+      };
+      const init: RequestInit = { method, headers, signal: controller.signal, redirect: 'error' };
+      if (signed !== undefined) {
+        headers['content-type'] = 'application/json';
+        headers['privy-authorization-signature'] = signed.signature;
+        if (signed.idempotencyKey !== undefined) headers['privy-idempotency-key'] = signed.idempotencyKey;
+        init.body = signed.bodyJson;
+      } else if (body !== undefined) {
+        headers['content-type'] = 'application/json';
+        init.body = JSON.stringify(body);
       }
-    }
-    if (response.status !== expectedStatus) throw new PrivyApiError(statusCode(response.status), response.status,
-      retryAfter(response.headers.get('retry-after')));
+      const target = submissionTarget ?? (method === 'POST' && path === '/v1/wallets' ? 'wallet.create' : undefined);
+      const response = await (target !== undefined
+        ? diagnosticSubmission(target, async () => {
+          try { return await Promise.race([stopped, settings.fetch(settings.origin + path, init)]); }
+          catch (error) {
+            if (error instanceof PrivyApiError) throw error;
+            throw diagnosticTranslated(error, new PrivyApiError(signal?.aborted ? 'INTERRUPTED' : 'UNAVAILABLE'));
+          }
+        // RPC submission acceptance requires the caller's parsed response validation.
+        }, response => submissionTarget === undefined && response.status === expectedStatus)
+        : settings.fetch(settings.origin + path, init));
+      diagnosticUpstream(response.status);
+      // fetch를 주입한 전송 계층도 취소 상태를 확인한다.
+      if (controller.signal.aborted) {
+        void response.body?.cancel().catch(() => { });
+        throw new PrivyApiError('UNAVAILABLE');
+      }
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      if (response.body) {
+        reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > MAX_BODY) {
+            controller.abort();
+            void reader.cancel().catch(() => { });
+            throw new PrivyApiError('UNAVAILABLE');
+          }
+          chunks.push(value);
+        }
+      }
+      if (response.status !== expectedStatus) throw new PrivyApiError(statusCode(response.status), response.status,
+        retryAfter(response.headers.get('retry-after')));
+      try {
+        return JSON.parse(Buffer.concat(chunks, size).toString('utf8')) as unknown;
+      } catch {
+        throw new PrivyApiError('INVALID_RESPONSE');
+      }
+    };
     try {
-      return JSON.parse(Buffer.concat(chunks, size).toString('utf8')) as unknown;
-    } catch {
-      throw new PrivyApiError('INVALID_RESPONSE');
+      return await Promise.race([stopped, execute()]);
+    } catch (error) {
+      if (error instanceof PrivyApiError) throw error;
+      throw diagnosticTranslated(error, new PrivyApiError(signal?.aborted ? 'INTERRUPTED' : 'UNAVAILABLE'));
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
     }
-  };
-  try {
-    return await Promise.race([stopped, execute()]);
-  } catch (error) {
-    if (error instanceof PrivyApiError) throw error;
-    throw new PrivyApiError(signal?.aborted ? 'INTERRUPTED' : 'UNAVAILABLE');
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
-    signal?.removeEventListener('abort', onAbort);
-  }
+  });
 }

@@ -1,3 +1,4 @@
+import { diagnosticOperation } from './diagnostics.js';
 import { createPublicKey, verify, type KeyObject } from 'node:crypto';
 import { PrivyAuthenticationError } from './errors.js';
 import { jsonObject, numericDate, parseLosslessJson, type JsonObject } from './internal/lossless-json.js';
@@ -13,8 +14,10 @@ interface TokenVerificationPolicy {
 
 export type TokenVerificationOptions = TokenVerificationPolicy & (
   { readonly publicKeyPem: string; readonly jwksUrl?: never; }
-  | { readonly jwksUrl: string; readonly publicKeyPem?: never;
-    readonly jwksPolicy?: JwksPolicy; readonly fetch?: typeof globalThis.fetch; }
+  | {
+    readonly jwksUrl: string; readonly publicKeyPem?: never;
+    readonly jwksPolicy?: JwksPolicy; readonly fetch?: typeof globalThis.fetch;
+  }
 );
 export type { JwksPolicy } from './internal/jwks.js';
 
@@ -76,39 +79,43 @@ export class PrivyTokenVerifier {
   }
 
   async authenticateAuthorizationHeader(header: string | null | undefined): Promise<AuthenticatedUser> {
-    if (header == null) throw new PrivyAuthenticationError('MISSING_TOKEN');
-    if (typeof header !== 'string' || header.length > 16416) throw invalid();
-    if (isJavaBlank(header)) throw new PrivyAuthenticationError('MISSING_TOKEN');
-    // Java Pattern의 \s는 ASCII 공백 집합이다. 앞뒤 trim을 하지 않는다.
-    const match = /^Bearer +([^\x20\t\n\x0b\f\r,]+)$/i.exec(header);
-    if (!match || match[0].length !== header.length) throw invalid();
-    return this.verifyAccessToken(match[1]);
+    return diagnosticOperation('token-verifier.authenticateAuthorizationHeader', undefined, async () => {
+      if (header == null) throw new PrivyAuthenticationError('MISSING_TOKEN');
+      if (typeof header !== 'string' || header.length > 16416) throw invalid();
+      if (isJavaBlank(header)) throw new PrivyAuthenticationError('MISSING_TOKEN');
+      // Java Pattern의 \s는 ASCII 공백 집합이다. 앞뒤 trim을 하지 않는다.
+      const match = /^Bearer +([^\x20\t\n\x0b\f\r,]+)$/i.exec(header);
+      if (!match || match[0].length !== header.length) throw invalid();
+      return this.verifyAccessToken(match[1]);
+    });
   }
 
   async verifyAccessToken(token: string | null | undefined): Promise<AuthenticatedUser> {
-    if (token == null) throw new PrivyAuthenticationError('MISSING_TOKEN');
-    if (typeof token !== 'string' || token.length > 16384) throw invalid();
-    if (isJavaBlank(token)) throw new PrivyAuthenticationError('MISSING_TOKEN');
-    try {
-      const parts = token.split('.');
-      if (parts.length !== 3) throw invalid();
-      const [encodedHeader, encodedClaims, encodedSignature] = parts as [string, string, string];
-      const header = object(encodedHeader);
-      if (header.alg !== 'ES256' || typeof header.typ !== 'string' || header.typ.toUpperCase() !== 'JWT'
-        || (header.crit != null && (!Array.isArray(header.crit) || header.crit.length !== 0))
-        || (header.kid != null && (typeof header.kid !== 'string' || header.kid.length > 256))) throw invalid();
-      const claims = object(encodedClaims);
-      const user = this.#claims(claims);
-      const keys = this.#key ? [this.#key] : await this.#jwks!.keys(typeof header.kid === 'string' ? header.kid : undefined);
-      const signature = decode(encodedSignature);
-      if (signature.length !== 64 || !keys.some(key => verify('sha256', Buffer.from(`${encodedHeader}.${encodedClaims}`, 'ascii'),
-        { key, dsaEncoding: 'ieee-p1363' }, signature))) throw invalid();
-      this.#claims(claims);
-      return user;
-    } catch (error) {
-      if (error instanceof PrivyAuthenticationError) throw error;
-      throw invalid();
-    }
+    return diagnosticOperation('token-verifier.verifyAccessToken', undefined, async () => {
+      if (token == null) throw new PrivyAuthenticationError('MISSING_TOKEN');
+      if (typeof token !== 'string' || token.length > 16384) throw invalid();
+      if (isJavaBlank(token)) throw new PrivyAuthenticationError('MISSING_TOKEN');
+      try {
+        const parts = token.split('.');
+        if (parts.length !== 3) throw invalid();
+        const [encodedHeader, encodedClaims, encodedSignature] = parts as [string, string, string];
+        const header = object(encodedHeader);
+        if (header.alg !== 'ES256' || typeof header.typ !== 'string' || header.typ.toUpperCase() !== 'JWT'
+          || (header.crit != null && (!Array.isArray(header.crit) || header.crit.length !== 0))
+          || (header.kid != null && (typeof header.kid !== 'string' || header.kid.length > 256))) throw invalid();
+        const claims = object(encodedClaims);
+        const user = this.#claims(claims);
+        const keys = this.#key ? [this.#key] : await this.#jwks!.keys(typeof header.kid === 'string' ? header.kid : undefined);
+        const signature = decode(encodedSignature);
+        if (signature.length !== 64 || !keys.some(key => verify('sha256', Buffer.from(`${encodedHeader}.${encodedClaims}`, 'ascii'),
+          { key, dsaEncoding: 'ieee-p1363' }, signature))) throw invalid();
+        this.#claims(claims);
+        return user;
+      } catch (error) {
+        if (error instanceof PrivyAuthenticationError) throw error;
+        throw invalid();
+      }
+    });
   }
 
   #claims(claims: JsonObject): AuthenticatedUser {

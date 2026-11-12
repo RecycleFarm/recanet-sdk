@@ -51,7 +51,11 @@ test('export는 새 SPKI P-256 수신키와 정확한 URL/body를 승인하고 l
   for (const key of Object.keys(original)) console[key] = (...args) => logs.push(args);
   try { assert.equal(await client.exportWalletPrivateKey('wallet /한', registration), plaintext); }
   finally { Object.assign(console, original); }
-  assert.equal(calls.length, 1); assert.equal(logs.length, 0);
+  assert.equal(calls.length, 1); assert.equal(logs.length, 1);
+  const record = JSON.parse(logs[0][0]);
+  assert.equal(record.event, 'completed');
+  assert.equal(record.operation, 'privy-client.exportWalletPrivateKey');
+  for (const secret of [plaintext, registration.privateKey, appSecret, calls[0]]) assert.ok(!JSON.stringify(logs).includes(secret));
 });
 
 test('동시 export 요청마다 임시 수신 키를 독립 생성하며 빈 평문/잘못된 UTF-8도 Java 문자열 경계로 반환한다', async () => {
