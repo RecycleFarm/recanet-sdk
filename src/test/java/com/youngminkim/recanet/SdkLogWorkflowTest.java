@@ -118,7 +118,7 @@ class SdkLogWorkflowTest {
             } finally { parent.end(); }
             assertEquals(1, c.spans.getFinishedSpanItems().size());
             assertEquals("request", c.spans.getFinishedSpanItems().get(0).getName());
-            assertEquals(4, c.logs.getFinishedLogRecordItems().size());
+            assertEquals(1, c.logs.getFinishedLogRecordItems().size());
             for (var log : c.logs.getFinishedLogRecordItems()) {
                 assertEquals("operation-a", attr(log, "recanet.operation_id"));
                 assertEquals(parent.getSpanContext(), log.getSpanContext());
@@ -199,10 +199,11 @@ class SdkLogWorkflowTest {
             assertSame(failure, assertThrows(DmrvnException.class, () -> c.telemetry.step("Test.same", () ->
                     c.telemetry.step("Test.same", () -> { calls.incrementAndGet(); throw failure; }))));
             assertEquals(1, calls.get());
-            assertEquals(2, c.logs.getFinishedLogRecordItems().size());
+            assertEquals(1, c.logs.getFinishedLogRecordItems().size());
             c.telemetry.observe("Test.next", null, () -> true);
             assertNull(attr(c.last(), "recanet.parent_call_id"));
-            assertEquals("NOT_ATTEMPTED", attr(c.last(), "recanet.submission_state"));
+            assertNull(attr(c.last(), "recanet.submission_state"));
+            assertEquals("STEP_COMPLETED", attr(c.last(), "recanet.last_confirmed_state"));
         }
     }
 

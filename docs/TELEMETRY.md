@@ -7,33 +7,78 @@ SDK가 전역 provider나 호스트 애플리케이션의 트레이스 설정을
 ## 기록 범위
 
 Privy 인증·지갑 생성/조회·서명·전송, 회원별 지갑 작업, 자산 잔액/전송, 거래 조회,
-DMRVN 각 단계와 결과 검증, RPC 호출, Greenfield 객체 생성·업로드·조회가 기록됩니다.
-하위 경계도 단계별 로그를 남기므로 트레이스 없이 작업 흐름을 재구성할 수 있습니다.
+DMRVN 각 단계와 결과 검증, RPC 호출, Greenfield 객체 생성·업로드·조회가 계측됩니다.
+기본 모드는 정상 하위 호출의 로그를 생략하고 **작업 완료 요약, 중요한 부수효과 상태, 상세 오류**만 기록합니다.
+하위 단계의 완료/체크포인트는 메모리에 계속 갱신하므로 오류 로그의 실패 단계와 마지막 확인 상태는 유지됩니다.
 파라미터, 반환 객체, 지갑/회원 식별자, 요청/응답 본문 전체는 기록하지 않습니다.
 각 내부 라이브러리의 모든 네트워크 요청이나 암호 연산을 계측하는 기능은 아닙니다.
+
+## 기본 전송 정책
+
+이 정책은 특정 작업명에 대한 예외 처리가 아니라 `SdkTelemetry`의 공통 기본 정책입니다.
+Privy 인증/지갑 생성/조회/export/서명/전송, 회원·파트너 지갑, 거래 상태/목록 조회,
+DMRVN의 개별 단계 API와 결과 조회, 독립 RPC 및 Greenfield 호출에도 동일하게 적용됩니다.
+아래의 4개 수치는 대표 시나리오 측정값입니다. 적용 대상을 4개로 제한한 것이 아닙니다.
+파트너 지갑의 생성·서명·전송 전 권한 검사 오류도 같은 로거에서 작업 ID와 실패 단계로 기록합니다.
+
+- 정상 조회: 최상위 작업 완료 요약 1건. 하위 RPC의 시작/완료 로그는 전송하지 않습니다.
+- 생성·전송·업로드: `submission_started`를 실제 delegate 호출 전에 기록하고,
+  확인된 수락/확인은 `submission_accepted`/`submission_confirmed`로 기록합니다.
+  서명기와 transport가 같은 요청을 중첩 계측해도 동일 요청의 상태를 반복 전송하지 않습니다.
+- 중요 체크포인트: `APPROVED`, `EVIDENCE_SEALED`는 논리 작업당 각각 한 번 기록합니다.
+  그 밖의 체크포인트와 반복 journal 복원은 내부 상태에만 반영합니다.
+- 오류: 같은 예외가 호출 스택을 따라 전파되는 경우 최초 실패 단계에서 한 번 기록합니다.
+  새 오류나 별도 재시도에서 재사용한 예외는 각각 기록합니다. 오류 코드만으로 합치지 않습니다.
+  중복 판별 캐시는 크기가 제한되며 포화 시에는 오류 보존을 우선해 중복이 발생할 수 있습니다.
+- 하위 오류를 처리한 후 작업이 반환되면 오류 기록과 최상위 완료 요약이 함께 존재할 수 있습니다.
+  `completed`는 메서드 반환이며 업무 성공이나 체인 확정을 보장하지 않습니다.
+
+기본 로그에는 반복되는 호출 관계 UUID, 중복 `operation`/`stage`, 별도 timestamp 속성과
+소요 시간을 넣지 않습니다. 이벤트 시간은 OpenTelemetry LogRecord의 timestamp에 기록하고,
+로컬 JSON에는 편의를 위해 timestamp를 추가합니다.
+정상 완료 요약에는 업무 상태만 간단히 담고, 오류와 생성/전송 상태에는 상세 상태를 유지합니다.
+`error.message`와 동일한 `error.reason`은 생략합니다.
+
+프로세스 강제 종료에 대비한 생성/전송 직전 로그도 비동기 전송이므로 서버 저장을 보장하지는 않습니다.
+요약 정책은 감사 원장이나 재시도 판단용 영속 journal을 대체하지 않습니다.
+
+동일한 로컬 mock 시나리오에서 기본 정책 적용 전후의 로그 수는 다음과 같습니다.
+
+| 작업 1건 | 이전 | 기본 요약 모드 |
+| --- | ---: | ---: |
+| 잔액 조회 성공 | 8 | 1 |
+| 지갑 생성 실패 | 9 | 2 |
+| DMRVN 처리 성공 | 354 | 10 |
+| DMRVN 제출 결과 미확인 | 346 | 9 |
+
+업무 로직과 실제 외부 호출 횟수는 바꾸지 않았습니다. DMRVN 정상 시나리오의 로그 속성을
+JSON으로 직렬화한 합계는 약 263KB에서 약 5.2KB로 줄었습니다.
+이는 로그 속성의 비교값이며 OTLP wire 크기, 압축 저장량 또는 Grafana 청구량 자체는 아닙니다.
 
 ## 작업 식별자와 단계
 
 | 속성 | 의미 |
 | --- | --- |
 | `recanet.operation_id` | 작업 ID. 최상위 입력 ID를 상속하며 없거나 형식이 부적합하면 자동 생성 |
-| `recanet.call_id` | 개별 SDK 메서드 호출 ID |
-| `recanet.root_call_id`, `recanet.parent_call_id` | 최상위 호출과 부모 호출을 연결 |
-| `recanet.stage` / `recanet.operation` | 현재 단계, 예: `GreenfieldStorage.upload` |
-| `recanet.phase` | `started`, `completed`, `checkpoint`, `failed` |
+| `recanet.call_id` | 상세 진단 모드에서만 기록하는 개별 호출 ID |
+| `recanet.root_call_id`, `recanet.parent_call_id` | 상세 진단 모드에서만 호출 관계를 연결 |
+| `recanet.operation` | 기본 모드에서는 최상위 논리 작업명 |
+| `recanet.stage` | 중요 이벤트의 하위 단계. 작업명과 같으면 생략. 상세 모드에서는 항상 기록 |
+| `recanet.phase` | `completed`, `checkpoint`, `failed`, `submission_started`, `submission_accepted`, `submission_confirmed`. 상세 모드에만 `started` 추가 |
 | `recanet.failed_stage` | 같은 예외가 전파될 때 최초 실패한 하위 단계 |
 | `error.type`, `error.code` | 예외 클래스, SDK/외부 서비스 오류 코드 또는 HTTP 코드 |
 | `error.message` | 필요한 오류 메시지만 추출하고 민감정보를 마스킹한 텍스트, 최대 512자 |
-| `error.reason` | SDK에서 정의한 안전한 원인 설명 |
+| `error.reason` | SDK에서 정의한 안전한 설명. 메시지와 같으면 생략 |
 | `http.response.status_code` | HTTP 상태, 없는 경우 0 |
 | `recanet.upstream`, `recanet.upstream_code` | 외부 서비스 종류, 숫자형 원본 코드 |
-| `recanet.last_confirmed_stage` | 마지막으로 완료했거나 체크포인트를 기록한 단계 |
+| `recanet.last_confirmed_stage` | 마지막 완료/체크포인트 단계. 기본 모드의 정상 완료 요약에서는 생략 |
 | `recanet.last_confirmed_state` | 마지막 업무 상태. 아래 설명 참고 |
 | `recanet.submission_target` | 마지막 부수효과 요청을 실행한 단계 |
 | `recanet.submission_state` | 제출 결과를 얼마나 알고 있는지 구분 |
+| `recanet.submission_sequence` | 한 작업 내 개별 생성/전송 요청 번호. 병렬 요청도 별도로 구분 |
 | `recanet.failure_handled` | 예외 대신 결과 객체로 오류를 반환한 경우 true |
 | `recanet.partner_id`, `deployment.environment.name` | 파트너/실행 환경 검색 라벨 |
-| `recanet.sdk.version`, `recanet.duration_ms` | SDK 버전, 메서드 소요 시간 |
+| `recanet.sdk.version`, `recanet.duration_ms` | SDK 버전, 소요 시간(상세 모드에만 기록) |
 
 최상위 작업 ID가 없는 호출에도 ID가 생기지만, 자동 ID는 재시도 간 동일하지 않습니다.
 여러 API를 하나의 업무로 묶으려면 아래처럼 명시적인 비밀정보 없는 ID를 사용하세요.
@@ -58,6 +103,7 @@ telemetry.observe("WalletProvisioning.create", "wallet-job-123", () ->
 
 `last_confirmed_stage`는 마지막 메서드 완료를, `last_confirmed_state`는 명시적인 업무
 체크포인트를 나타냅니다. RPC 응답이 반환됐다는 사실만으로 제출·봉인·확정을 추정하지 않습니다.
+`NOT_ATTEMPTED`인 정상 완료 요약에서는 submission 관련 필드도 생략합니다.
 DMRVN의 기존 journal 상태를 읽어 복구한 경우 해당 기록의 마지막 상태도 로그에 반영합니다.
 이 상태는 SDK가 관찰/보관한 사실이며, 영속 원장 또는 현재 체인 상태 자체를 대체하지 않습니다.
 
@@ -66,7 +112,7 @@ DMRVN의 기존 journal 상태를 읽어 복구한 경우 해당 기록의 마�
 | 값 | 의미 |
 | --- | --- |
 | `NOT_ATTEMPTED` | 해당 작업에서 아직 부수효과 요청을 시작하지 않음 |
-| `OUTCOME_UNKNOWN` | 요청을 시작했지만 수락/거절 결과를 확인하지 못함 |
+| `OUTCOME_UNKNOWN` | 요청 수행 단계에 진입했지만 수락/거절 결과를 확인하지 못함 |
 | `ACCEPTED` | 유효한 제출 해시나 성공 응답을 받음. 체인 확정과 다름 |
 | `CONFIRMED` | SDK의 기존 확인 절차가 제출을 확인함. DMRVN 최종 검증 승인과 다름 |
 | `NOT_BROADCAST`, `REJECTED` | 기존 adapter가 명시적으로 보장하거나, 해당 Privy 요청이 명확히 거절됨 |
@@ -100,6 +146,7 @@ var telemetry = SdkTelemetry.builder()
     .partnerId("partner-a")
     .environment("production")
     .localLogging(true)
+    .detailedLogging(false) // 기본값. 문제 조사 기간에만 true로 상세 로그 활성화
     .build();
 var client = new PrivyClient(new PrivyClientConfig(appId, appSecret).withTelemetry(telemetry));
 var assets = new AssetClient(rpcUrl, telemetry);
@@ -115,8 +162,12 @@ var reader = new DmrvnReader(config, rpc, reportReader, reportResolver, telemetr
 같은 disabled 인스턴스로 구성해야 그 객체의 로깅까지 꺼집니다.
 
 JUL 로거는 `com.youngminkim.recanet.telemetry`이고 메시지는 JSON입니다.
-시작은 `FINE`, 완료/체크포인트는 `INFO`, 실패는 `WARNING`이며 JUL 포매터는 별도로 적용됩니다.
-OpenTelemetry 로그는 각각 `DEBUG`, `INFO`, `ERROR`입니다.
+완료/중요 상태는 `INFO`, 실패는 `WARNING`이며 JUL 포매터는 별도로 적용됩니다.
+상세 모드의 개별 호출 시작은 JUL `FINE`, OpenTelemetry `DEBUG`입니다.
+OpenTelemetry의 정상 요약/상태는 `INFO`, 오류는 `ERROR`입니다.
+`.detailedLogging(true)`는 모든 하위 단계의 시작·완료·체크포인트와 호출 관계 ID를 복원하며
+오류 전파 과정도 상세히 기록합니다. 로그량이 크게 증가하므로 조사 기간에만 사용하세요.
+같은 논리 작업에 구성값이 다른 하위 객체가 포함되면 최상위 telemetry의 모드·출력 대상·파트너 라벨을 따릅니다.
 기존 `tracing(boolean)`은 호환용 무동작 메서드이며 true를 넣어도 SDK Span은 생성되지 않습니다.
 기존 `traceStep()`도 로그용 `step()`의 deprecated 별칭입니다.
 호스트 애플리케이션의 외부 Span이 이미 있으면 로그의 OTel Context에는 그 ID가 붙을 수 있으나,

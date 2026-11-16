@@ -12,6 +12,34 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class DmrvnTelemetryTest {
+    @Test void compactWorkflowKeepsAllSubmissionBoundariesWithinSmallRecordBudget() throws Exception {
+        var fixture = new DmrvnActivityTest();
+        fixture.setup();
+        var exporter = InMemoryLogRecordExporter.create();
+        try (var otel = OpenTelemetrySdk.builder().setLoggerProvider(SdkLoggerProvider.builder()
+                .addLogRecordProcessor(SimpleLogRecordProcessor.create(exporter)).build()).build()) {
+            var telemetry = SdkTelemetry.builder().openTelemetry(otel).localLogging(false).build();
+            var client = new DmrvnClient(fixture.rpc.config, fixture.rpc, fixture.operator,
+                    fixture.storage, fixture.methodology, null, telemetry);
+            var result = client.submitActivity(fixture.wallets, fixture.request(Map.of()));
+            assertEquals("CONFIRMED", result.get("outcome"));
+            assertEquals(1, fixture.operator.sends);
+            var logs = exporter.getFinishedLogRecordItems();
+            assertTrue(logs.size() <= 12, "RPC volume must not inflate normal diagnostic output");
+            var phases = logs.stream().map(l -> l.getAttributes().get(AttributeKey.stringKey("recanet.phase"))).toList();
+            assertFalse(phases.contains("started"));
+            assertFalse(phases.contains("failed"));
+            assertEquals(1, java.util.Collections.frequency(phases, "completed"));
+            assertEquals(3, java.util.Collections.frequency(phases, "submission_started"));
+            assertEquals(3, java.util.Collections.frequency(phases, "submission_accepted"));
+            assertEquals(1, java.util.Collections.frequency(phases, "submission_confirmed"));
+            for (String stage : java.util.List.of("GreenfieldStorage.create", "GreenfieldStorage.upload", "EvmSigner.sendTransaction"))
+                assertTrue(logs.stream().anyMatch(l -> stage.equals(l.getAttributes().get(AttributeKey.stringKey("recanet.stage")))));
+            var last = logs.get(logs.size() - 1);
+            assertEquals("SUBMISSION_CONFIRMED", last.getAttributes().get(AttributeKey.stringKey("recanet.last_confirmed_state")));
+        }
+    }
+
     @Test void storageFailureNamesCreateStepAndDoesNotSendRelayTransaction() throws Exception {
         var fixture = new DmrvnActivityTest();
         fixture.setup();
@@ -53,7 +81,7 @@ class DmrvnTelemetryTest {
                 .setTracerProvider(io.opentelemetry.sdk.trace.SdkTracerProvider.builder()
                         .addSpanProcessor(io.opentelemetry.sdk.trace.export.SimpleSpanProcessor.create(spans)).build()).build()) {
             var telemetry = SdkTelemetry.builder().openTelemetry(otel).localLogging(false)
-                    .partnerId("partner-a").build();
+                    .detailedLogging(true).partnerId("partner-a").build();
             var client = new DmrvnClient(fixture.rpc.config, fixture.rpc, fixture.operator,
                     fixture.storage, fixture.methodology, null, telemetry);
             var result = client.submitActivity(fixture.wallets,

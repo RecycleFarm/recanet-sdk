@@ -15,6 +15,41 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class UserWalletClientTest {
     @Test
+    void compactPolicyAlsoCoversPartnerAdapterAndRevokedAuthorization() throws Exception {
+        try (var fixture = new Fixture(); var capture = new SdkLogWorkflowTest.Capture()) {
+            var allowed = new java.util.concurrent.atomic.AtomicBoolean(true);
+            var provider = fixture.client("service", fixture.key, capture.telemetry)
+                    .forPartner(101, (partner, member) -> allowed.get());
+            var signer = provider.getOrCreateSigner(101, "member");
+            capture.logs.reset();
+            assertEquals(Fixture.SIGNATURE, signer.signMessage("authorized"));
+            assertEquals(1, capture.logs.getFinishedLogRecordItems().size());
+            assertEquals("PartnerWallet.signMessage", SdkLogWorkflowTest.attr(capture.last(), "recanet.operation"));
+            allowed.set(false);
+            capture.logs.reset();
+            int requests = fixture.requests;
+            for (Runnable operation : List.<Runnable>of(
+                    () -> signer.signMessage("private-message"),
+                    () -> signer.signTypedData(Map.of()),
+                    () -> signer.sendTransaction(421614, Map.of(), "job"),
+                    () -> provider.getOrCreateSigner(101, "member"))) {
+                assertThrows(com.youngminkim.recanet.dmrvn.DmrvnException.class, operation::run);
+            }
+            assertEquals(requests, fixture.requests);
+            assertEquals(4, capture.logs.getFinishedLogRecordItems().size());
+            for (var log : capture.logs.getFinishedLogRecordItems()) {
+                assertEquals("failed", SdkLogWorkflowTest.attr(log, "recanet.phase"));
+                assertEquals("PartnerWallet.authorize", SdkLogWorkflowTest.attr(log, "recanet.failed_stage"));
+                assertEquals("UNAUTHORIZED_SIGNER", SdkLogWorkflowTest.attr(log, "error.code"));
+                assertNotNull(SdkLogWorkflowTest.attr(log, "recanet.operation_id"));
+                assertNull(SdkLogWorkflowTest.attr(log, "recanet.call_id"));
+            }
+            assertFalse(capture.logs.getFinishedLogRecordItems().toString().contains("private-message"));
+            assertTrue(capture.spans.getFinishedSpanItems().isEmpty());
+        }
+    }
+
+    @Test
     void partnerAdapterCreatesWalletsAndSeparatesTheSameMemberAcrossPartners() throws Exception {
         try (var fixture = new Fixture()) {
             var base = fixture.client("service", fixture.key);
@@ -250,8 +285,13 @@ class UserWalletClientTest {
         }
 
         UserWalletClient client(String namespace, BackendWalletRegistration registration) {
+            return client(namespace, registration, com.youngminkim.recanet.telemetry.SdkTelemetry.local());
+        }
+
+        UserWalletClient client(String namespace, BackendWalletRegistration registration,
+                               com.youngminkim.recanet.telemetry.SdkTelemetry telemetry) {
             return new UserWalletClient(new PrivyClient(new PrivyClientConfig("app", "test-secret",
-                    URI.create("http://127.0.0.1:" + server.getAddress().getPort()), Duration.ofSeconds(5))),
+                    URI.create("http://127.0.0.1:" + server.getAddress().getPort()), Duration.ofSeconds(5)).withTelemetry(telemetry)),
                     registration, namespace);
         }
 

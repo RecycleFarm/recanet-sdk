@@ -58,31 +58,39 @@ public final class UserWalletClient {
             throw new IllegalArgumentException("partnerId must be uint32 and positive");
         Objects.requireNonNull(authorization, "authorization");
         var scoped = new UserWalletClient(client, registration, namespace, partnerId);
-        return (requestedPartner, userId) -> {
+        var telemetry = client.config().telemetry();
+        return (requestedPartner, userId) -> telemetry.observe("BeneficiaryWallets.getOrCreateSigner", null, () -> {
             requireText(userId, "userId");
-            Runnable authorize = () -> {
+            Runnable authorize = () -> telemetry.step("PartnerWallet.authorize", () -> {
                 if (requestedPartner != partnerId || !authorization.isAuthorized(partnerId, userId))
                     throw new DmrvnException(DmrvnException.Code.UNAUTHORIZED_SIGNER);
-            };
+                return null;
+            });
             authorize.run();
             scoped.getOrCreateWallet(userId);
             var delegate = scoped.signerFor(userId);
             return new EvmSigner() {
                 @Override public String address() { return delegate.address(); }
                 @Override public String signMessage(String message) {
-                    authorize.run();
-                    return delegate.signMessage(message);
+                    return telemetry.observe("PartnerWallet.signMessage", null, () -> {
+                        authorize.run();
+                        return delegate.signMessage(message);
+                    });
                 }
                 @Override public String signTypedData(Map<String, Object> data) {
-                    authorize.run();
-                    return delegate.signTypedData(data);
+                    return telemetry.observe("PartnerWallet.signTypedData", null, () -> {
+                        authorize.run();
+                        return delegate.signTypedData(data);
+                    });
                 }
                 @Override public String sendTransaction(long chainId, Map<String, Object> tx, String key) {
-                    authorize.run();
-                    return delegate.sendTransaction(chainId, tx, key);
+                    return telemetry.observe("PartnerWallet.sendTransaction", key, () -> {
+                        authorize.run();
+                        return delegate.sendTransaction(chainId, tx, key);
+                    });
                 }
             };
-        };
+        });
     }
 
     /**

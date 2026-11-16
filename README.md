@@ -2,9 +2,10 @@
 
 ## SDK 추적 로그
 
-주요 SDK 작업은 기본적으로 로컬 구조화 로그를 남깁니다. OpenTelemetry 인스턴스를
+주요 SDK 작업은 기본적으로 완료 요약·중요 상태·오류를 로컬 구조화 로그로 남깁니다. OpenTelemetry 인스턴스를
 주입하면 단계별 로그를 Grafana Cloud 등으로 전송할 수 있습니다. SDK 트레이스는 생성하지 않습니다.
 오류 로그에는 작업 ID, 실패 단계, 오류 코드와 마스킹한 메시지, 마지막 확인 상태가 기록됩니다.
+정상 하위 호출은 기본적으로 전송하지 않으며, 필요할 때 `detailedLogging(true)`로 상세 진단을 켤 수 있습니다.
 설정, 수집 범위, 전송 예제와 파트너 권한 구성은 [추적 로그 안내](docs/TELEMETRY.md)를 참고하세요.
 
 Privy 공식 Java server SDK를 감싸는 Java backend 라이브러리입니다. 서버 API 자격 증명 확인과 사용자 access token 인증을 제공합니다.

@@ -40,7 +40,7 @@ class SdkTelemetryTest {
                 .addLogRecordProcessor(SimpleLogRecordProcessor.create(exporter)).build();
         final OpenTelemetrySdk otel = OpenTelemetrySdk.builder().setLoggerProvider(provider).build();
         final SdkTelemetry telemetry = SdkTelemetry.builder().openTelemetry(otel)
-                .localLogging(false).partnerId("partner-a").environment("test").build();
+                .localLogging(false).detailedLogging(true).partnerId("partner-a").environment("test").build();
         List<LogRecordData> logs() { return exporter.getFinishedLogRecordItems(); }
         @Override public void close() { otel.close(); }
     }
@@ -138,7 +138,7 @@ class SdkTelemetryTest {
             logger.setUseParentHandlers(false);
             logger.setLevel(Level.ALL);
             logger.addHandler(handler);
-            var telemetry = SdkTelemetry.builder().openTelemetry(capture.otel).build();
+            var telemetry = SdkTelemetry.builder().openTelemetry(capture.otel).detailedLogging(true).build();
             telemetry.observe("Test.json", "operation-1", () -> "secret-result");
             assertEquals(2, messages.size());
             assertEquals("completed", new ObjectMapper().readTree(messages.get(1)).get("recanet.phase").asText());
