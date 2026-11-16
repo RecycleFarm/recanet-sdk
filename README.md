@@ -2,6 +2,9 @@
 
 Node.js 22 이상에서 사용하는 서버 SDK입니다. 현재 개발 중이며 npm에 게시하지 않았습니다.
 
+처음 사용하는 내부 개발자와 QA 담당자는 [내부 QA 시작 가이드](docs/qa-guide.md)부터 확인하세요.
+설치·필수 설정·클라이언트 구성·제출/조회 예제·오류 복구·시나리오별 통과 기준을 순서대로 안내합니다.
+
 기준은 [Recanet SDK 개발](https://chatgpt.com/space/page_6aeadd6e8810819197fd76ba1f3b3923)과
 `recanet-java` 커밋 `37c78cfa01d9892ca26de61bb74df827923917cf`입니다.
 Java 대비 대응 API와 남은 보류 항목은 [기능 비교](docs/java-parity.md)에 정리했습니다.
