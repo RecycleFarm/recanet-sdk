@@ -1,4 +1,3 @@
-import { diagnosticOperation, diagnosticFailure, diagnosticState } from '../diagnostics.js';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { ActivityRequest } from '../activity-request.js';
@@ -13,10 +12,8 @@ import type { BeneficiaryWallets } from './wallets.js';
 
 function confirmedStage(state: Record<string, unknown>, fallback: ActivityStage): ActivityStage {
   if (state.submissionStatus === 'CONFIRMED') return 'SUBMISSION_CONFIRMED';
-  const stages = {
-    txHash: 'SUBMISSION_BROADCAST', userSignature: 'BENEFICIARY_SIGNED', approved: 'CLAIM_APPROVED', upload: 'EVIDENCE_SEALED',
-    createTxHash: 'EVIDENCE_CREATE_BROADCAST', evidence: 'EVIDENCE_SIGNED'
-  } as const;
+  const stages = { txHash: 'SUBMISSION_BROADCAST', userSignature: 'BENEFICIARY_SIGNED', approved: 'CLAIM_APPROVED', upload: 'EVIDENCE_SEALED',
+    createTxHash: 'EVIDENCE_CREATE_BROADCAST', evidence: 'EVIDENCE_SIGNED' } as const;
   for (const [key, stage] of Object.entries(stages)) if (Object.hasOwn(state, key)) return stage;
   return fallback;
 }
@@ -34,61 +31,53 @@ function addConfirmedFacts(known: Record<string, unknown>, state: Record<string,
 /** 새 호출은 새 operation이다. 공유 journal도 기존 작업의 자동 탐색/재개로 해석하지 않는다. */
 export async function submitUserActivity(context: OperationContext, wallets: BeneficiaryWallets, request: ActivityRequest,
   signal?: AbortSignal): Promise<ActivityOutcome> {
-  return diagnosticOperation('user-activity-submission.submitUserActivity', undefined, async () => {
-    if (!wallets || !(request instanceof ActivityRequest)) throw new TypeError('wallets와 ActivityRequest가 필요합니다');
-    const { config, methodology } = context, operationId = randomUUID();
-    const claimId = request.claimId ?? textHash(config.deploymentId() + ':' + operationId);
-    const objectName = request.objectName ?? `${config.objectPrefix}activities/${methodology.activityId()}/${operationId}/evidence.json`;
-    const run = context.fork();
-    const known: Record<string, unknown> = {
-      deploymentId: config.deploymentId(), chainId: config.chainId, claimAddress: config.claimAddress,
-      claimId, operationId, sourceEventId: request.sourceEventId
-    };
-    const requested = { evidenceLocation: { storageType: 1, chainId: config.greenfieldChainId, bucketName: config.bucketName, objectName } };
-    let stage: ActivityStage = 'REQUEST_ACCEPTED'; diagnosticState(stage);
-    try {
-      config.checkObject(objectName); methodology.requireExplicitEvidenceVersion();
-      const user = await wallets.getOrCreateSigner(config.partnerId, request.userId, signal);
-      if (user == null) throw new Error('회원 서명자 없음');
-      known.beneficiary = normalizeAddress(user.address); stage = 'BENEFICIARY_READY'; diagnosticState(stage);
-      const body = methodology.evidenceBody(config.partnerId, user.address, request.sourceEventId, request.inputs);
-      let sent = await submitActivity(run, user, operationId, claimId, objectName, body, request.gas, signal);
-      if (sent.status !== 'CONFIRMED') {
-        const until = performance.now() + request.confirmationTimeoutMs;
-        while (true) {
-          try { sent = await resolveSubmission(run, operationId, stateString(sent.txHash), signal); break; }
-          catch (error) {
-            diagnosticFailure(error);
-            if (!(error instanceof DmrvnError) || error.code !== 'SUBMISSION_UNRESOLVED') throw error;
-            const remaining = until - performance.now();
-            if (remaining <= 0) throw error;
-            try { await sleep(Math.min(remaining, request.pollIntervalMs), undefined, signal ? { signal } : undefined); }
-            catch { throw new DmrvnError('INTERRUPTED'); }
-          }
+  if (!wallets || !(request instanceof ActivityRequest)) throw new TypeError('wallets와 ActivityRequest가 필요합니다');
+  const { config, methodology } = context, operationId = randomUUID();
+  const claimId = request.claimId ?? textHash(config.deploymentId() + ':' + operationId);
+  const objectName = request.objectName ?? `${config.objectPrefix}activities/${methodology.activityId()}/${operationId}/evidence.json`;
+  const run = context.fork();
+  const known: Record<string, unknown> = { deploymentId: config.deploymentId(), chainId: config.chainId, claimAddress: config.claimAddress,
+    claimId, operationId, sourceEventId: request.sourceEventId };
+  const requested = { evidenceLocation: { storageType: 1, chainId: config.greenfieldChainId, bucketName: config.bucketName, objectName } };
+  let stage: ActivityStage = 'REQUEST_ACCEPTED';
+  try {
+    config.checkObject(objectName); methodology.requireExplicitEvidenceVersion();
+    const user = await wallets.getOrCreateSigner(config.partnerId, request.userId, signal);
+    if (user == null) throw new Error('회원 서명자 없음');
+    known.beneficiary = normalizeAddress(user.address); stage = 'BENEFICIARY_READY';
+    const body = methodology.evidenceBody(config.partnerId, user.address, request.sourceEventId, request.inputs);
+    let sent = await submitActivity(run, user, operationId, claimId, objectName, body, request.gas, signal);
+    if (sent.status !== 'CONFIRMED') {
+      const until = performance.now() + request.confirmationTimeoutMs;
+      while (true) {
+        try { sent = await resolveSubmission(run, operationId, stateString(sent.txHash), signal); break; }
+        catch (error) {
+          if (!(error instanceof DmrvnError) || error.code !== 'SUBMISSION_UNRESOLVED') throw error;
+          const remaining = until - performance.now();
+          if (remaining <= 0) throw error;
+          try { await sleep(Math.min(remaining, request.pollIntervalMs), undefined, signal ? { signal } : undefined); }
+          catch { throw new DmrvnError('INTERRUPTED'); }
         }
       }
-      addConfirmedFacts(known, run.observation(operationKey(operationId)));
-      return { outcome: 'CONFIRMED', lastConfirmedStage: 'SUBMISSION_CONFIRMED', confirmed: known, requested };
-    } catch (error) {
-      diagnosticFailure(error);
-      const state = run.observation(operationKey(operationId));
-      let code: DmrvnErrorCode = error instanceof DmrvnError ? error.code
-        : error instanceof TypeError || error instanceof RangeError ? 'INVALID_INPUT' : 'RPC_UNAVAILABLE';
-      let uncertain = code === 'SUBMISSION_UNRESOLVED' || code === 'STORAGE_CREATE_UNRESOLVED'
-        || (stage === 'REQUEST_ACCEPTED' && (code === 'RPC_UNAVAILABLE' || code === 'INTERRUPTED'));
-      if (error instanceof PrivyApiError) {
-        code = error.code === 'INVALID_CREDENTIALS' || error.code === 'FORBIDDEN' ? 'UNAUTHORIZED_SIGNER'
-          : error.code === 'INTERRUPTED' ? 'INTERRUPTED' : 'RPC_UNAVAILABLE';
-        uncertain = stage === 'REQUEST_ACCEPTED' && ['UNAVAILABLE', 'INVALID_RESPONSE', 'INTERRUPTED'].includes(error.code);
-      }
-      if (state !== null) {
-        addConfirmedFacts(known, state); stage = confirmedStage(state, stage);
-        uncertain = Object.hasOwn(state, 'submitFromBlock') || (Object.hasOwn(state, 'createIntent') && !Object.hasOwn(state, 'upload'));
-      }
-      return {
-        outcome: stage === 'SUBMISSION_CONFIRMED' ? 'CONFIRMED' : uncertain ? 'UNKNOWN' : 'FAILED',
-        lastConfirmedStage: stage, confirmed: known, requested, errorCode: code
-      };
     }
-  });
+    addConfirmedFacts(known, run.observation(operationKey(operationId)));
+    return { outcome: 'CONFIRMED', lastConfirmedStage: 'SUBMISSION_CONFIRMED', confirmed: known, requested };
+  } catch (error) {
+    const state = run.observation(operationKey(operationId));
+    let code: DmrvnErrorCode = error instanceof DmrvnError ? error.code
+      : error instanceof TypeError || error instanceof RangeError ? 'INVALID_INPUT' : 'RPC_UNAVAILABLE';
+    let uncertain = code === 'SUBMISSION_UNRESOLVED' || code === 'STORAGE_CREATE_UNRESOLVED'
+      || (stage === 'REQUEST_ACCEPTED' && (code === 'RPC_UNAVAILABLE' || code === 'INTERRUPTED'));
+    if (error instanceof PrivyApiError) {
+      code = error.code === 'INVALID_CREDENTIALS' || error.code === 'FORBIDDEN' ? 'UNAUTHORIZED_SIGNER'
+        : error.code === 'INTERRUPTED' ? 'INTERRUPTED' : 'RPC_UNAVAILABLE';
+      uncertain = stage === 'REQUEST_ACCEPTED' && ['UNAVAILABLE', 'INVALID_RESPONSE', 'INTERRUPTED'].includes(error.code);
+    }
+    if (state !== null) {
+      addConfirmedFacts(known, state); stage = confirmedStage(state, stage);
+      uncertain = Object.hasOwn(state, 'submitFromBlock') || (Object.hasOwn(state, 'createIntent') && !Object.hasOwn(state, 'upload'));
+    }
+    return { outcome: stage === 'SUBMISSION_CONFIRMED' ? 'CONFIRMED' : uncertain ? 'UNKNOWN' : 'FAILED',
+      lastConfirmedStage: stage, confirmed: known, requested, errorCode: code };
+  }
 }

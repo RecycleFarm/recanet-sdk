@@ -1,4 +1,3 @@
-import { diagnosticOperation, diagnosticSubmission, diagnosticUpstream, diagnosticTranslated } from './diagnostics.js';
 import { DmrvnError } from './errors.js';
 import { canonicalChainJson, parseChainJson, rpcIdText } from './internal/chain-json.js';
 import { JsonNumber } from './internal/lossless-json.js';
@@ -33,103 +32,85 @@ export class HttpEvmRpc implements EvmRpc {
   }
 
   async call(method: string, params: readonly unknown[], signal?: AbortSignal): Promise<unknown> {
-    return diagnosticOperation('evm-rpc.call', undefined, async () => {
-      if (signal?.aborted) throw new DmrvnError('INTERRUPTED');
-      if (typeof method !== 'string' || !Array.isArray(params)) throw new DmrvnError('INVALID_INPUT');
-      const id = ++this.#id;
-      if (!Number.isSafeInteger(id)) throw new DmrvnError('INVALID_INPUT');
-      const body = canonicalChainJson({ jsonrpc: '2.0', id, method, params });
-      const controller = new AbortController();
-      let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      let rejectStop: (error: DmrvnError) => void;
-      const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
-      const start = performance.now();
-      let deadline = start + Math.min(this.#connect, this.#timeout);
-      const stop = (code: 'INTERRUPTED' | 'RPC_UNAVAILABLE') => {
-        controller.abort();
-        void reader?.cancel().catch(() => { });
-        rejectStop(new DmrvnError(code));
-      };
-      const schedule = () => {
-        const remaining = deadline - performance.now();
-        if (remaining <= 0) stop('RPC_UNAVAILABLE');
-        else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
-      };
-      const onAbort = () => stop('INTERRUPTED');
-      signal?.addEventListener('abort', onAbort, { once: true });
-      if (signal?.aborted) onAbort();
-      else schedule();
-      const execute = async () => {
-        if (controller.signal.aborted) throw new DmrvnError('INTERRUPTED');
-        const response = await this.#fetch(this.#url, {
-          method: 'POST', headers: { 'content-type': 'application/json' },
-          body, signal: controller.signal, redirect: 'error', credentials: 'omit'
-        });
-        diagnosticUpstream(response.status);
-        if (controller.signal.aborted) {
-          void response.body?.cancel().catch(() => { });
-          throw new DmrvnError('RPC_UNAVAILABLE');
-        }
-        clearTimeout(timer);
-        deadline = start + this.#timeout;
-        schedule();
-        if (controller.signal.aborted) {
-          void response.body?.cancel().catch(() => { });
-          throw new DmrvnError('RPC_UNAVAILABLE');
-        }
-        const chunks: Uint8Array[] = [];
-        let size = 0;
-        if (response.body) {
-          reader = response.body.getReader();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            size += value.byteLength;
-            if (size > 4194304) {
-              controller.abort();
-              void reader.cancel().catch(() => { });
-              throw new DmrvnError('RPC_UNAVAILABLE');
-            }
-            chunks.push(value);
-          }
-        }
-        if (response.status !== 200) throw new DmrvnError('RPC_UNAVAILABLE');
-        let responseId: string | undefined;
-        const parsed = parseChainJson(Buffer.concat(chunks, size), raw => {
-          if (raw !== null && typeof raw === 'object' && !Array.isArray(raw) && !(raw instanceof JsonNumber)) {
-            responseId = raw.id === undefined ? undefined : rpcIdText(raw.id);
-          }
-        });
-        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new DmrvnError('INVALID_INPUT');
-        const result = parsed as Record<string, unknown>;
-        if (result.jsonrpc !== '2.0' || responseId !== String(id)) throw new DmrvnError('RPC_UNAVAILABLE');
-        if (Object.hasOwn(result, 'error')) {
-          diagnosticUpstream(200, result.error && typeof result.error === 'object' ? (result.error as Record<string, unknown>).code : undefined);
-          throw new DmrvnError(
-            method === 'eth_estimateGas' || method === 'eth_call' ? 'GAS_ESTIMATION_FAILED' : 'RPC_UNAVAILABLE');
-        }
-        if (!Object.hasOwn(result, 'result')) throw new DmrvnError('RPC_UNAVAILABLE');
-        return result.result;
-      };
-      try {
-        return await (['eth_sendRawTransaction', 'eth_sendTransaction'].includes(method)
-          ? diagnosticSubmission('evm.rpc.broadcast', async () => {
-            try { return await Promise.race([stopped, execute()]); }
-            catch (error) {
-              if (error instanceof DmrvnError) throw error;
-              throw diagnosticTranslated(error, new DmrvnError(signal?.aborted ? 'INTERRUPTED' : 'RPC_UNAVAILABLE'));
-            }
-          }, value => typeof value === 'string' && /^0x[0-9a-fA-F]{64}$/.test(value))
-          : Promise.race([stopped, execute()]));
+    if (signal?.aborted) throw new DmrvnError('INTERRUPTED');
+    if (typeof method !== 'string' || !Array.isArray(params)) throw new DmrvnError('INVALID_INPUT');
+    const id = ++this.#id;
+    if (!Number.isSafeInteger(id)) throw new DmrvnError('INVALID_INPUT');
+    const body = canonicalChainJson({ jsonrpc: '2.0', id, method, params });
+    const controller = new AbortController();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let rejectStop: (error: DmrvnError) => void;
+    const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
+    const start = performance.now();
+    let deadline = start + Math.min(this.#connect, this.#timeout);
+    const stop = (code: 'INTERRUPTED' | 'RPC_UNAVAILABLE') => {
+      controller.abort();
+      void reader?.cancel().catch(() => {});
+      rejectStop(new DmrvnError(code));
+    };
+    const schedule = () => {
+      const remaining = deadline - performance.now();
+      if (remaining <= 0) stop('RPC_UNAVAILABLE');
+      else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
+    };
+    const onAbort = () => stop('INTERRUPTED');
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+    else schedule();
+    const execute = async () => {
+      if (controller.signal.aborted) throw new DmrvnError('INTERRUPTED');
+      const response = await this.#fetch(this.#url, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body, signal: controller.signal, redirect: 'error', credentials: 'omit' });
+      if (controller.signal.aborted) {
+        void response.body?.cancel().catch(() => {});
+        throw new DmrvnError('RPC_UNAVAILABLE');
       }
-      catch (error) {
-        if (error instanceof DmrvnError) throw error;
-        throw diagnosticTranslated(error, new DmrvnError(signal?.aborted ? 'INTERRUPTED' : 'RPC_UNAVAILABLE'));
-      } finally {
-        clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
+      clearTimeout(timer);
+      deadline = start + this.#timeout;
+      schedule();
+      if (controller.signal.aborted) {
+        void response.body?.cancel().catch(() => {});
+        throw new DmrvnError('RPC_UNAVAILABLE');
       }
-    });
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      if (response.body) {
+        reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > 4194304) {
+            controller.abort();
+            void reader.cancel().catch(() => {});
+            throw new DmrvnError('RPC_UNAVAILABLE');
+          }
+          chunks.push(value);
+        }
+      }
+      if (response.status !== 200) throw new DmrvnError('RPC_UNAVAILABLE');
+      let responseId: string | undefined;
+      const parsed = parseChainJson(Buffer.concat(chunks, size), raw => {
+        if (raw !== null && typeof raw === 'object' && !Array.isArray(raw) && !(raw instanceof JsonNumber)) {
+          responseId = raw.id === undefined ? undefined : rpcIdText(raw.id);
+        }
+      });
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new DmrvnError('INVALID_INPUT');
+      const result = parsed as Record<string, unknown>;
+      if (result.jsonrpc !== '2.0' || responseId !== String(id)) throw new DmrvnError('RPC_UNAVAILABLE');
+      if (Object.hasOwn(result, 'error')) throw new DmrvnError(
+        method === 'eth_estimateGas' || method === 'eth_call' ? 'GAS_ESTIMATION_FAILED' : 'RPC_UNAVAILABLE');
+      if (!Object.hasOwn(result, 'result')) throw new DmrvnError('RPC_UNAVAILABLE');
+      return result.result;
+    };
+    try { return await Promise.race([stopped, execute()]); }
+    catch (error) {
+      if (error instanceof DmrvnError) throw error;
+      throw new DmrvnError(signal?.aborted ? 'INTERRUPTED' : 'RPC_UNAVAILABLE');
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
+    }
   }
 }

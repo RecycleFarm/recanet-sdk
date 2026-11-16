@@ -1,4 +1,3 @@
-import { diagnosticState, diagnosticConfirmed, diagnosticRestore } from '../diagnostics.js';
 import { DeclaredMethodology } from '../declared-methodology.js';
 import { DmrvnChain } from '../dmrvn-chain.js';
 import { DmrvnConfig } from '../dmrvn-config.js';
@@ -49,17 +48,14 @@ export class OperationContext {
     return new OperationContext(this.config, this.#rpc, this.operator, this.storage, this.methodology, this.suppliedJournal);
   }
   configurationFingerprint(): string {
-    return DmrvnJson.hash({
-      deployment: this.config.deploymentId(), forwarder: this.config.forwarderAddress,
+    return DmrvnJson.hash({ deployment: this.config.deploymentId(), forwarder: this.config.forwarderAddress,
       methodologyHash: this.methodology.hash(), partnerId: this.config.partnerId, bucket: this.config.bucketName,
       prefix: this.config.objectPrefix, greenfieldChainId: this.config.greenfieldChainId,
-      approver: normalizeAddress(this.operator.address), relay: normalizeAddress(this.operator.address), storage: normalizeAddress(this.storage.address)
-    });
+      approver: normalizeAddress(this.operator.address), relay: normalizeAddress(this.operator.address), storage: normalizeAddress(this.storage.address) });
   }
   async required(key: string): Promise<Record<string, unknown>> {
     const state = await this.journal.load(key);
     requireState(state !== null, 'OPERATION_NOT_PREPARED');
-    diagnosticRestore(state);
     requireState(this.config.deploymentId() === state.deploymentId, 'DEPLOYMENT_COLLISION');
     requireState(this.configurationFingerprint() === state.configurationFingerprint, 'OPERATION_INPUT_CHANGED');
     return state;
@@ -67,8 +63,6 @@ export class OperationContext {
   async save(key: string, state: Record<string, unknown>): Promise<void> {
     this.#observations.set(key, copyState(state));
     await this.journal.store(key, copyState(state));
-    diagnosticState(state.phase, state.phase === 'APPROVED' || state.phase === 'EVIDENCE_SEALED');
-    if (state.submissionStatus === 'CONFIRMED' && typeof state.operationId === 'string') diagnosticConfirmed('evm.sendTransaction', state.operationId);
   }
   observation(key: string): Record<string, unknown> | null {
     const state = this.#observations.get(key);

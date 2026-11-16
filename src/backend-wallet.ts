@@ -1,4 +1,3 @@
-import { diagnosticOperation } from './diagnostics.js';
 import { generateKeyPairSync } from 'node:crypto';
 import { isJavaBlank } from './member-identity.js';
 
@@ -32,14 +31,11 @@ export class BackendWalletRegistration {
   get privateKey(): string { return this.#privateKey; }
 
   static generate(): BackendWalletRegistration {
-    return diagnosticOperation('backend-wallet.generate', undefined, () => {
-
-      const pair = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
-      return new BackendWalletRegistration(
-        pair.publicKey.export({ type: 'spki', format: 'pem' }).toString().trimEnd(),
-        pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString().trimEnd(),
-      );
-    });
+    const pair = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+    return new BackendWalletRegistration(
+      pair.publicKey.export({ type: 'spki', format: 'pem' }).toString().trimEnd(),
+      pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString().trimEnd(),
+    );
   }
 
   toString(): string { return `BackendWalletRegistration[publicKey=${this.publicKey}, privateKey=[REDACTED]]`; }

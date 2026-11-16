@@ -266,7 +266,3 @@ PrivyClient.exportWalletPrivateKey(walletId, registration)는 요청마다 임�
 승인한 export 응답을 메모리에서 복호화해 블록체인 개인키 문자열을 반환합니다. 자동 로그·저장·회원 권한
 판정은 하지 않습니다. 호출 서비스에서 반출 접근 제어와 안전한 보관을 담당해야 합니다.
 exportAndLog 및 키를 자동 출력하는 초기화 편의 API는 채택하지 않았습니다.
-
-## 오류 진단 로그
-
-운영 API는 기본적으로 로컬 JSON 완료 요약과 오류·제출 상태를 기록합니다. OpenTelemetry Logs provider 주입, 비활성화/상세 모드, Loki/Grafana 연결과 검증 결과는 [진단 로깅 가이드](docs/diagnostics.md)를 참고하세요.
