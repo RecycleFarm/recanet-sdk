@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install build test check java-build typescript-build java-test typescript-test java-check typescript-check verify-migration verify-api ci-rules
+.PHONY: help install build test check java-build typescript-build java-test typescript-test java-check typescript-check verify-migration verify-api ci-rules security-java security-typescript
 
 help:
 	@echo 'make install          Install existing npm dependencies for both SDKs'
@@ -35,10 +35,12 @@ test: java-test typescript-test
 java-check:
 	cd sdks/java && ./gradlew test assemble examplesClasses generatePomFileForMavenJavaPublication --console=plain
 	npm --prefix sdks/java/tools/greenfield test
+	npm --prefix sdks/java/tools/greenfield run test:security
 	npm --prefix sdks/java/tools/greenfield run test:pet-wasm
 
 typescript-check:
 	npm --prefix sdks/typescript run check
+	npm --prefix sdks/typescript run test:security
 	npm --prefix sdks/typescript run check:package
 
 verify-migration:
@@ -48,8 +50,14 @@ verify-api:
 	python3 scripts/verify-public-api.py
 
 # Keep API comparison after both builds even when make is invoked with -j.
+security-java:
+	python3 scripts/check-security.py --language java
+
+security-typescript:
+	python3 scripts/check-security.py --language typescript
+
 ci-rules:
 	python3 -m unittest discover -s tests/ci -v
 
-check: ci-rules verify-migration java-check typescript-check
+check: ci-rules verify-migration java-check typescript-check security-java security-typescript
 	python3 scripts/verify-public-api.py

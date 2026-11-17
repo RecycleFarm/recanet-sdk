@@ -1,0 +1,13 @@
+Recanet Greenfield runtime compatibility modules
+
+elliptic 6.6.1, Copyright Fedor Indutny, MIT license.
+The exact upstream license is preserved at tools/greenfield/vendor/elliptic/LICENSE.
+The local @recyclefarm/recanet-elliptic 6.6.1-recanet.1 fork preserves the
+RFC6979 generated nonce byte width on non-byte-aligned curves (CVE-2025-14505).
+Its public fixed regression vectors are checked against @noble/curves.
+
+lodash.set is replaced by a small adapter calling the maintained lodash 4.18.1
+set implementation. lodash is MIT licensed; its own LICENSE is installed with
+the worker dependency. Runtime package licenses are retained by npm.
+
+No SDK or partner-use license is granted by this third-party notice.

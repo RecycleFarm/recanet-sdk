@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import zipfile
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,12 +43,17 @@ def typescript_fingerprint(typescript_dist):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--java-jar', type=Path,
-                        default=ROOT / 'sdks/java/build/libs/RecanetJava-0.1.0-SNAPSHOT.jar')
+                        default=None)
     parser.add_argument('--typescript-dist', type=Path, default=ROOT / 'sdks/typescript/dist')
     parser.add_argument("--language", choices=("all", "java", "typescript"), default="all")
     args = parser.parse_args()
     baseline = json.loads((ROOT / 'docs/migration/phase2-public-api-baseline.json').read_text())
-    actual = fingerprint(args.java_jar, args.typescript_dist, args.language)
+    jar = args.java_jar
+    if jar is None and args.language in ('all', 'java'):
+        pom = ET.parse(ROOT / 'sdks/java/build/publications/mavenJava/pom-default.xml').getroot()
+        ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+        jar = ROOT / 'sdks/java/build/libs' / (pom.findtext('m:artifactId', namespaces=ns) + '-' + pom.findtext('m:version', namespaces=ns) + '.jar')
+    actual = fingerprint(jar, args.typescript_dist, args.language)
     if actual != {language: baseline['fingerprints'][language] for language in actual}:
         raise SystemExit('Public API/declarations differ from the original SDK baseline')
     if "java" in actual:

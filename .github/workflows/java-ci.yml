@@ -46,6 +46,8 @@ jobs:
           npm ci --prefix sdks/java/tools/greenfield
       - name: Build and test
         run: make java-check
+      - name: Verify dependency security and reviewed forks
+        run: make security-java
       - name: Verify public API
         run: python3 scripts/verify-public-api.py --language java
       - name: Save test evidence

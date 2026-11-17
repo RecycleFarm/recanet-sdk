@@ -16,18 +16,23 @@ function run(executable, args, cwd) {
 try {
   const packed = JSON.parse(run(npm, ['pack', '--json', '--pack-destination', directory, ...cache], root))[0];
   const files = new Set(packed.files.map(file => file.path));
+  for (const file of files) {
+    if (file.startsWith('docs/') || file.endsWith('.map') || file.endsWith('-sources.jar')) {
+      throw new Error('Private/development content in package: ' + file);
+    }
+  }
   for (const path of ['dist/index.js', 'dist/index.d.ts', 'dist/resources/dmrvn/dmrvn-claim-v7.json',
     'native/posix-lock.c', 'scripts/build-native.mjs', 'tools/greenfield/worker.cjs', 'tools/greenfield/package-lock.json',
-    'tools/greenfield/README.md', 'docs/decisions.md', 'docs/greenfield-dependencies.md', 'docs/acceptance.md',
-    'docs/qa-guide.md', 'docs/progress.md', 'docs/linux-verification.md', 'docs/java-parity.md', 'docs/spec-audit.md', 'docs/evidence-v4.md']) {
+    'tools/greenfield/vendor/elliptic/LICENSE', 'tools/greenfield/vendor/elliptic/lib/elliptic/ec/index.js',
+    'tools/greenfield/vendor/safe-set/index.cjs', 'THIRD_PARTY_NOTICES']) {
     if (!files.has(path)) throw new Error('Missing package file: ' + path);
   }
   await writeFile(join(directory, 'package.json'), JSON.stringify({ private: true, type: 'module', dependencies: {
-    'recanet-typescript': 'file:' + join(directory, packed.filename), typescript: '6.0.3', '@types/node': '22.20.5',
+    '@recyclefarm/recanet-sdk': 'file:' + join(directory, packed.filename), typescript: '6.0.3', '@types/node': '22.20.5',
   } }));
   const offline = process.env.RECANET_PACKAGE_OFFLINE === '1' ? ['--offline'] : [];
   run(npm, ['install', '--ignore-scripts', '--no-audit', '--no-fund', ...offline, ...cache], directory);
-  const installed = join(directory, 'node_modules/recanet-typescript');
+  const installed = join(directory, 'node_modules/@recyclefarm/recanet-sdk');
   for (const file of files) {
     if (!file.endsWith('.md')) continue;
     const markdown = await readFile(join(installed, file), 'utf8');
@@ -40,6 +45,7 @@ try {
       await access(path);
     }
   }
+  run(npm, ['ci', '--prefix', join(installed, 'tools/greenfield'), '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund', ...cache], directory);
   await writeFile(join(directory, 'consumer.ts'), await readFile(new URL('../tests/fixtures/package-consumer.ts', import.meta.url)));
   run(process.execPath, [join(directory, 'node_modules/typescript/bin/tsc'), '--module', 'NodeNext', '--target', 'ES2022',
     '--lib', 'ES2022', '--types', 'node', '--strict', 'consumer.ts'], directory);

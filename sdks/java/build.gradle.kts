@@ -4,19 +4,21 @@ plugins {
 }
 
 group = "com.youngminkim.recanet"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.0-rc.1"
 
 java {
     toolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
-    withSourcesJar()
     withJavadocJar()
 }
 
 dependencies {
-    implementation("io.privy.api:privy-java:0.59.0")
+    implementation(platform("com.fasterxml.jackson:jackson-bom:2.22.4"))
+    implementation("io.privy.api:privy-java:0.59.0") {
+        exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
+    }
     implementation("com.nimbusds:nimbus-jose-jwt:10.10")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.1")
-    implementation("org.bouncycastle:bcprov-jdk15to18:1.83")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.22.4")
+    implementation("org.bouncycastle:bcprov-jdk15to18:1.85")
     implementation("io.github.erdtman:java-json-canonicalization:1.1")
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -37,7 +39,10 @@ tasks.register<Test>("dmrvnPetLiveTest") {
 
 publishing {
     publications {
-        create<MavenPublication>("mavenJava") { from(components["java"]) }
+        create<MavenPublication>("mavenJava") {
+            artifactId = "recanet-java"
+            from(components["java"])
+        }
     }
 }
 
@@ -61,3 +66,5 @@ tasks.register<JavaExec>("dmrvnPet") {
     mainClass.set("com.youngminkim.recanet.dmrvn.DmrvnPetExample")
     args(providers.gradleProperty("dmrvnAction").getOrElse("read"))
 }
+
+tasks.withType<Jar>().configureEach { archiveBaseName.set("recanet-java") }

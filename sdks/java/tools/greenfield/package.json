@@ -8,11 +8,26 @@
   },
   "scripts": {
     "test": "node --test worker.test.cjs",
-    "test:pet-wasm": "node pet-wasm-test.cjs"
+    "test:pet-wasm": "node pet-wasm-test.cjs",
+    "test:security": "node --test security.test.cjs"
   },
   "dependencies": {
     "ethers": "5.8.0",
     "@bnb-chain/greenfield-js-sdk": "2.2.2",
-    "@bnb-chain/reed-solomon": "1.1.4"
+    "@bnb-chain/reed-solomon": "1.1.4",
+    "elliptic": "file:vendor/elliptic",
+    "lodash.set": "file:vendor/safe-set"
+  },
+  "devDependencies": {
+    "@noble/curves": "1.9.7"
+  },
+  "overrides": {
+    "elliptic": "$elliptic",
+    "lodash.set": "$lodash.set",
+    "protobufjs": "7.6.6",
+    "fast-xml-parser": "5.12.1",
+    "follow-redirects": "1.16.3",
+    "qs": "6.17.1",
+    "ws": "8.23.0"
   }
 }

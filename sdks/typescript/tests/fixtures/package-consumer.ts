@@ -1,7 +1,7 @@
 import {
   ActivityRequest, BackendWalletRegistration, DmrvnAbi, DmrvnCrypto, FileOperationJournal,
   DeclaredMethodology, DmrvnClient, DmrvnJson, EvmTransactionClient, PrivyClient, memberExternalId, type UserWalletClient,
-} from 'recanet-typescript';
+} from '@recyclefarm/recanet-sdk';
 
 const client = new PrivyClient({ appId: 'offline-test', appSecret: 'offline-test' });
 const exporter: (id: string, key: BackendWalletRegistration) => Promise<string> = client.exportWalletPrivateKey.bind(client);

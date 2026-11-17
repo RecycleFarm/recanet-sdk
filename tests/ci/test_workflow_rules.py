@@ -34,7 +34,7 @@ class ChangeSelection(unittest.TestCase):
     def test_shared_changes_run_both(self):
         for path in ['.github/workflows/java-ci.yml', 'scripts/stage-release.py',
                      'contracts/vector.json', 'tests/ci/test_workflow_rules.py',
-                     'Makefile', '.gitignore', 'docs/migration/phase2-public-api-baseline.json']:
+                     'Makefile', '.gitignore', 'docs/security/compatibility-forks.json', 'docs/migration/phase2-public-api-baseline.json']:
             for language in ['java', 'typescript']:
                 with self.subTest(path=path, language=language):
                     self.assertTrue(changes.affects(language, [path]))
@@ -59,7 +59,7 @@ class ChangeSelection(unittest.TestCase):
 
 class ReleaseVersion(unittest.TestCase):
     def test_valid_semver_including_current_snapshot(self):
-        for version in ['0.1.0', '0.1.0-SNAPSHOT', '1.2.3-rc.1', '1.2.3+build.5']:
+        for version in ['0.1.0', '0.1.0-rc.1', '1.2.3-rc.1', '1.2.3+build.5']:
             release.validate_version(version, version)
 
     def test_malformed_or_different_package_version_fails(self):
@@ -71,7 +71,7 @@ class ReleaseVersion(unittest.TestCase):
 
     def test_tag_language_and_version_cannot_be_overridden(self):
         self.assertEqual(release.requested_version('java', event_name='push', event={},
-                         ref='refs/tags/java-v0.1.0-SNAPSHOT'), '0.1.0-SNAPSHOT')
+                         ref='refs/tags/java-v0.1.0-rc.1'), '0.1.0-rc.1')
         with self.assertRaises(ValueError):
             release.requested_version('java', event_name='push', event={},
                                       ref='refs/tags/typescript-v0.1.0')
@@ -108,11 +108,17 @@ class JavaStaging(unittest.TestCase):
         self.metadata = self.sdk / 'build/publications/mavenJava'
         self.metadata.mkdir(parents=True)
         (self.metadata / 'pom-default.xml').write_text('''<project xmlns="http://maven.apache.org/POM/4.0.0">
-            <groupId>com.example</groupId><artifactId>RecanetJava</artifactId>
-            <version>0.1.0-SNAPSHOT</version></project>''')
-        (self.metadata / 'module.json').write_text(json.dumps({'component': {'version': '0.1.0-SNAPSHOT'}}))
-        for suffix in ['', '-sources', '-javadoc']:
-            (self.sdk / 'build/libs' / f'RecanetJava-0.1.0-SNAPSHOT{suffix}.jar').write_bytes(b'fixture')
+            <groupId>com.example</groupId><artifactId>recanet-java</artifactId>
+            <version>0.1.0-rc.1</version></project>''')
+        (self.metadata / 'module.json').write_text(json.dumps({'component': {'group': 'com.example', 'module': 'recanet-java', 'version': '0.1.0-rc.1'}}))
+        for suffix in ['', '-javadoc']:
+            (self.sdk / 'build/libs' / f'recanet-java-0.1.0-rc.1{suffix}.jar').write_bytes(b'fixture')
+        worker = self.sdk / 'tools/greenfield'
+        worker.mkdir(parents=True)
+        for name in ['worker.cjs', 'package.json', 'package-lock.json']:
+            (worker / name).write_text('{}')
+        reports = self.root / 'reports/security'; reports.mkdir(parents=True)
+        (reports / 'java.json').write_text(json.dumps({'status': 'passed', 'sourceCommit': 'a' * 40, 'locallyPatchedAdvisories': []}))
         self.patches = [patch.object(release, 'ROOT', self.root),
                         patch.object(release, 'git', return_value='a' * 40),
                         patch.object(release.subprocess, 'check_output', return_value='v22.23.5\n'),
@@ -126,13 +132,14 @@ class JavaStaging(unittest.TestCase):
         self.temp.cleanup()
 
     def test_complete_maven_layout_and_checksummed_manifest(self):
-        result = release.stage('java', '0.1.0-SNAPSHOT', self.root / 'out')
+        result = release.stage('java', '0.1.0-rc.1', self.root / 'out')
         manifest = json.loads((result / 'manifest.json').read_text())
         self.assertFalse(manifest['published'])
         self.assertFalse(manifest['publishReady'])
-        self.assertTrue(any('lowercase' in x for x in manifest['blockers']))
+        self.assertFalse(list(result.rglob('*-sources.jar')))
+        self.assertTrue((result / 'greenfield-worker-linux-x64.tar.gz').exists())
         sums = (result / 'SHA256SUMS').read_text().splitlines()
-        self.assertEqual(len(sums), 6)  # 3 JARs, POM, module, manifest
+        self.assertEqual(len(sums), 6)  # 2 JARs, POM, module, worker bundle, manifest
         for entry in sums:
             digest, path = entry.split('  ')
             self.assertEqual(digest, hashlib.sha256((result / path).read_bytes()).hexdigest())
@@ -145,23 +152,34 @@ class JavaStaging(unittest.TestCase):
     def test_incomplete_or_mismatched_metadata_is_rejected(self):
         (self.metadata / 'module.json').write_text(json.dumps({'component': {'version': '9.0.0'}}))
         with self.assertRaises(ValueError):
-            release.stage('java', '0.1.0-SNAPSHOT', self.root / 'out')
+            release.stage('java', '0.1.0-rc.1', self.root / 'out')
 
     def test_existing_candidate_is_not_overwritten(self):
-        release.stage('java', '0.1.0-SNAPSHOT', self.root / 'out')
+        release.stage('java', '0.1.0-rc.1', self.root / 'out')
         with self.assertRaises(FileExistsError):
-            release.stage('java', '0.1.0-SNAPSHOT', self.root / 'out')
+            release.stage('java', '0.1.0-rc.1', self.root / 'out')
+
+
+    def test_stale_security_proof_blocks_candidate(self):
+        (self.root / 'reports/security/java.json').write_text(json.dumps({'status': 'passed', 'sourceCommit': 'b' * 40}))
+        with self.assertRaises(ValueError):
+            release.stage('java', '0.1.0-rc.1', self.root / 'out')
+
+    def test_sources_variant_is_rejected(self):
+        (self.metadata / 'module.json').write_text(json.dumps({'component': {'group': 'com.example', 'module': 'recanet-java', 'version': '0.1.0-rc.1'}, 'variants': [{'attributes': {'org.gradle.docstype': 'sources'}}]}))
+        with self.assertRaises(ValueError):
+            release.stage('java', '0.1.0-rc.1', self.root / 'out')
 
 
 class NpmTarball(unittest.TestCase):
     def pack(self, directory, version='0.1.0', include_native=True):
         path = Path(directory) / 'fixture.tgz'
         with tarfile.open(path, 'w:gz') as archive:
-            entries = {'package/package.json': json.dumps({'name': 'recanet-typescript', 'version': version}).encode(),
+            entries = {'package/package.json': json.dumps({'name': '@recyclefarm/recanet-sdk', 'version': version, 'os': ['linux'], 'cpu': ['x64']}).encode(),
                        'package/dist/index.js': b'export {};', 'package/dist/index.d.ts': b'export {};',
                        'package/native/posix-lock.c': b'/* fixture */'}
             if include_native:
-                entries['package/dist/native/posix-lock.node'] = b'fixture'
+                entries['package/dist/native/posix-lock.node'] = b'\x7fELF\x02\x01' + b'\x00' * 12 + b'\x3e\x00'
             for name, data in entries.items():
                 item = tarfile.TarInfo(name); item.size = len(data)
                 archive.addfile(item, io.BytesIO(data))
@@ -169,11 +187,11 @@ class NpmTarball(unittest.TestCase):
 
     def test_pack_requires_matching_metadata_and_native_files(self):
         with tempfile.TemporaryDirectory() as directory:
-            release.verify_npm_tarball(self.pack(directory), 'recanet-typescript', '0.1.0')
+            release.verify_npm_tarball(self.pack(directory), '@recyclefarm/recanet-sdk', '0.1.0')
             with self.assertRaises(ValueError):
-                release.verify_npm_tarball(self.pack(directory, version='9.0.0'), 'recanet-typescript', '0.1.0')
+                release.verify_npm_tarball(self.pack(directory, version='9.0.0'), '@recyclefarm/recanet-sdk', '0.1.0')
             with self.assertRaises(ValueError):
-                release.verify_npm_tarball(self.pack(directory, include_native=False), 'recanet-typescript', '0.1.0')
+                release.verify_npm_tarball(self.pack(directory, include_native=False), '@recyclefarm/recanet-sdk', '0.1.0')
 
 
 if __name__ == '__main__':

@@ -15,20 +15,17 @@ def main():
     manifest = json.loads((ROOT / 'docs/migration/phase2-source-manifest.json').read_text())
     for language, source in manifest['sources'].items():
         prefix = source['prefix']
-        actual = git('rev-parse', f'HEAD:{prefix}')
+        actual = git('rev-parse', f'{manifest["integration_commit"]}:{prefix}')
         if actual != source['tree']:
             raise SystemExit(f'{language}: committed SDK tree differs from original baseline')
         for original, preserved in source['preserved_refs'].items():
             if git('rev-parse', preserved) != source['refs'][original]:
                 raise SystemExit(f'{language}: original ref was not preserved: {preserved}')
         git('merge-base', '--is-ancestor', source['head'], 'HEAD')
-        git('diff', '--exit-code', 'HEAD', '--', prefix)
-        extra = git('ls-files', '--others', '--exclude-standard', '--', prefix)
-        if extra:
-            raise SystemExit(f'{language}: unexpected SDK files: {extra}')
-        print(f'{language}: original refs, ancestry, and exact source tree preserved '
+        git('merge-base', '--is-ancestor', manifest['integration_commit'], 'HEAD')
+        print(f'{language}: original refs, ancestry, and frozen import tree preserved '
               f'({source["tracked_file_count"]} files)')
-    print('Phase 2 migration baseline verified; no files changed.')
+    print('Frozen Phase 2 import snapshot and ancestry verified; current SDK evolution is allowed.')
 
 
 if __name__ == '__main__':

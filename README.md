@@ -4,7 +4,7 @@
 
 ## 시작하기
 
-JDK17, Node22+, npm, Python3, make를 사용한다. TypeScript의 FileOperationJournal native 빌드에는 지원 OS의 C compiler와 Node headers가 필요하다. 현재 지원 검증 범위와 제약은 [호환성 기록](docs/compatibility.md)에 있다.
+첫 PoC는 Ubuntu24.04 Linux x64에서 JDK17, Node22, npm, Python3, make를 사용한다. TypeScript의 FileOperationJournal native 빌드에는 지원 OS의 C compiler와 Node headers가 필요하다. 현재 지원 검증 범위와 제약은 [호환성 기록](docs/compatibility.md)에 있다.
 
 ```sh
 make install
@@ -65,4 +65,4 @@ Phase 2 보존 검사 스크립트는 이관 기준으로 원본과의 정확한
 
 ## 배포 상태
 
-Java 좌표와 TypeScript 패키지명·버전·private 설정은 원본을 유지했다. GitHub Maven에서 기존 대문자 artifactId를 사용할 수 없다는 제약과 native 플랫폼·의존성 보안 문제는 아직 해결하지 않았다. 운영 배포 준비 완료를 의미하지 않는다. release workflow는 테스트와 내부 산출물 보관까지만 수행한다. GitHub Packages 발행, distribution 저장소, 파트너 권한은 후속 단계 범위다.
+사용자 승인에 따라 Java는 com.youngminkim.recanet:recanet-java:0.1.0-rc.1, npm은 @recyclefarm/recanet-sdk@0.1.0-rc.1을 사용한다. npm private=true와 실제 발행 비활성은 유지한다. source JAR·내부 문서·source map은 후보에서 제외한다. 보안 수정과 Linux x64 후보 검증은 docs/security/rc1-remediation.md를 참조한다. 운영 배포 준비 완료를 의미하지 않는다. release workflow는 테스트와 내부 산출물 보관까지만 수행한다. GitHub Packages 발행, distribution 저장소, 파트너 권한은 후속 단계 범위다.

@@ -79,7 +79,7 @@ import {
   HttpEvmRpc, NodeGreenfieldStorage, DeclaredMethodology,
   FileOperationJournal, DmrvnClient, DmrvnReader, GreenfieldPublicReader,
   type MethodologyRegistry,
-} from 'recanet-typescript';
+} from '@recyclefarm/recanet-sdk';
 
 export interface QaSettings {
   appId: string;
@@ -161,7 +161,7 @@ default resolver는 `dmrvn/v4/reports/<hash>.json`을 사용한다. 실제 배�
 인증된 테스트 회원과 정상 입력 벡터, 허용 비용 범위를 확보한 뒤 호출한다.
 
 ```ts
-import { ActivityRequest } from 'recanet-typescript';
+import { ActivityRequest } from '@recyclefarm/recanet-sdk';
 import type { createQaClient } from './qa-client.js';
 
 type QaClient = Awaited<ReturnType<typeof createQaClient>>;

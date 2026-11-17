@@ -37,10 +37,19 @@ jobs:
           npm ci --prefix sdks/typescript/tools/greenfield
       - name: Build and test exact revision
         run: make typescript-check 2>&1 | tee typescript-check.log
+      - name: Verify dependency security and reviewed forks
+        run: make security-typescript
       - name: Verify public API
         run: python3 scripts/verify-public-api.py --language typescript
       - name: Stage versioned artifacts and SHA256 checksums
         run: python3 scripts/stage-release.py --language typescript
+      - name: Save security evidence separately from the candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: typescript-security-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/security/typescript.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Save internal release candidate
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -1,0 +1,17 @@
+import groovy.json.JsonOutput
+allprojects {
+    afterEvaluate { p ->
+        if (p == rootProject) {
+            tasks.register('writeRuntimeSecurityInventory') {
+                doLast {
+                    def entries = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.collect { a ->
+                        [group:a.moduleVersion.id.group, name:a.moduleVersion.id.name, version:a.moduleVersion.id.version]
+                    }.unique { "${it.group}:${it.name}:${it.version}" }.sort { "${it.group}:${it.name}" }
+                    def target = layout.buildDirectory.file('reports/security/runtime-components.json').get().asFile
+                    target.parentFile.mkdirs()
+                    target.text = JsonOutput.prettyPrint(JsonOutput.toJson(entries))
+                }
+            }
+        }
+    }
+}

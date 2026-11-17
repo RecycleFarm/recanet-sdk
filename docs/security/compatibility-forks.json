@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "patched_advisories": [
+    {
+      "id": "GHSA-848j-6mx2-7j84",
+      "cve": "CVE-2025-14505",
+      "original": "elliptic@6.6.1",
+      "fork": "@recyclefarm/recanet-elliptic@6.6.1-recanet.1",
+      "change": "Preserve the fixed-width RFC6979 generated nonce bit length; custom nonce callbacks unchanged",
+      "upstream": "https://github.com/indutny/elliptic/issues/321",
+      "validation": "Independent noble P-521 leading-zero nonce regression; secp256k1/P-256 vectors unchanged"
+    },
+    {
+      "id": "GHSA-p6mc-m468-83gw",
+      "original": "lodash.set@4.3.2",
+      "replacement": "local adapter to lodash@4.18.1 set",
+      "validation": "Normal nested paths and prototype pollution regressions"
+    }
+  ],
+  "sha256": {
+    "safe-set/package.json": "427461c9265136f53bf2ad0e190a21df135713462d72a2d5dc35b367baf2c18f",
+    "safe-set/index.cjs": "d2c641ebbb126c5d0bc3ff05ff979effa1d04754f2d6209cd4ad748959a949c4",
+    "elliptic/LICENSE": "0301ec91cd67b9fb452600f49e4fc61ba779be89738a58b917c5a0bb1c96ebfd",
+    "elliptic/package.json": "c3e7938ccfa4b97f9eb841a67f6e9bda1c0bb0dbd459a228671ed58f5aee4077",
+    "elliptic/lib/elliptic.js": "4e8c1663591fb20084135f56edbb5aa7425f2b4e6e11f70c23a94c94f7f6d946",
+    "elliptic/lib/elliptic/utils.js": "3eb8452d1321ec02862fe00a6afa69b12e6ef7d6633108919f1d4f3b069be90b",
+    "elliptic/lib/elliptic/curves.js": "7b2955d3137649d603d890e25e96d199148a93255e98ea9a495bdb4f1f0ffdf1",
+    "elliptic/lib/elliptic/ec/key.js": "08183de5864bcf40879a9f4fb3f0b3d3b30b557352457c98de8aab2de29396df",
+    "elliptic/lib/elliptic/ec/index.js": "6be4dedd346cf12a068f53d727a136f83380505a4b62399c070f121dfb184fca",
+    "elliptic/lib/elliptic/ec/signature.js": "e22eb27aa99f94f09f07446779a63ddddcc0023a248ce8040e8acd17ae748e72",
+    "elliptic/lib/elliptic/curve/edwards.js": "0efb2fc9bf9b4200daefa187c9aabdbf957e6c0adac99c14dfb26a2132efebe7",
+    "elliptic/lib/elliptic/curve/index.js": "7fbd44a1c712c2b651dffab914b156e4f0bcc8ca09f4d9e422e8542ca770f829",
+    "elliptic/lib/elliptic/curve/short.js": "ff57ccea34340311c170dbfc2d249a261590deda75f8c586e5f3d7d679b79890",
+    "elliptic/lib/elliptic/curve/mont.js": "adc64d96bd2a3530559e1e9db9fd11fb79b8ecb6914ccd7ff07ca4519e0e5ffe",
+    "elliptic/lib/elliptic/curve/base.js": "14aeb577b6509519d50c2c3f6c17faeef3e29d4fe126c8b60435f547fa76a2f5",
+    "elliptic/lib/elliptic/eddsa/key.js": "5f60791423f74be8b8792b50d54bec96dc8b11d0f4979761a91ec810d4f051d3",
+    "elliptic/lib/elliptic/eddsa/index.js": "47cb886aee78234d311ec6be032cad1b17de9bd60dcde34de76c2bab9b16e9b5",
+    "elliptic/lib/elliptic/eddsa/signature.js": "867e563e9804ba4502f70704bdadc8b14a792cceb968a2e9460bb72f456281a0",
+    "elliptic/lib/elliptic/precomputed/secp256k1.js": "9e383365793650467605de197cdb71e09c22ebcdc02c5336873412c14c81bac7",
+    "elliptic/node_modules/bn.js/LICENSE": "445739f5b5eb63e5aeff5aeb0f35a45080a421615dce0d97f9939aeea498acdd",
+    "elliptic/node_modules/bn.js/package.json": "34b1923a700a3a344515f0ea673cd36b22cdbfe9f68ef30dfc06dcdaf285ee0b",
+    "elliptic/node_modules/bn.js/util/genCombMulTo.js": "931b90cfd307f69888e148149f8b5736049089a90cf93bf267cadd5058cc1ebf",
+    "elliptic/node_modules/bn.js/util/genCombMulTo10.js": "a544f8f3bd04ccc08c6463d34d3b6bc796af20e10b6125ce7d60e144d714d294",
+    "elliptic/node_modules/bn.js/lib/bn.js": "6c67724e6d6ba2c42e098ffa680148dda95364afd565c2b1f72c966f26bd2cf2"
+  },
+  "elliptic_origin": {
+    "npm_version": "6.6.1",
+    "npm_integrity": "sha512-RaddvvMatK2LJHqFJ+YA4WysVN5Ita9E35botqIYspQ4TkRAlCicdzKOjlyv/1Za5RyTNn7di//eEV0uTAfe3g==",
+    "runtime_files_changed": [
+      "elliptic/ec/index.js"
+    ],
+    "upstream_ec_sha256": "668741c0c921bf5174439104e8fd20636578373cbbd28736ccbcd8e59a5aeafc",
+    "fork_ec_sha256": "6be4dedd346cf12a068f53d727a136f83380505a4b62399c070f121dfb184fca",
+    "license_preserved": true
+  }
+}

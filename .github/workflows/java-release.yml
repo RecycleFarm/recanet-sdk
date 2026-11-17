@@ -36,12 +36,21 @@ jobs:
           npm ci --prefix sdks/java/tools/greenfield
       - name: Build and test exact revision
         run: make java-check
+      - name: Verify dependency security and reviewed forks
+        run: make security-java
       - name: Verify public API
         run: python3 scripts/verify-public-api.py --language java
       - name: Generate Gradle module metadata
         run: cd sdks/java && ./gradlew generateMetadataFileForMavenJavaPublication --console=plain
       - name: Stage versioned artifacts and SHA256 checksums
         run: python3 scripts/stage-release.py --language java
+      - name: Save security evidence separately from the candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: java-security-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/security/java.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Save internal release candidate
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

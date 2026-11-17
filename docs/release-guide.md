@@ -7,7 +7,7 @@ Phase 3에서는 언어별 CI와 내부 릴리스 후보 생성을 구성했다.
 | 워크플로 | 실행과 검사 |
 | --- | --- |
 | Java CI | PR, main push, 수동 실행. Ubuntu24.04, JDK17, Node22.23.5에서 JUnit·JAR/POM·예제 컴파일·Greenfield worker·로컬 WASM·공개 API 검사 |
-| TypeScript CI | 같은 이벤트. Ubuntu24.04 x64와 macOS15 ARM64에서 본체·worker·tarball 소비자·공개 타입 검사 |
+| TypeScript CI | 같은 이벤트. 첫 PoC 범위인 Ubuntu24.04 x64에서 본체·worker·tarball 소비자·공개 타입 검사 |
 
 Java 소스 변경은 Java, TS 소스 변경은 TS를 실행한다. contracts, scripts, workflow/공통 action, CI 규칙 테스트, Makefile, API baseline 변경은 양쪽을 실행한다. 일반 문서만 바뀌면 SDK 빌드는 생략하되 CI 규칙 테스트와 최종 상태 확인은 실행한다. 변경 이력 조회에 실패하거나 수동 실행한 경우에는 해당 SDK의 전체 검사를 실행한다.
 
@@ -19,8 +19,8 @@ Java 소스 변경은 Java, TS 소스 변경은 TS를 실행한다. contracts, s
 
 | 워크플로 | 태그 이벤트 | 현재 수동 실행 버전 |
 | --- | --- | --- |
-| Java Release Candidate | java-vX.Y.Z 또는 SemVer prerelease | 0.1.0-SNAPSHOT |
-| TypeScript Release Candidate | typescript-vX.Y.Z 또는 SemVer prerelease | 0.1.0 |
+| Java Release Candidate | java-vX.Y.Z 또는 SemVer prerelease | 0.1.0-rc.1 |
+| TypeScript Release Candidate | typescript-vX.Y.Z 또는 SemVer prerelease | 0.1.0-rc.1 |
 
 GitHub의 Actions에서 해당 Release Candidate를 선택하고 Run workflow로 main과 정확한 package version을 지정한다. 수동 실행을 위해 태그를 만들 필요는 없다. 태그 이벤트는 언어별 prefix와 package version이 일치해야 한다. 숫자만 바꾸거나 다른 언어 태그를 사용하면 후보가 생성되지 않는다. 현재 package version을 사용자 승인 없이 바꾸지 않았다.
 
@@ -28,7 +28,7 @@ GitHub의 Actions에서 해당 Release Candidate를 선택하고 Run workflow로
 
 ### 산출물
 
-Java는 JAR·sources JAR·javadoc JAR·생성 POM·Gradle module metadata를 Maven 경로로 보관한다. POM의 module marker와 실제 .module 파일을 함께 유지한다. source JAR는 내부 후보에 포함되지만 파트너 공개 allowlist 결정은 별도다.
+Java는 binary JAR·javadoc JAR·생성 POM·Gradle module metadata를 Maven 경로로 보관한다. source JAR와 sources variant는 제외한다. 별도 Greenfield runtime worker 압축물을 동봉하며 설치 시 Node22와 npm ci --omit=dev --ignore-scripts가 필요하다.
 
 TS는 현재 package.json의 files/exports로 npm pack한 tarball을 보관하고 이름·버전·기본 JS/타입/native 파일을 확인한다. 빌드 OS/architecture를 manifest에 기록한다. 릴리스 후보는 Ubuntu24.04 x64에서 생성하므로 TS native tarball도 Linux x64용이다. macOS CI가 통과하더라도 그 Linux tarball을 macOS에 설치해 사용할 수 있다는 뜻은 아니다.
 
@@ -51,8 +51,8 @@ make check
 
 # Java 후보를 만들기 전 module metadata 생성
 (cd sdks/java && ./gradlew generateMetadataFileForMavenJavaPublication)
-python3 scripts/stage-release.py --language java --version 0.1.0-SNAPSHOT
-python3 scripts/stage-release.py --language typescript --version 0.1.0
+python3 scripts/stage-release.py --language java --version 0.1.0-rc.1
+python3 scripts/stage-release.py --language typescript --version 0.1.0-rc.1
 ```
 
 로컬 후보는 staging/ 아래에 생성되고 Git에서 제외한다. 이미 같은 출력 디렉터리가 있으면 덮어쓰지 않는다. 새 시험에는 --output으로 별도 경로를 사용한다. 로컬 후보의 존재는 워크플로의 원격 검증 완료를 뜻하지 않는다.
@@ -63,3 +63,10 @@ Java의 대문자 artifactId, npm private/scope/name, native 플랫폼 배포 �
 
 
 현재 Phase 4의 준비 상태와 실제 발행 전 결정은 [배포 준비 보고서](phase4-readiness.md)에 정리했다. distribution 문서/설정 초안은 생성했지만 발행 workflow와 실제 Registry 발행은 여전히 보류 상태다.
+
+
+## rc.1 승인 반영
+
+현재 후보 이름은 com.youngminkim.recanet:recanet-java:0.1.0-rc.1 및 @recyclefarm/recanet-sdk@0.1.0-rc.1이다. 첫 PoC는 Linux x64·Node22·JDK17로 제한한다. npm의 os/cpu 제한과 Linux ELF 검사로 후보를 확인하고 내부 문서/source map을 거부한다. npm private=true와 모든 workflow의 발행 비활성은 유지한다.
+
+보안 조회가 성공하고 알려진 미해결 권고가0건이며 검토된 로컬 호환 모듈 hash와 회귀 시험을 통과해야 후보를 생성한다. 같은 commit의 보안 보고서 hash를 manifest에 넣고, 보안 보고서는 후보와 분리한 내부 artifact로 보관한다. [보안 수정 근거](security/rc1-remediation.md).

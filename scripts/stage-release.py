@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Create internal release candidates and checksums. This script never publishes."""
 import argparse
+import gzip
+import struct
 import hashlib
 import json
 import os
@@ -78,10 +80,46 @@ def verify_npm_tarball(path, name, version):
         package = json.load(member)
         if package.get('name') != name or package.get('version') != version:
             raise ValueError('Packed package metadata differs from the release version')
-        required = {'package/dist/index.js', 'package/dist/index.d.ts',
+        for name_in_archive in archive.getnames():
+            if name_in_archive.startswith('package/docs/') or name_in_archive.endswith('.map'):
+                raise ValueError('Internal documentation or source map is in npm candidate')
+            if name_in_archive.endswith('.md') and name_in_archive != 'package/README.md':
+                raise ValueError('Unapproved documentation is in npm candidate')
+        if package.get('os') != ['linux'] or package.get('cpu') != ['x64']:
+            raise ValueError('PoC package must restrict installation to Linux x64')
+        if 'package/dist/native/posix-lock.node' not in archive.getnames():
+            raise ValueError('Native module is missing')
+        native = archive.extractfile('package/dist/native/posix-lock.node')
+        header = native.read(20) if native else b''
+        if len(header) != 20 or header[:6] != b'\x7fELF\x02\x01' or struct.unpack('<H', header[18:20])[0] != 62:
+            raise ValueError('Native module is not a Linux x64 ELF binary')
+        required = {'package/dist/index.js' , 'package/dist/index.d.ts',
                     'package/dist/native/posix-lock.node', 'package/native/posix-lock.c'}
         if not required.issubset(set(archive.getnames())):
             raise ValueError('Packed package is missing its runtime, types, or native files')
+
+
+def security_evidence(language):
+    path = ROOT / 'reports/security' / f'{language}.json'
+    report = json.loads(path.read_text())
+    if report.get('status') != 'passed' or report.get('sourceCommit') != git('rev-parse', 'HEAD'):
+        raise ValueError('Security evidence is missing, failed, or from another source revision')
+    return {'status': 'passed', 'reportSha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+            'unresolvedRegistryAdvisories': 0, 'locallyPatchedAdvisories': report['locallyPatchedAdvisories']}
+
+
+def bundle_java_worker(sdk, destination):
+    worker = sdk / 'tools/greenfield'
+    paths = [worker / x for x in ('worker.cjs', 'package.json', 'package-lock.json')]
+    paths += sorted(p for p in (worker / 'vendor').rglob('*') if p.is_file() and p.name != 'README.md')
+    with (destination / 'greenfield-worker-linux-x64.tar.gz').open('wb') as output:
+        with gzip.GzipFile(fileobj=output, mode='wb', mtime=0) as compressed:
+            with tarfile.open(fileobj=compressed, mode='w') as archive:
+                for path in paths:
+                    info = archive.gettarinfo(str(path), arcname='greenfield/' + path.relative_to(worker).as_posix())
+                    info.mtime = 0; info.uid = 0; info.gid = 0; info.uname = ''; info.gname = ''
+                    with path.open('rb') as content:
+                        archive.addfile(info, content)
 
 
 def stage(language, version, output):
@@ -92,6 +130,7 @@ def stage(language, version, output):
     else:
         package = json.loads((sdk / 'package.json').read_text())
     validate_version(version, package['version'])
+    security = security_evidence(language)
     if os.environ.get('GITHUB_ACTIONS') == 'true':
         # Expected build outputs are ignored by Git; tracked inputs must remain unchanged.
         subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--'], cwd=ROOT, check=True)
@@ -101,18 +140,30 @@ def stage(language, version, output):
         group, artifact = package['groupId'], package['artifactId']
         layout = destination / 'maven' / group.replace('.', '/') / artifact / version
         layout.mkdir(parents=True)
-        for classifier in ('', '-sources', '-javadoc'):
+        for classifier in ('', '-javadoc'):
             filename = f'{artifact}-{version}{classifier}.jar'
             shutil.copyfile(sdk / 'build/libs' / filename, layout / filename)
         shutil.copyfile(pom, layout / f'{artifact}-{version}.pom')
         module = sdk / 'build/publications/mavenJava/module.json'
         metadata = json.loads(module.read_text())
-        if metadata['component']['version'] != version:
-            raise ValueError('Gradle module metadata has a different version')
+        if any(metadata['component'].get(k) != v for k, v in {'group': group, 'module': artifact, 'version': version}.items()):
+            raise ValueError('Gradle module metadata has different coordinates')
+        for variant in metadata.get('variants', []):
+            if variant.get('attributes', {}).get('org.gradle.docstype') == 'sources':
+                raise ValueError('Source JAR variant must not be included')
+            for file in variant.get('files', []):
+                if Path(file['url']).name != file['url']:
+                    raise ValueError('Gradle module URL must be a local artifact filename')
+                path = layout / file['url']
+                if not path.is_file() or path.name.endswith('-sources.jar'):
+                    raise ValueError('Gradle module file reference is missing or forbidden')
+                if file.get('sha256') and hashlib.sha256(path.read_bytes()).hexdigest() != file['sha256']:
+                    raise ValueError('Gradle module checksum differs from packaged JAR')
         shutil.copyfile(module, layout / f'{artifact}-{version}.module')
-        blockers = ['Publication intentionally disabled in Phase 3']
+        bundle_java_worker(sdk, destination)
+        blockers = ['Actual publication has not been approved']
         if not re.fullmatch(r'[a-z0-9-]+', artifact):
-            blockers.append('Maven artifactId must be lowercase before GitHub Packages publication')
+            raise ValueError('Maven artifactId must be lowercase')
     else:
         result = subprocess.check_output(['npm', 'pack', '--json', '--pack-destination',
                                           str(destination.resolve())], cwd=sdk, text=True)
@@ -122,7 +173,7 @@ def stage(language, version, output):
         tarball = destination / packed[0]['filename']
         verify_npm_tarball(tarball, package['name'], version)
         package = {key: package.get(key) for key in ('name', 'version', 'private', 'engines', 'exports')}
-        blockers = ['Publication intentionally disabled in Phase 3',
+        blockers = ['Actual publication has not been approved',
                     'Native tarball is specific to the recorded build OS/architecture']
         if package.get('private'):
             blockers.append('package.json is private; publication requires a separate approved change')
@@ -136,7 +187,7 @@ def stage(language, version, output):
         'runAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
         'buildPlatform': {'os': platform.system(), 'architecture': platform.machine(),
                           'node': subprocess.check_output(['node', '--version'], text=True).strip()},
-        'package': package, 'published': False, 'publishReady': False, 'blockers': blockers,
+        'package': package, 'security': security, 'pocPlatforms': ['linux-x64'], 'sourceJarIncluded': False, 'internalDocumentationIncluded': False, 'sourceMapsIncluded': False, 'published': False, 'publishReady': False, 'blockers': blockers,
     }
     (destination / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     checksums = []
