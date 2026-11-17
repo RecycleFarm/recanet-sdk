@@ -117,21 +117,31 @@ public final class Json {
                 throw new DmrvnException(Code.INVALID_INPUT);
             }
         }
-        if (value instanceof List<?> values)
-            return "[" + String.join(",", values.stream().map(Json::canonical).toList()) + "]";
+        // Keep one canonical frame per nesting level. Stream pipelines multiply
+        // recursive frames and exhaust Linux's default Java stack before depth 1000.
+        if (value instanceof List<?> values) {
+            var encoded = new StringBuilder("[");
+            boolean first = true;
+            for (Object item : values) {
+                if (!first) encoded.append(',');
+                first = false;
+                encoded.append(canonical(item));
+            }
+            return encoded.append(']').toString();
+        }
         if (value instanceof Map<?, ?> fields) {
             require(
                     fields.keySet().stream().allMatch(String.class::isInstance),
                     Code.INVALID_INPUT);
-            return "{"
-                    + String.join(
-                            ",",
-                            fields.keySet().stream()
-                                    .map(String.class::cast)
-                                    .sorted()
-                                    .map(k -> canonical(k) + ":" + canonical(fields.get(k)))
-                                    .toList())
-                    + "}";
+            var keys = fields.keySet().stream().map(String.class::cast).sorted().toList();
+            var encoded = new StringBuilder("{");
+            boolean first = true;
+            for (String key : keys) {
+                if (!first) encoded.append(',');
+                first = false;
+                encoded.append(canonical(key)).append(':').append(canonical(fields.get(key)));
+            }
+            return encoded.append('}').toString();
         }
         throw new DmrvnException(Code.INVALID_INPUT);
     }

@@ -19,7 +19,7 @@ Java를 기준으로 TypeScript를 수정했다. 아래 GAP-01~12는 이 변경�
 | GAP-11 | 해소 | TS root에서 Java package-private 구현/상수/helpers 제외, @internal 선언 제거. Java-named Json 제공, Json.copy는 object만 허용. 전체 API inventory/별도 current baseline 검사. |
 | GAP-12 | 해소 | Query/WalletCreateRequest runtime 생성자와 Java 검증 제공. 회원/partner 승인 및 signer 조회 후 입력 소비 순서, adapter 참조·복사 경계 정렬. 공통 workflow/reader/transaction 오류·호출 기록과 mutation 회귀. |
 
-공통 Java 기준 소스는 `06a9a560054b1154ce096839da3bfe9c6d7a67ff`다. Java core/API는 변경하지 않았다. 공통 worker UTF-8 chunk 시험에서 Java worker의 chunk별 디코딩 결함을 발견해 StringDecoder 누적 디코딩으로 최소 수정했으며 양쪽 worker 파일 bytes를 동일하게 유지한다.
+공통 Java 기준 소스는 `06a9a560054b1154ce096839da3bfe9c6d7a67ff`다. Java 공개 API는 유지했다. Linux x64 검증에서 999·1000단계 JSON canonical의 Stream 재귀가 기본 스택을 넘는 결함을 발견해 동일한 순서/bytes의 반복문으로 바꿨다. Java 1 MiB 스택에서 이전 실패와 수정 후 통과를 재현했고, 깊은 배열/객체 회귀를 추가했다. 공통 worker UTF-8 chunk 시험에서 Java worker의 chunk별 디코딩 결함을 발견해 StringDecoder 누적 디코딩으로 최소 수정했으며 양쪽 worker 파일 bytes를 동일하게 유지한다.
 
 ## 2. 실행 방법과 근거
 
@@ -32,7 +32,7 @@ make verify-api
 
 - [공통 runner](../scripts/test-sdk-contract.py)는 실제 Java SDK와 빌드한 TS SDK에 동일 JSONL 입력·고정 외부 응답을 제공한다. 값, 부재/null, 오류 family/code/status/retryAfter/전송 사실, HTTP/RPC/storage/sign 호출 인자·순서·횟수를 비교한다.
 - [공통 벡터](../tests/contracts/typescript/vectors.mjs) 및 [업무 시나리오](../tests/contracts/typescript/workflow-vectors.mjs)는 설정, JSON, 전체 31개 DMRVN 오류 정책, 숫자/Duration, JWT/JWKS, Privy, asset, 거래 상태/페이지/cursor, Evidence 저장·제출·조사·보고서 검증을 포함한다. 응답 유실·봉인 대기·bytes 조작·권한 회수·nonce 변경·비용/기한/서명 실패도 재현한다.
-- [실행 보고서](../reports/contracts/parity.json): 5,922/5,922 일치, 차이 0. 별도로 공유 journal 및 동일 worker/133개 UTF-8 분할 입력을 검증한다. 로컬 JDK17/Node22.23.5/macOS ARM64 실행이며 Linux x64는 [공통 CI](../.github/workflows/contract-ci.yml)에 같은 명령을 연결했다.
+- [실행 보고서](../reports/contracts/parity.json): 5,924/5,924 일치, 차이 0. 별도로 공유 journal 및 동일 worker/133개 UTF-8 분할 입력을 검증한다. 로컬 JDK17/Node22.23.5/macOS ARM64 실행이며 Linux x64는 [공통 CI](../.github/workflows/contract-ci.yml)에 같은 명령을 연결했다.
 - [coverage 검사](../scripts/check-sdk-contract.py)는 363개 Java public 선언과 416개 TS 시그니처의 누락/미분류·계약 링크·5개 공통 ABI/배포 파일 bytes를 검사한다. 5개 검사기 회귀는 누락된 overload/추가 export/잘못된 대상/optional 변경을 실패시킨다.
 - [현재 API baseline](public-api-baseline.json)은 이번 공개 API 변경을 동결한다. [과거 baseline](../docs/migration/phase2-public-api-baseline.json)은 그대로 보존한다. 검사 명령이 baseline을 자동 승인/갱신하지 않는다.
 

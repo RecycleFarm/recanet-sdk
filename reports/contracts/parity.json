@@ -5,9 +5,10 @@
     "system": "Darwin",
     "machine": "arm64",
     "node": "v22.23.5",
+    "javaStackBytes": 1048576,
     "java": "openjdk version \"17.0.18\" 2026-01-20 LTS"
   },
-  "sdkSourceSha256": "5e3b884850a2b96b05d1810a9b95d30b743a4da78f5d716d4f81084e14ec8ef4",
+  "sdkSourceSha256": "35b880eb122a6ab7989f327bc1ed8056ba4c36cba67ac3697046b29642a9235f",
   "operations": {
     "activity": 12,
     "asset": 11,
@@ -16,7 +17,7 @@
     "duration": 8,
     "errors": 31,
     "float": 1503,
-    "json": 25,
+    "json": 27,
     "jwksUri": 8,
     "jwt": 31,
     "jwtJwks": 8,
@@ -41,8 +42,8 @@
     "directoryMode": "0700",
     "fileMode": "0600"
   },
-  "cases": 5922,
-  "passed": 5922,
+  "cases": 5924,
+  "passed": 5924,
   "failed": 0,
   "failures": []
 }

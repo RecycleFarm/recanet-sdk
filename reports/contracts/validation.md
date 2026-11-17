@@ -4,10 +4,10 @@
 
 | 검사 | 결과 |
 | --- | --- |
-| 실제 Java/TS 공통 입력·결과·오류·adapter trace 비교 | 5,922/5,922 일치. 상세 영역/소스 해시는 [parity.json](parity.json) |
+| 실제 Java/TS 공통 입력·결과·오류·adapter trace 비교 | 5,924/5,924 일치. 상세 영역/소스 해시는 [parity.json](parity.json) |
 | Java↔Node journal | 교차 snapshot 읽기/쓰기, 6개 혼합 프로세스 120회 갱신, 0700/0600 통과 |
 | 양쪽 worker bytes 및 UTF-8 chunk | 동일 파일, 133개 분할 입력 통과 |
-| Java JUnit / worker / 보안 회귀 / 승인 WASM | 126 / 8 / 6 통과, 로컬 WASM 벡터 통과 |
+| Java JUnit / worker / 보안 회귀 / 승인 WASM | 127 / 8 / 6 통과, 로컬 WASM 벡터 통과 |
 | TypeScript 단위 / worker / 보안 회귀 | 273 / 14 / 6 통과 |
 | 전체 API coverage / 검사기 회귀 | Java 363개 선언·TS 416개 시그니처, 5개 회귀 통과 |
 | 공개 API 기준 | Java 66개 class entry·TS 65개 선언 파일 일치. 과거 이관 baseline 변경 없음 |

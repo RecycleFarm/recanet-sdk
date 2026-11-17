@@ -78,7 +78,7 @@ def run():
                 if vector['op'] in ('privy','jwtJwks'):out['trace']+=server.traces.get(vector['serverKey'],[])
             return outputs
         try:
-            java=execute(['java','-cp',temp+':'+cp,'com.youngminkim.recanet.dmrvn.ContractOracle'])
+            java=execute(['java','-Xss1m','-cp',temp+':'+cp,'com.youngminkim.recanet.dmrvn.ContractOracle'])
             ts=execute(['node',str(ROOT/'tests/contracts/typescript/runner.mjs')])
         finally: server.shutdown();server.server_close()
         assert len(java)==len(ts)==len(vectors),'A runner skipped cases'
@@ -87,7 +87,7 @@ def run():
             if j!=t:failures.append({'name':vector['name'],'input':vector,'java':j,'typescript':t})
         # Actual cross-runtime snapshots and mixed Java/Node processes share OS locks.
         shared=str(Path(temp)/'journal')
-        java_command=['java','-cp',temp+':'+cp,'com.youngminkim.recanet.dmrvn.ContractOracle']
+        java_command=['java','-Xss1m','-cp',temp+':'+cp,'com.youngminkim.recanet.dmrvn.ContractOracle']
         ts_command=['node',str(ROOT/'tests/contracts/typescript/runner.mjs')]
         def single(command,operation):
             out=subprocess.run(command,input=json.dumps(operation)+'\n',text=True,capture_output=True,check=True,timeout=30)
@@ -121,7 +121,7 @@ def run():
         report={'schemaVersion':1,'referenceRevision':'06a9a560054b1154ce096839da3bfe9c6d7a67ff',
                 'environment':{'system':platform.system(),'machine':platform.machine(),
                                'node':subprocess.check_output(['node','--version'],text=True).strip(),
-                               'java':subprocess.run(['java','-version'],capture_output=True,text=True,check=True).stderr.splitlines()[0]},
+                               'javaStackBytes':1048576,'java':subprocess.run(['java','-version'],capture_output=True,text=True,check=True).stderr.splitlines()[0]},
                 'sdkSourceSha256':source_hash.hexdigest(),'operations':dict(sorted(Counter(v['op'] for v in vectors).items())),
                 'journal':{'crossRuntimeSnapshots':True,'mixedProcesses':6,'increments':120,'directoryMode':'0700','fileMode':'0600'},
                 'cases':len(vectors),'passed':len(vectors)-len(failures),'failed':len(failures),'failures':failures}
