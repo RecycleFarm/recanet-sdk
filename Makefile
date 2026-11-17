@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install build test check java-build typescript-build java-test typescript-test java-check typescript-check verify-migration verify-api
+.PHONY: help install build test check java-build typescript-build java-test typescript-test java-check typescript-check verify-migration verify-api ci-rules
 
 help:
 	@echo 'make install          Install existing npm dependencies for both SDKs'
@@ -48,5 +48,8 @@ verify-api:
 	python3 scripts/verify-public-api.py
 
 # Keep API comparison after both builds even when make is invoked with -j.
-check: verify-migration java-check typescript-check
+ci-rules:
+	python3 -m unittest discover -s tests/ci -v
+
+check: ci-rules verify-migration java-check typescript-check
 	python3 scripts/verify-public-api.py

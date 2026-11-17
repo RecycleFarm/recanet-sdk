@@ -1,0 +1,85 @@
+name: TypeScript CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: typescript-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    name: Detect TypeScript changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      changed: ${{ steps.paths.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Test CI and staging rules
+        run: python3 -m unittest discover -s tests/ci -v
+      - id: paths
+        name: Select SDK checks
+        run: python3 scripts/ci-changes.py --language typescript
+  build:
+    name: TypeScript build and tests
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-sdk
+      - name: Install locked dependencies
+        run: |
+          npm ci --prefix sdks/typescript
+          npm ci --prefix sdks/typescript/tools/greenfield
+      - name: Build and test
+        run: make typescript-check 2>&1 | tee typescript-check.log
+      - name: Verify public API
+        run: python3 scripts/verify-public-api.py --language typescript
+      - name: Save test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: typescript-test-evidence-${{ matrix.os }}
+          path: |
+            typescript-check.log
+          if-no-files-found: ignore
+          retention-days: 7
+  result:
+    name: TypeScript checks
+    if: always()
+    needs: [changes, build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require successful selected checks
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          SHOULD_RUN: ${{ needs.changes.outputs.changed }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          if [[ "$SHOULD_RUN" == true ]]; then
+            test "$BUILD_RESULT" = success
+          elif [[ "$SHOULD_RUN" == false ]]; then
+            test "$BUILD_RESULT" = skipped
+          else
+            exit 1
+          fi

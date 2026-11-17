@@ -1,6 +1,6 @@
 # Recanet SDK
 
-내부 개발용 Java·TypeScript SDK Monorepo다. 기존 저장소의 소스와 Git 커밋을 보존하여 Phase 2 이관을 수행했다. 패키지 배포나 파트너 접근 설정은 아직 구성하지 않았다.
+내부 개발용 Java·TypeScript SDK Monorepo다. 기존 저장소의 소스와 Git 커밋을 보존하여 Phase 2 이관을 수행했다. 언어별 CI와 내부 릴리스 후보 워크플로를 구성했다. 실제 패키지 배포나 파트너 접근 설정은 아직 구성하지 않았다.
 
 ## 시작하기
 
@@ -37,6 +37,7 @@ npm --prefix sdks/typescript run check:package
 ## 설계와 이관 기록
 
 - [Monorepo 구조와 마이그레이션 가이드](docs/monorepo-migration-guide.md)
+- [CI와 릴리스 후보 가이드](docs/release-guide.md)
 - [Phase 2 이관 결과](docs/migration/phase2-migration.md)
 - [원본 refs·SHA·트리·백업 기록](docs/migration/phase2-source-manifest.json)
 - [API 보존 baseline](docs/migration/phase2-public-api-baseline.json)
@@ -62,4 +63,4 @@ Phase 2 보존 검사 스크립트는 이관 기준으로 원본과의 정확한
 
 ## 배포 상태
 
-Java 좌표와 TypeScript 패키지명·버전·private 설정은 원본을 유지했다. GitHub Maven에서 기존 대문자 artifactId를 사용할 수 없다는 제약과 native 플랫폼·의존성 보안 문제는 아직 해결하지 않았다. 운영 배포 준비 완료를 의미하지 않는다. GitHub Packages, release workflow, distribution 저장소, 파트너 권한은 후속 단계 범위다.
+Java 좌표와 TypeScript 패키지명·버전·private 설정은 원본을 유지했다. GitHub Maven에서 기존 대문자 artifactId를 사용할 수 없다는 제약과 native 플랫폼·의존성 보안 문제는 아직 해결하지 않았다. 운영 배포 준비 완료를 의미하지 않는다. release workflow는 테스트와 내부 산출물 보관까지만 수행한다. GitHub Packages 발행, distribution 저장소, 파트너 권한은 후속 단계 범위다.

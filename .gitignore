@@ -6,3 +6,5 @@
 *.bundle
 __pycache__/
 *.py[cod]
+staging/
+*-check.log
