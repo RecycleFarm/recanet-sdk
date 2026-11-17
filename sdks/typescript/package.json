@@ -1,0 +1,43 @@
+{
+  "name": "recanet-typescript",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Recanet backend TypeScript SDK",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "native",
+    "scripts/build-native.mjs",
+    "tools/greenfield/worker.cjs",
+    "tools/greenfield/package.json",
+    "tools/greenfield/package-lock.json",
+    "tools/greenfield/README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "npm run build:native && tsc -p tsconfig.json",
+    "build:native": "node scripts/build-native.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "check": "npm test && npm run test:greenfield",
+    "test:greenfield": "npm --prefix tools/greenfield test",
+    "check:package": "npm run build && node scripts/check-package.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "6.0.3"
+  },
+  "dependencies": {
+    "@hpke/chacha20poly1305": "1.8.1",
+    "@hpke/core": "1.10.1",
+    "ethers": "6.17.0"
+  }
+}

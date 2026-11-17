@@ -1,0 +1,77 @@
+{
+  "testOnly": true,
+  "domain": {
+    "name": "DMRVNClaimContract",
+    "version": "7",
+    "chainId": 421614,
+    "verifyingContract": "0x1111111111111111111111111111111111111111"
+  },
+  "committee": [
+    "0x1efF47bc3a10a45D4B230B5d10E37751FE6AA718",
+    "0xd41c057fd1c78805AAC12B0A94a405c0461A6FBb",
+    "0xe1AB8145F7E55DC933d51a18c793F901A3A0b276",
+    "0xE57bFE9F44b819898F47BF37E5AF72a0783e1141",
+    "0xF1F6619B38A98d6De0800F1DefC0a6399eB6d30C"
+  ],
+  "evidenceLocationHash": "0x0f6312014b7605c33c67f8aa8e1ea1aff775757bc4d9037cad193d869034eada",
+  "claim": {
+    "value": {
+      "claimId": "0xe14bc30bb05cb1813cc9ccc4f9b093b5f49c4d8d6277f93cd118a93e6184b8df",
+      "beneficiary": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+      "partnerId": 101,
+      "activityId": 1001,
+      "methodologyId": 2001,
+      "methodologyVersion": 3,
+      "evidenceHash": "0x8326a9ccf54a51ec66ca8c5c79e0d2fd665856e81dfe596126b9f9b735929e13",
+      "methodologyHash": "0xad401b767394276f7dd7dfc213f46bbb3e0f684530e92eaa1169757b9f6c6b05",
+      "evidenceLocation": {
+        "storageType": 1,
+        "chainId": "5600",
+        "bucketName": "dmrvn",
+        "objectName": "partners/101/activities/1001/2026/10/06/vector/evidence.json"
+      },
+      "nonce": "0",
+      "deadline": 2000000000
+    },
+    "digest": "0xeceffd19b468446ffd2818cb167fd5a052bc0f42ec2ec1592ad5de4d3a125941",
+    "signature": "0xe42f1ea3cb0588cefbb901873bdd5b133162bcba7ddf292b1142788308a036b175b8fe0805d75fcfaa65ff43ea066f40c5fc9f7ed77f918c5673f706fc86a8541b",
+    "recoveredSigner": "0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF"
+  },
+  "assignment": {
+    "value": {
+      "taskId": "0xe6385fc1b3e67ce2b6cd829b54e9542ac185a32b078dcb767db6d9b2870d5bb5",
+      "claimId": "0xe14bc30bb05cb1813cc9ccc4f9b093b5f49c4d8d6277f93cd118a93e6184b8df",
+      "quorumPolicyVersion": 1,
+      "committeeSize": 5,
+      "threshold": 3,
+      "deadline": 2000000000,
+      "committeeHash": "0x3615b3a0b80a94c379acd52c4b6cc84a6c362b3d5df352096f4b0d581f7edf9a"
+    },
+    "digest": "0xa80f41cb3dddab43ad4f45b3d8ad3ad6a4e28cf72e9babb0b6270d5d0d9c69dc",
+    "signature": "0xdc010903b28ad818bed3dfb6edb0c1725c56f0e7e0dec74a5861c859256b287e62c6cf8d9d9b249603257a700436c21831074a4af5afe15825d64dd542de7ee81b",
+    "recoveredSigner": "0x6813Eb9362372EEF6200f3b1dbC3f819671cBA69"
+  },
+  "observation": {
+    "value": {
+      "taskId": "0xe6385fc1b3e67ce2b6cd829b54e9542ac185a32b078dcb767db6d9b2870d5bb5",
+      "claimId": "0xe14bc30bb05cb1813cc9ccc4f9b093b5f49c4d8d6277f93cd118a93e6184b8df",
+      "evidenceHash": "0x8326a9ccf54a51ec66ca8c5c79e0d2fd665856e81dfe596126b9f9b735929e13",
+      "partnerId": 101,
+      "activityId": 1001,
+      "methodologyId": 2001,
+      "methodologyVersion": 3,
+      "methodologyHash": "0xad401b767394276f7dd7dfc213f46bbb3e0f684530e92eaa1169757b9f6c6b05",
+      "evidenceLocationHash": "0x0f6312014b7605c33c67f8aa8e1ea1aff775757bc4d9037cad193d869034eada",
+      "result": 2,
+      "outputHash": "0xd9e074414bdc75455893dba218ab931378e0b0c69ca1f627238044f96cbf8239",
+      "committeeHash": "0x3615b3a0b80a94c379acd52c4b6cc84a6c362b3d5df352096f4b0d581f7edf9a",
+      "quorumPolicyVersion": 1,
+      "deadline": 2000000000
+    },
+    "digest": "0x244fc6b02b54c26ae2aae91fe1be1657b8f958b35c8dfe37d2be76961798a190",
+    "signature": "0xc6aa676a4f32ee345d772e3fb23a24cb8fe1d30a68a48c2f5064f313b187b1286e683fdb77baef2cea4e3b0425085926d6c0da78e19cca69f679d8d072bb31611b",
+    "recoveredSigner": "0x1efF47bc3a10a45D4B230B5d10E37751FE6AA718"
+  },
+  "reportHash": "0x8b7ad0948a68695a6d35622b61ef72d9a81f4dc0b8a7ba05d310551bbb6b593b"
+}
+

@@ -1,0 +1,101 @@
+{
+  "description": "Synthetic offline P-256 examples; no service credentials or wallet keys. Compare payload bytes and verify DER signatures, not signature byte identity. Private test key is not retained.",
+  "sourceCommit": "37c78cfa01d9892ca26de61bb74df827923917cf",
+  "privyVersion": "0.59.0",
+  "verificationPublicKeyPem": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEp2HZ7xUTliIngkZEBpBJdoG8HW52\ni9ySkrI/n6AXHR1qlx11+VqyJ5vESCEyCq7t2oCWu2wq5pHXa/Um/rG3NA==\n-----END PUBLIC KEY-----\n",
+  "cases": [
+    {
+      "case": "personal_sign",
+      "payload": {
+        "version": 1,
+        "method": "POST",
+        "url": "https://api.privy.io/v1/wallets/wallet-test/rpc",
+        "body": {
+          "method": "personal_sign",
+          "params": {
+            "message": "hello",
+            "encoding": "utf-8"
+          }
+        },
+        "headers": {
+          "privy-app-id": "app"
+        }
+      },
+      "canonicalUtf8": "{\"body\":{\"method\":\"personal_sign\",\"params\":{\"encoding\":\"utf-8\",\"message\":\"hello\"}},\"headers\":{\"privy-app-id\":\"app\"},\"method\":\"POST\",\"url\":\"https://api.privy.io/v1/wallets/wallet-test/rpc\",\"version\":1}",
+      "sha256Hex": "c36dad9d1a743015291248a880a218c2cf5222f191288e9253f28840afb15578",
+      "authorizationSignatureBase64": "MEQCIBk8zqeVNomgLtv+oyELFFBRnExIrC8prqfJxZodWop5AiAuZOXldFGhgmrcs64wZr/v9mP68f5PamSG7tItlmzpzA=="
+    },
+    {
+      "case": "eth_signTypedData_v4",
+      "payload": {
+        "version": 1,
+        "method": "POST",
+        "url": "https://api.privy.io/v1/wallets/wallet-test/rpc",
+        "body": {
+          "method": "eth_signTypedData_v4",
+          "chain_type": "ethereum",
+          "params": {
+            "typed_data": {
+              "domain": {
+                "name": "Test",
+                "version": "1",
+                "chainId": 421614
+              },
+              "types": {
+                "Test": [
+                  {
+                    "name": "amount",
+                    "type": "uint256"
+                  }
+                ]
+              },
+              "primary_type": "Test",
+              "message": {
+                "amount": "9007199254740993"
+              }
+            }
+          }
+        },
+        "headers": {
+          "privy-app-id": "app"
+        }
+      },
+      "canonicalUtf8": "{\"body\":{\"chain_type\":\"ethereum\",\"method\":\"eth_signTypedData_v4\",\"params\":{\"typed_data\":{\"domain\":{\"chainId\":421614,\"name\":\"Test\",\"version\":\"1\"},\"message\":{\"amount\":\"9007199254740993\"},\"primary_type\":\"Test\",\"types\":{\"Test\":[{\"name\":\"amount\",\"type\":\"uint256\"}]}}}},\"headers\":{\"privy-app-id\":\"app\"},\"method\":\"POST\",\"url\":\"https://api.privy.io/v1/wallets/wallet-test/rpc\",\"version\":1}",
+      "sha256Hex": "37e51c006faa8f9c2b803dc176080588394a4da1ce20bd5262928051f72e392e",
+      "authorizationSignatureBase64": "MEQCIGEpQYZoLy8YFCP02kp5UnX64N4sixdT00VtrIH4HoJ6AiACW4EH+hmV7OmHvJ3492LlANyFNOJPoQkhRL0pczrHww=="
+    },
+    {
+      "case": "eth_sendTransaction",
+      "payload": {
+        "version": 1,
+        "method": "POST",
+        "url": "https://api.privy.io/v1/wallets/wallet-test/rpc",
+        "body": {
+          "method": "eth_sendTransaction",
+          "chain_type": "ethereum",
+          "caip2": "eip155:421614",
+          "params": {
+            "transaction": {
+              "from": "0x1111111111111111111111111111111111111111",
+              "to": "0x2222222222222222222222222222222222222222",
+              "chain_id": "0x66eee",
+              "value": "0x0",
+              "data": "0x1234",
+              "gas_limit": "0x100000",
+              "gas_price": "0x1",
+              "nonce": "0x0"
+            }
+          }
+        },
+        "headers": {
+          "privy-app-id": "app",
+          "privy-idempotency-key": "operation-test"
+        }
+      },
+      "canonicalUtf8": "{\"body\":{\"caip2\":\"eip155:421614\",\"chain_type\":\"ethereum\",\"method\":\"eth_sendTransaction\",\"params\":{\"transaction\":{\"chain_id\":\"0x66eee\",\"data\":\"0x1234\",\"from\":\"0x1111111111111111111111111111111111111111\",\"gas_limit\":\"0x100000\",\"gas_price\":\"0x1\",\"nonce\":\"0x0\",\"to\":\"0x2222222222222222222222222222222222222222\",\"value\":\"0x0\"}}},\"headers\":{\"privy-app-id\":\"app\",\"privy-idempotency-key\":\"operation-test\"},\"method\":\"POST\",\"url\":\"https://api.privy.io/v1/wallets/wallet-test/rpc\",\"version\":1}",
+      "sha256Hex": "33147fcd1046868779c53c36c88b82ed36e1ddada2e460d741c9ec5fa5fbb957",
+      "authorizationSignatureBase64": "MEUCIFw2JaBmjDtKslkdJkaiT2bAulHdBuca3lHMTz88pb2TAiEAtXUdAkxxKTkwLxj8XDy8bRX1cGSBCJkxwlXJH++ZQDU="
+    }
+  ]
+}
+

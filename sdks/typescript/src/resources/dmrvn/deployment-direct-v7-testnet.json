@@ -1,0 +1,20 @@
+{
+  "chainId": 421614,
+  "network": "dmrvn",
+  "deployer": "0x820DE82A2683D3eF3e58Bfaf05F55a37bA7B14F0",
+  "coordinator": "0x3772174b4f6f9839Bb1DC66daeED187F20ac6494",
+  "approver": "0x6c26704d4519E2bE34c9B79aac21c25f1734b20c",
+  "contract": {
+    "address": "0x10615cB528FE09c73819f8F3345efb8024A81d15",
+    "deployTxHash": "0xa2e1d4e83683ce5a9ecf309355425c9ac37a872ab8679a5caf63801531b0e7fa",
+    "deployBlock": 316308335,
+    "domainVersion": "7",
+    "runtimeCodeHash": "0xbc18a4c8f4242cd2144cd06f6396d2c4cba74feffeaa053ffe034bf494d60126"
+  },
+  "forwarder": {
+    "address": "0x8A5CF02d9c8855d8dcdBb75b8ABd6d3e0C4e6c7c",
+    "domainName": "DMRVNForwarder",
+    "domainVersion": "1",
+    "runtimeCodeHash": "0x25bfc54e782045aa7768ae32ccb616841fb3141d36c811b53915ad373ca3442e"
+  }
+}

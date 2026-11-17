@@ -1,0 +1,52 @@
+{
+  "origin": {
+    "page": "page_6aeadd6e8810819197fd76ba1f3b3923",
+    "comment": "00907233-00fd-52c9-801c-c08a4befe633",
+    "contractDate": "2026-11-05",
+    "evidence": "Local synthetic vector; not a validator-approved vector or published methodology package. Fixed public test keys 1/2."
+  },
+  "beneficiary": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+  "signer": "0x2b5ad5c4795c026514f8317c7a215e218dccd6cf",
+  "body": {
+    "activityId": 1003,
+    "inputs": {
+      "petBottleCount": 3
+    },
+    "methodology": {
+      "id": 2003,
+      "version": 3
+    },
+    "partnerId": 101,
+    "schemaVersion": 4,
+    "source": {
+      "ownerHash": "0x56a6eb3142b2cdc8d47682a4ba1023997d2cd75880b0ce50d5a0b2b2aa9928c7"
+    },
+    "sourceEventId": "pet-v4:event:1"
+  },
+  "bodyCanonical": "{\"activityId\":1003,\"inputs\":{\"petBottleCount\":3},\"methodology\":{\"id\":2003,\"version\":3},\"partnerId\":101,\"schemaVersion\":4,\"source\":{\"ownerHash\":\"0x56a6eb3142b2cdc8d47682a4ba1023997d2cd75880b0ce50d5a0b2b2aa9928c7\"},\"sourceEventId\":\"pet-v4:event:1\"}",
+  "bodyHash": "0x1f1c2573921741063d3ec77d518c94ea7b717b6d4e1dc7517111746441c6bc2d",
+  "message": "DMRVN v4 source:0x1f1c2573921741063d3ec77d518c94ea7b717b6d4e1dc7517111746441c6bc2d",
+  "sourceSignature": "0x2cb22cdc249bb58d623654ae3f06cacf951c0e084a99674bb5555ce93525e29c67d51fa6e010fb0b118422b680457914d86acc891cf722deefad4c201a488b691c",
+  "evidence": {
+    "activityId": 1003,
+    "inputs": {
+      "petBottleCount": 3
+    },
+    "methodology": {
+      "id": 2003,
+      "version": 3
+    },
+    "partnerId": 101,
+    "provenance": {
+      "signer": "0x2b5ad5c4795c026514f8317c7a215e218dccd6cf",
+      "sourceSignature": "0x2cb22cdc249bb58d623654ae3f06cacf951c0e084a99674bb5555ce93525e29c67d51fa6e010fb0b118422b680457914d86acc891cf722deefad4c201a488b691c"
+    },
+    "schemaVersion": 4,
+    "source": {
+      "ownerHash": "0x56a6eb3142b2cdc8d47682a4ba1023997d2cd75880b0ce50d5a0b2b2aa9928c7"
+    },
+    "sourceEventId": "pet-v4:event:1"
+  },
+  "evidenceCanonical": "{\"activityId\":1003,\"inputs\":{\"petBottleCount\":3},\"methodology\":{\"id\":2003,\"version\":3},\"partnerId\":101,\"provenance\":{\"signer\":\"0x2b5ad5c4795c026514f8317c7a215e218dccd6cf\",\"sourceSignature\":\"0x2cb22cdc249bb58d623654ae3f06cacf951c0e084a99674bb5555ce93525e29c67d51fa6e010fb0b118422b680457914d86acc891cf722deefad4c201a488b691c\"},\"schemaVersion\":4,\"source\":{\"ownerHash\":\"0x56a6eb3142b2cdc8d47682a4ba1023997d2cd75880b0ce50d5a0b2b2aa9928c7\"},\"sourceEventId\":\"pet-v4:event:1\"}",
+  "evidenceHash": "0x480e622fd47996aecbb8b725e75f6e14f69eb8673e8c5f321614efb8d36ad266"
+}
