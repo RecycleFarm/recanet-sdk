@@ -13,7 +13,10 @@ concurrency:
   group: contract-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  native:
+    uses: ./.github/workflows/typescript-native.yml
   contract:
+    needs: native
     name: Java and TypeScript common contract
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -30,6 +33,12 @@ jobs:
           node -e 'if (process.platform !== "linux" || process.arch !== "x64") process.exit(1); console.log({platform: process.platform, arch: process.arch, node: process.version});'
       - name: Install locked dependencies
         run: make install
+      - name: Collect both native prebuilds from this workflow run
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: recanet-native-*
+          path: sdks/typescript/prebuilds/
+          merge-multiple: true
       - name: Compare executable common contract
         run: make contract-test 2>&1 | tee contract-test.log
       - name: Check complete API coverage and reviewed declarations

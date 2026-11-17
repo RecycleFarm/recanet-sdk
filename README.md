@@ -4,7 +4,7 @@
 
 ## 시작하기
 
-첫 PoC는 Ubuntu24.04 Linux x64에서 JDK17, Node22, npm, Python3, make를 사용한다. TypeScript의 FileOperationJournal native 빌드에는 지원 OS의 C compiler와 Node headers가 필요하다. 현재 지원 검증 범위와 제약은 [호환성 기록](docs/compatibility.md)에 있다.
+첫 PoC는 Ubuntu24.04 Linux x64에서 JDK17, Node22, npm, Python3, make를 사용한다. TypeScript SDK는 macOS ARM64(Apple Silicon)·Node22 설치와 실행도 지원한다. TypeScript 소스 개발 시 FileOperationJournal native 빌드에는 지원 OS의 C compiler와 Node headers가 필요하다. 배포 패키지에는 Linux x64와 macOS ARM64 바이너리가 포함되어 사용자는 컴파일 도구 없이 설치·실행할 수 있다. 현재 지원 검증 범위와 제약은 [호환성 기록](docs/compatibility.md)에 있다.
 
 ```sh
 make install

@@ -9,7 +9,9 @@ const directory = await mkdtemp(join(tmpdir(), 'recanet-package-consumer-'));
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const cache = process.env.RECANET_NPM_CACHE ? ['--cache', process.env.RECANET_NPM_CACHE] : [];
 function run(executable, args, cwd) {
-  const result = spawnSync(executable, args, { cwd, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
+  const env = { ...process.env, CC: '/recanet-no-compiler',
+    RECANET_NODE_INCLUDE: '/recanet-no-headers', npm_config_nodedir: '/recanet-no-headers' };
+  const result = spawnSync(executable, args, { cwd, env, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
   if (result.error || result.status !== 0) throw new Error(result.stdout + result.stderr || 'Package verification command failed');
   return result.stdout;
 }
@@ -17,12 +19,12 @@ try {
   const packed = JSON.parse(run(npm, ['pack', '--json', '--pack-destination', directory, ...cache], root))[0];
   const files = new Set(packed.files.map(file => file.path));
   for (const file of files) {
-    if (file.startsWith('docs/') || file.endsWith('.map') || file.endsWith('-sources.jar')) {
+    if (file.startsWith('docs/') || file.endsWith('.map') || file.endsWith('-sources.jar') || file === 'native/posix-lock.c' || file === 'scripts/build-native.mjs') {
       throw new Error('Private/development content in package: ' + file);
     }
   }
   for (const path of ['dist/index.js', 'dist/index.d.ts', 'dist/resources/dmrvn/dmrvn-claim-v7.json',
-    'native/posix-lock.c', 'scripts/build-native.mjs', 'tools/greenfield/worker.cjs', 'tools/greenfield/package-lock.json',
+    'prebuilds/linux-x64/posix-lock.node', 'prebuilds/darwin-arm64/posix-lock.node', 'scripts/install-native.mjs', 'tools/greenfield/worker.cjs', 'tools/greenfield/package-lock.json',
     'tools/greenfield/vendor/elliptic/LICENSE', 'tools/greenfield/vendor/elliptic/lib/elliptic/ec/index.js',
     'tools/greenfield/vendor/safe-set/index.cjs', 'THIRD_PARTY_NOTICES']) {
     if (!files.has(path)) throw new Error('Missing package file: ' + path);
@@ -31,7 +33,7 @@ try {
     '@recyclefarm/recanet-sdk': 'file:' + join(directory, packed.filename), typescript: '6.0.3', '@types/node': '22.20.5',
   } }));
   const offline = process.env.RECANET_PACKAGE_OFFLINE === '1' ? ['--offline'] : [];
-  run(npm, ['install', '--ignore-scripts', '--no-audit', '--no-fund', ...offline, ...cache], directory);
+  run(npm, ['install', '--foreground-scripts', '--no-audit', '--no-fund', ...offline, ...cache], directory);
   const installed = join(directory, 'node_modules/@recyclefarm/recanet-sdk');
   for (const file of files) {
     if (!file.endsWith('.md')) continue;
@@ -51,5 +53,8 @@ try {
     '--lib', 'ES2022', '--types', 'node', '--strict', 'consumer.ts'], directory);
   const output = run(process.execPath, ['consumer.js'], directory);
   process.stdout.write(output);
+  // Prove runtime also works when lifecycle scripts are disabled by consumers.
+  run(npm, ['ci', '--ignore-scripts', '--no-audit', '--no-fund', ...offline, ...cache], directory);
+  process.stdout.write(run(process.execPath, ['consumer.js'], directory));
   process.stdout.write(JSON.stringify({ files: packed.entryCount, bytes: packed.size, integrity: packed.integrity }) + '\n');
 } finally { await rm(directory, { recursive: true, force: true }); }

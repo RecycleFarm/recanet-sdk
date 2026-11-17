@@ -13,7 +13,7 @@
 | 패키지 | com.youngminkim.recanet:recanet-java | @recyclefarm/recanet-sdk |
 | 공개 경계 | com.youngminkim.recanet 및 dmrvn 공개 타입 | src/index.ts의 exports |
 | PET v3 전용 factory | 없음, 일반/명시 schema 생성자 유지 | DeclaredMethodology.petV3 존재 |
-| 영속 journal | Java 파일 잠금 | macOS/Linux용 Node-API native 빌드 필요 |
+| 영속 journal | Java 파일 잠금 | 배포 패키지에 Linux x64/macOS ARM64 Node-API v8 바이너리 포함 |
 | Greenfield worker | 기존 Java main 버전 유지 | UTF-8 chunk 처리 수정된 TS 버전 유지 |
 | telemetry | 별도 보존 브랜치에만 존재 | main의 진단 로그는 과거 revert됨 |
 
@@ -24,4 +24,4 @@ Phase 2 실행 증거는 macOS ARM64의 JDK17/Node22·Node25다. Phase 3 원격 
 보안 검사에서 Greenfield 의존성 npm28건과 Java OSV 고유 권고12건, Bouncy Castle artifact 중복을 확인했다. 실제 영향과 수정 정책은 별도 검토 대상이며 이번에는 버전을 바꾸지 않았다. [상세 결과](phase1-additional-validation.md).
 
 
-현재 rc.1의 지원 범위는 Linux x64·Node22·JDK17로 제한한다. 과거 macOS CI 성공은 rc.1의 macOS 배포 지원을 의미하지 않는다. 기존 보안 권고는 [수정과 재검증 기록](security/rc1-remediation.md)을 따른다.
+현재 rc.1의 Java 지원 기준은 Linux x64·JDK17이며, TypeScript는 Linux x64 또는 macOS ARM64·Node22를 지원한다. TypeScript tarball은 두 플랫폼의 Node-API v8 바이너리를 포함하고 실행 시 해당 파일을 선택한다. 사용자 설치에는 C compiler나 Node headers가 필요 없으며, 소스 개발 빌드에서만 필요하다. npm os/cpu의 교차 조합인 Linux ARM64와 Intel Mac은 설치 스크립트에서 거부한다. TypeScript CI는 Ubuntu24.04 x64와 macOS15 ARM64에서 설치·전체 검사·tarball 소비자를 실행한다. 기존 보안 권고는 [수정과 재검증 기록](security/rc1-remediation.md)을 따른다.

@@ -1,3 +1,5 @@
+> 현재 TypeScript 설치 지원은 Linux x64와 macOS ARM64·Node22다. 아래 Linux 전용 후보와 native 제약은 확장 전 기록이다. 현재 tarball은 두 플랫폼의 사전 빌드 native를 포함하며 사용자 설치에서는 컴파일하지 않는다. [현재 호환성](compatibility.md)과 [설치 안내](../sdks/typescript/README.md)를 따른다.
+
 # Phase 4 배포 준비와 배포 전 결정
 
 확인일: 2026-11-17 KST. 상태: 초기 준비 기록과 현재 결정 상태. D1~D4 및 보안 수정 후 rc.1 후보 검증은 사용자 승인으로 반영했다. 발행 권한·토큰·파트너 접근과 실제 패키지 발행은 계속 보류한다.

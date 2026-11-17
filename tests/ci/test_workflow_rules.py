@@ -179,26 +179,36 @@ class JavaStaging(unittest.TestCase):
 
 
 class NpmTarball(unittest.TestCase):
-    def pack(self, directory, version='0.1.0', include_native=True):
+    def pack(self, directory, version='0.1.0', missing=None, wrong_arch=False, bad_digest=False, install_script=True):
         path = Path(directory) / 'fixture.tgz'
+        package = {'name': '@recyclefarm/recanet-sdk', 'version': version,
+                   'os': ['linux', 'darwin'], 'cpu': ['x64', 'arm64'],
+                   'scripts': {'install': 'node scripts/install-native.mjs'} if install_script else {}}
+        entries = {'package/package.json': json.dumps(package).encode(),
+                   'package/dist/index.js': b'export {};', 'package/dist/index.d.ts': b'export {};',
+                   'package/scripts/install-native.mjs': b'/* fixture */'}
+        for target in ('linux-x64', 'darwin-arm64'):
+            if target == missing:
+                continue
+            binary = (b'\x7fELF\x02\x01' + b'\x00' * 12 + b'\x3e\x00') if target == 'linux-x64' else bytes.fromhex('cffaedfe0c000001')
+            if wrong_arch:
+                binary = b'wrong architecture'
+            entries[f'package/prebuilds/{target}/posix-lock.node'] = binary
+            entries[f'package/prebuilds/{target}/build.json'] = json.dumps({
+                'binarySha256': 'invalid' if bad_digest else hashlib.sha256(binary).hexdigest()}).encode()
         with tarfile.open(path, 'w:gz') as archive:
-            entries = {'package/package.json': json.dumps({'name': '@recyclefarm/recanet-sdk', 'version': version, 'os': ['linux'], 'cpu': ['x64']}).encode(),
-                       'package/dist/index.js': b'export {};', 'package/dist/index.d.ts': b'export {};',
-                       'package/native/posix-lock.c': b'/* fixture */'}
-            if include_native:
-                entries['package/dist/native/posix-lock.node'] = b'\x7fELF\x02\x01' + b'\x00' * 12 + b'\x3e\x00'
             for name, data in entries.items():
                 item = tarfile.TarInfo(name); item.size = len(data)
                 archive.addfile(item, io.BytesIO(data))
         return path
 
-    def test_pack_requires_matching_metadata_and_native_files(self):
+    def test_pack_requires_matching_metadata_and_both_prebuilds(self):
         with tempfile.TemporaryDirectory() as directory:
             release.verify_npm_tarball(self.pack(directory), '@recyclefarm/recanet-sdk', '0.1.0')
-            with self.assertRaises(ValueError):
-                release.verify_npm_tarball(self.pack(directory, version='9.0.0'), '@recyclefarm/recanet-sdk', '0.1.0')
-            with self.assertRaises(ValueError):
-                release.verify_npm_tarball(self.pack(directory, include_native=False), '@recyclefarm/recanet-sdk', '0.1.0')
+            for options in ({'version': '9.0.0'}, {'missing': 'linux-x64'}, {'missing': 'darwin-arm64'},
+                            {'wrong_arch': True}, {'bad_digest': True}, {'install_script': False}):
+                with self.subTest(options=options), self.assertRaises(ValueError):
+                    release.verify_npm_tarball(self.pack(directory, **options), '@recyclefarm/recanet-sdk', '0.1.0')
 
 
 if __name__ == '__main__':
