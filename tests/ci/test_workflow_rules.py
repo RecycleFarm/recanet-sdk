@@ -154,6 +154,13 @@ class JavaStaging(unittest.TestCase):
         with self.assertRaises(ValueError):
             release.stage('java', '0.1.0-rc.1', self.root / 'out')
 
+    def test_worker_bundle_excludes_generated_modules(self):
+        cache = self.sdk / 'tools/greenfield/vendor/elliptic/node_modules/example'
+        cache.mkdir(parents=True); (cache / 'index.js').write_text('fixture')
+        result = release.stage('java', '0.1.0-rc.1', self.root / 'out')
+        with tarfile.open(result / 'greenfield-worker-linux-x64.tar.gz') as archive:
+            self.assertFalse(any('/node_modules/' in name for name in archive.getnames()))
+
     def test_existing_candidate_is_not_overwritten(self):
         release.stage('java', '0.1.0-rc.1', self.root / 'out')
         with self.assertRaises(FileExistsError):

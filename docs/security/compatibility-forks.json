@@ -36,12 +36,7 @@
     "elliptic/lib/elliptic/eddsa/key.js": "5f60791423f74be8b8792b50d54bec96dc8b11d0f4979761a91ec810d4f051d3",
     "elliptic/lib/elliptic/eddsa/index.js": "47cb886aee78234d311ec6be032cad1b17de9bd60dcde34de76c2bab9b16e9b5",
     "elliptic/lib/elliptic/eddsa/signature.js": "867e563e9804ba4502f70704bdadc8b14a792cceb968a2e9460bb72f456281a0",
-    "elliptic/lib/elliptic/precomputed/secp256k1.js": "9e383365793650467605de197cdb71e09c22ebcdc02c5336873412c14c81bac7",
-    "elliptic/node_modules/bn.js/LICENSE": "445739f5b5eb63e5aeff5aeb0f35a45080a421615dce0d97f9939aeea498acdd",
-    "elliptic/node_modules/bn.js/package.json": "34b1923a700a3a344515f0ea673cd36b22cdbfe9f68ef30dfc06dcdaf285ee0b",
-    "elliptic/node_modules/bn.js/util/genCombMulTo.js": "931b90cfd307f69888e148149f8b5736049089a90cf93bf267cadd5058cc1ebf",
-    "elliptic/node_modules/bn.js/util/genCombMulTo10.js": "a544f8f3bd04ccc08c6463d34d3b6bc796af20e10b6125ce7d60e144d714d294",
-    "elliptic/node_modules/bn.js/lib/bn.js": "6c67724e6d6ba2c42e098ffa680148dda95364afd565c2b1f72c966f26bd2cf2"
+    "elliptic/lib/elliptic/precomputed/secp256k1.js": "9e383365793650467605de197cdb71e09c22ebcdc02c5336873412c14c81bac7"
   },
   "elliptic_origin": {
     "npm_version": "6.6.1",

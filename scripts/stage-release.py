@@ -111,7 +111,7 @@ def security_evidence(language):
 def bundle_java_worker(sdk, destination):
     worker = sdk / 'tools/greenfield'
     paths = [worker / x for x in ('worker.cjs', 'package.json', 'package-lock.json')]
-    paths += sorted(p for p in (worker / 'vendor').rglob('*') if p.is_file() and p.name != 'README.md')
+    paths += sorted(p for p in (worker / 'vendor').rglob('*') if p.is_file() and p.name != 'README.md' and 'node_modules' not in p.relative_to(worker / 'vendor').parts)
     with (destination / 'greenfield-worker-linux-x64.tar.gz').open('wb') as output:
         with gzip.GzipFile(fileobj=output, mode='wb', mtime=0) as compressed:
             with tarfile.open(fileobj=compressed, mode='w') as archive:

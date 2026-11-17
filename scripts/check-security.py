@@ -48,7 +48,7 @@ def verify_forks(worker):
         if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
             raise ValueError(f'Reviewed compatibility fork changed: {relative}')
     actual = {p.relative_to(worker / 'vendor').as_posix() for p in (worker / 'vendor').rglob('*')
-              if p.is_file() and p.name != 'README.md'}
+              if p.is_file() and p.name != 'README.md' and 'node_modules' not in p.relative_to(worker / 'vendor').parts}
     if actual != set(review['sha256']):
         raise ValueError('Unexpected or missing fork runtime files')
     return review['patched_advisories']
