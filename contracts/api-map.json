@@ -6118,7 +6118,7 @@
     },
     {
       "key": "GreenfieldPublicReaderOptions.fetch",
-      "signature": "{ (input: RequestInfo | URL, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<Response>; }",
+      "signature": "typeof globalThis.fetch",
       "source": "sdks/typescript/src/greenfield-public-reader.ts",
       "optional": true,
       "readonly": true,
@@ -6243,7 +6243,7 @@
     },
     {
       "key": "HttpEvmRpcOptions.fetch",
-      "signature": "{ (input: RequestInfo | URL, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<Response>; }",
+      "signature": "typeof globalThis.fetch",
       "source": "sdks/typescript/src/evm-rpc.ts",
       "optional": true,
       "readonly": true,
@@ -6828,7 +6828,7 @@
     },
     {
       "key": "PrivyClientOptions.fetch",
-      "signature": "{ (input: RequestInfo | URL, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<Response>; }",
+      "signature": "typeof globalThis.fetch",
       "source": "sdks/typescript/src/privy-client.ts",
       "optional": true,
       "readonly": true,

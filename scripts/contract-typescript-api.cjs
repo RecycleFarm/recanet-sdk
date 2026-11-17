@@ -25,7 +25,7 @@ function add(key, symbol, declaration) {
     if (sig) signatures = [checker.signatureToString(sig, d, flags)];
   }
   const type = checker.getTypeOfSymbolAtLocation(symbol, d);
-  result.push({ key, signature: signatures[0] || (ts.isInterfaceDeclaration(d) ? "interface " + d.name.text : ts.isTypeAliasDeclaration(d) ? d.type.getText().replace(/\s+/g, " ") : checker.typeToString(type, d, flags)),
+  result.push({ key, signature: signatures[0] || (ts.isInterfaceDeclaration(d) ? "interface " + d.name.text : ts.isTypeAliasDeclaration(d) || (d.type && ts.isTypeQueryNode(d.type)) ? d.type.getText().replace(/\s+/g, " ") : checker.typeToString(type, d, flags)),
     source: path.relative(root, d.getSourceFile().fileName).split(path.sep).join('/'),
     optional: !!(symbol.flags & ts.SymbolFlags.Optional),
     readonly: !!(ts.getCombinedModifierFlags(d) & ts.ModifierFlags.Readonly),
