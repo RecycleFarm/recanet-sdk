@@ -1,0 +1,8 @@
+.DS_Store
+.idea/
+.env
+.env.*
+!.env.example
+*.bundle
+__pycache__/
+*.py[cod]

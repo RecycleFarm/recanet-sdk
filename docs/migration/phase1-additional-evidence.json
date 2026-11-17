@@ -1,0 +1,364 @@
+{
+  "checked_date_kst": "2026-11-17",
+  "phase": "Phase 1 only",
+  "revisions": {
+    "java_main": "37c78cfa01d9892ca26de61bb74df827923917cf",
+    "java_telemetry": "0e8fcaf7675e2cd607ff7d4e3805c4476c60434b",
+    "typescript_main": "eb132e7d03110d7238e14627b3f87be6cb7b8798"
+  },
+  "environment": {
+    "os": "macOS",
+    "arch": "arm64",
+    "java": "Zulu 17.0.18",
+    "node_added": "22.23.5",
+    "npm": "11.11.0"
+  },
+  "tests": {
+    "telemetry_junit": {
+      "tests": 221,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "telemetry_worker": {
+      "tests": 12,
+      "failures": 0,
+      "skipped": 0
+    },
+    "node22_main": {
+      "tests": 267,
+      "failures": 0,
+      "skipped": 0
+    },
+    "node22_worker": {
+      "tests": 14,
+      "failures": 0,
+      "skipped": 0
+    },
+    "node22_package": {
+      "passed": true,
+      "files": 200,
+      "bytes": 196540
+    },
+    "java_external_consumer": {
+      "compile_jar_only": true,
+      "runtime_with_resolved_dependencies": true
+    },
+    "cross_json": {
+      "cases": 58,
+      "matched": 58,
+      "mismatched": 0
+    }
+  },
+  "permissions": {
+    "account": "raddaslul",
+    "organization_role": "member",
+    "organization_plan": "free",
+    "repository_admin": true,
+    "java_main_protected": false,
+    "typescript_main_protected": false,
+    "packages_api_status": 200,
+    "packages_error": null,
+    "protection_and_rulesets_status": 403,
+    "protection_error": "plan upgrade required",
+    "read_packages_scope": true,
+    "package_list_results": {
+      "maven": [],
+      "npm": [],
+      "scope": "packages readable by raddaslul"
+    },
+    "repository_linked_package_counts": {
+      "RecycleFarm/recanet-java": 0,
+      "RecycleFarm/recanet-typescript": 0
+    },
+    "package_read_recheck_request_ids": {
+      "maven": "C828:F1FFE:48E22F:7F0B84:6AFBC910",
+      "npm": "C82C:142E0A:496EC2:7FABC5:6AFBC912"
+    }
+  },
+  "java_osv": {
+    "runtime_components": 13,
+    "telemetry_extra_components": 3,
+    "affected_main_components": 4,
+    "unique_advisories": 12,
+    "unique_advisory_severity": {
+      "HIGH": 7,
+      "MODERATE": 3,
+      "CRITICAL": 2
+    },
+    "packages": [
+      {
+        "package": "com.fasterxml.jackson.core:jackson-annotations",
+        "version": "2.22",
+        "advisories": []
+      },
+      {
+        "package": "com.fasterxml.jackson.core:jackson-core",
+        "version": "2.22.1",
+        "advisories": [
+          {
+            "id": "GHSA-7hhh-6rmp-j9qf",
+            "aliases": [
+              "CVE-2026-89425"
+            ],
+            "severity": "HIGH",
+            "summary": "jackson-core: UTF8DataInputJsonParser._reportInvalidToken() missing maxErrorTokenLength limit -> unbounded StringBuilder growth (DoS)",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-p6pp-m3f8-5c89",
+            "aliases": [
+              "CVE-2026-89407"
+            ],
+            "severity": "HIGH",
+            "summary": " jackson-core: ReDoS: quadratic backtracking in NumberInput.PATTERN_FLOAT via looksLikeValidNumber()",
+            "withdrawn": null
+          }
+        ]
+      },
+      {
+        "package": "com.fasterxml.jackson.core:jackson-databind",
+        "version": "2.22.1",
+        "advisories": [
+          {
+            "id": "GHSA-cxp5-3px4-pw24",
+            "aliases": [
+              "CVE-2026-91777"
+            ],
+            "severity": "HIGH",
+            "summary": "jackson-databind quadratic forward-reference completion ",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-gx83-3vf8-gh7j",
+            "aliases": [
+              "CVE-2026-83557"
+            ],
+            "severity": "MODERATE",
+            "summary": "jackson-databind: Comparable missing from DefaultBaseTypeLimitingValidator's unsafe base types (incomplete PolymorphicTypeValidator denylist)",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-q4xh-88c3-wmh7",
+            "aliases": [
+              "CVE-2026-68497"
+            ],
+            "severity": "HIGH",
+            "summary": "jackson-databind: Duration XMLGregorianCalendar Unbounded Number Parse DoS",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-wjgm-6hv5-3cvf",
+            "aliases": [
+              "CVE-2026-19032"
+            ],
+            "severity": "MODERATE",
+            "summary": "jackson-databind: Path Deserialization Missing Scheme Allowlist for FileSystemProvider Resolution",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-wv8q-qhhj-9h54",
+            "aliases": [
+              "CVE-2026-91776"
+            ],
+            "severity": "HIGH",
+            "summary": "jackson-databind retains every unknown raw type ID ",
+            "withdrawn": null
+          }
+        ]
+      },
+      {
+        "package": "com.fasterxml.jackson.datatype:jackson-datatype-jdk8",
+        "version": "2.22.1",
+        "advisories": []
+      },
+      {
+        "package": "com.fasterxml.jackson.datatype:jackson-datatype-jsr310",
+        "version": "2.22.1",
+        "advisories": []
+      },
+      {
+        "package": "com.nimbusds:nimbus-jose-jwt",
+        "version": "10.10",
+        "advisories": []
+      },
+      {
+        "package": "commons-io:commons-io",
+        "version": "2.18.0",
+        "advisories": []
+      },
+      {
+        "package": "io.github.erdtman:java-json-canonicalization",
+        "version": "1.1",
+        "advisories": []
+      },
+      {
+        "package": "io.privy.api:privy-java",
+        "version": "0.59.0",
+        "advisories": []
+      },
+      {
+        "package": "jakarta.annotation:jakarta.annotation-api",
+        "version": "3.0.0",
+        "advisories": []
+      },
+      {
+        "package": "org.bouncycastle:bcprov-jdk15to18",
+        "version": "1.83",
+        "advisories": [
+          {
+            "id": "GHSA-574f-3g2m-x479",
+            "aliases": [
+              "CVE-2025-14813"
+            ],
+            "severity": "CRITICAL",
+            "summary": "Bouncy Castle for Java GOST 28147 CTR mode reuses keystream after 255 blocks",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-9pwp-9qqc-pr26",
+            "aliases": [
+              "CVE-2026-8763"
+            ],
+            "severity": "CRITICAL",
+            "summary": "Bouncy Castle: Name Constraints bypass via trailing dot in rfc822Name and URI",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-c3fc-8qff-9hwx",
+            "aliases": [
+              "CVE-2026-0636"
+            ],
+            "severity": "MODERATE",
+            "summary": "Bouncy Castle has an LDAP injection",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-qp49-qgx5-5m26",
+            "aliases": [
+              "CVE-2026-13506"
+            ],
+            "severity": "HIGH",
+            "summary": "Bouncy Castle: Lazy ASN.1 sequence forcing resets nesting-depth guard",
+            "withdrawn": null
+          }
+        ]
+      },
+      {
+        "package": "org.bouncycastle:bcprov-jdk18on",
+        "version": "1.80",
+        "advisories": [
+          {
+            "id": "GHSA-574f-3g2m-x479",
+            "aliases": [
+              "CVE-2025-14813"
+            ],
+            "severity": "CRITICAL",
+            "summary": "Bouncy Castle for Java GOST 28147 CTR mode reuses keystream after 255 blocks",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-9pwp-9qqc-pr26",
+            "aliases": [
+              "CVE-2026-8763"
+            ],
+            "severity": "CRITICAL",
+            "summary": "Bouncy Castle: Name Constraints bypass via trailing dot in rfc822Name and URI",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-c3fc-8qff-9hwx",
+            "aliases": [
+              "CVE-2026-0636"
+            ],
+            "severity": "MODERATE",
+            "summary": "Bouncy Castle has an LDAP injection",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-p93r-85wp-75v3",
+            "aliases": [
+              "CVE-2026-5598"
+            ],
+            "severity": "HIGH",
+            "summary": "Bouncy Castle Has Covert Timing Channel Vulnerability",
+            "withdrawn": null
+          },
+          {
+            "id": "GHSA-qp49-qgx5-5m26",
+            "aliases": [
+              "CVE-2026-13506"
+            ],
+            "severity": "HIGH",
+            "summary": "Bouncy Castle: Lazy ASN.1 sequence forcing resets nesting-depth guard",
+            "withdrawn": null
+          }
+        ]
+      },
+      {
+        "package": "org.openapitools:jackson-databind-nullable",
+        "version": "0.2.6",
+        "advisories": []
+      },
+      {
+        "package": "io.opentelemetry:opentelemetry-api",
+        "version": "1.68.0",
+        "advisories": []
+      },
+      {
+        "package": "io.opentelemetry:opentelemetry-common",
+        "version": "1.68.0",
+        "advisories": []
+      },
+      {
+        "package": "io.opentelemetry:opentelemetry-context",
+        "version": "1.68.0",
+        "advisories": []
+      }
+    ]
+  },
+  "bouncycastle": {
+    "jars": [
+      "bcprov-jdk15to18:1.83",
+      "bcprov-jdk18on:1.80"
+    ],
+    "overlapping_classes": 4245,
+    "example": [
+      "org/bouncycastle/LICENSE.class",
+      "org/bouncycastle/asn1/ASN1Absent.class",
+      "org/bouncycastle/asn1/ASN1BMPString$1.class",
+      "org/bouncycastle/asn1/ASN1BMPString.class",
+      "org/bouncycastle/asn1/ASN1BitString$1.class",
+      "org/bouncycastle/asn1/ASN1BitString.class",
+      "org/bouncycastle/asn1/ASN1BitStringParser.class",
+      "org/bouncycastle/asn1/ASN1Boolean$1.class",
+      "org/bouncycastle/asn1/ASN1Boolean.class",
+      "org/bouncycastle/asn1/ASN1Choice.class"
+    ]
+  },
+  "unexecuted": [
+    "Phase 2 migration",
+    "repository creation or push",
+    "settings modification",
+    "package publication",
+    "external partner installation",
+    "live financial/blockchain/storage transactions",
+    "Linux/x64/Windows execution"
+  ],
+  "existing_repository_actions_policy": {
+    "repositories": [
+      "RecycleFarm/recanet-java",
+      "RecycleFarm/recanet-typescript"
+    ],
+    "enabled": true,
+    "allowed_actions": "all",
+    "sha_pinning_required": false,
+    "default_workflow_permissions": "read",
+    "can_approve_pull_request_reviews": false
+  },
+  "proposed_repository_read_status": {
+    "RecycleFarm/recanet-sdk": 404,
+    "RecycleFarm/recanet-sdk-distribution": 404,
+    "meaning": "not found or not accessible; no creation performed"
+  }
+}

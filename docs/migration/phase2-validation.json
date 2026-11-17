@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "date_kst": "2026-11-17",
+  "environment": {
+    "os": "macOS",
+    "architecture": "arm64",
+    "java": "17.0.18",
+    "node": "22.23.5"
+  },
+  "command": "make install; RECANET_NODE_INCLUDE=<Node22 headers> npm exec --package=node@22.23.5 -- make check",
+  "exit_code": 0,
+  "java_junit": {
+    "tests": 126,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "java_worker": {
+    "tests": 8,
+    "pass": 8,
+    "fail": 0,
+    "skipped": 0
+  },
+  "java_pet_wasm": "passed; local fixture only",
+  "java_examples_compilation": "passed; examplesClasses only, no execution",
+  "typescript_main": {
+    "tests": 267,
+    "pass": 267,
+    "fail": 0,
+    "skipped": 0
+  },
+  "typescript_worker": {
+    "tests": 14,
+    "pass": 14,
+    "fail": 0,
+    "skipped": 0
+  },
+  "typescript_package_consumer": "passed; tarball install, types, ESM, native, documentation links",
+  "api_baseline": {
+    "java_class_entries": 66,
+    "typescript_declaration_files": 59,
+    "unchanged": true
+  },
+  "source_tree_identity": {
+    "java": {
+      "prefix": "sdks/java",
+      "original_tree": "91eac309662d4f677ccf248fa9a3c815efa841d4",
+      "identical": true
+    },
+    "typescript": {
+      "prefix": "sdks/typescript",
+      "original_tree": "90cc41ce9482c4620c3e76a7156db0e452b36c8d",
+      "identical": true
+    }
+  },
+  "source_bundle_restore_verified": true,
+  "no_package_publication": true
+}

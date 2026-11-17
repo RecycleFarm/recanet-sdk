@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "migration_date_kst": "2026-11-17",
+  "method": "unmodified original commits, prefix-only descendant commits, unrelated-histories merge",
+  "sources": {
+    "java": {
+      "repository": "RecycleFarm/recanet-java",
+      "default_branch": "main",
+      "head": "37c78cfa01d9892ca26de61bb74df827923917cf",
+      "tree": "91eac309662d4f677ccf248fa9a3c815efa841d4",
+      "prefix": "sdks/java",
+      "refs": {
+        "refs/heads/codex/sdk-telemetry": "0e8fcaf7675e2cd607ff7d4e3805c4476c60434b",
+        "refs/heads/main": "37c78cfa01d9892ca26de61bb74df827923917cf"
+      },
+      "preserved_refs": {
+        "refs/heads/codex/sdk-telemetry": "refs/heads/legacy/java/codex/sdk-telemetry",
+        "refs/heads/main": "refs/heads/legacy/java/main"
+      },
+      "commit_count_default": 6,
+      "commit_count_all": 8,
+      "tracked_file_count": 96,
+      "bundle": {
+        "file": "recanet-java.bundle",
+        "sha256": "6b90c476f852558175cc8b2da5e8cffe914bd3452ec49012769b6aafa6bc85ed",
+        "restore_verified": true
+      },
+      "prefix_commit": "8a21a932a0b2a4a42d5de2feb4102de42b84bd5d"
+    },
+    "typescript": {
+      "repository": "RecycleFarm/recanet-typescript",
+      "default_branch": "main",
+      "head": "eb132e7d03110d7238e14627b3f87be6cb7b8798",
+      "tree": "90cc41ce9482c4620c3e76a7156db0e452b36c8d",
+      "prefix": "sdks/typescript",
+      "refs": {
+        "refs/heads/main": "eb132e7d03110d7238e14627b3f87be6cb7b8798"
+      },
+      "preserved_refs": {
+        "refs/heads/main": "refs/heads/legacy/typescript/main"
+      },
+      "commit_count_default": 56,
+      "commit_count_all": 56,
+      "tracked_file_count": 153,
+      "bundle": {
+        "file": "recanet-typescript.bundle",
+        "sha256": "e55d443560617c1e1909ff3152b0e34722534fcbea7dd6e66870c0ddcaf4ad0a",
+        "restore_verified": true
+      },
+      "prefix_commit": "1df80986a403db09d35429a6df41d3c12bc594e5"
+    }
+  },
+  "integration_commit": "4507e3f68d66bec362ddcfe2498ac0aa03eb2708"
+}
