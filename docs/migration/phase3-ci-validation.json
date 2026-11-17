@@ -1,0 +1,252 @@
+{
+  "date_kst": "2026-11-17",
+  "scope": "Phase 3 CI and internal release candidate staging; no publication",
+  "tested_revision": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+  "actionlint": "passed; checksum-verified upstream binary",
+  "local_workflow_rule_tests": {
+    "tests": 16,
+    "failures": 0
+  },
+  "runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 44016607813,
+      "event": "push",
+      "headSha": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+      "name": "Java CI",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44016607813",
+      "jobs": [
+        {
+          "name": "Detect Java changes",
+          "conclusion": "success"
+        },
+        {
+          "name": "Java build and tests",
+          "conclusion": "success"
+        },
+        {
+          "name": "Java checks",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44016607827,
+      "event": "push",
+      "headSha": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+      "name": "TypeScript CI",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44016607827",
+      "jobs": [
+        {
+          "name": "Detect TypeScript changes",
+          "conclusion": "success"
+        },
+        {
+          "name": "TypeScript build and tests (ubuntu-24.04)",
+          "conclusion": "success"
+        },
+        {
+          "name": "TypeScript build and tests (macos-15)",
+          "conclusion": "success"
+        },
+        {
+          "name": "TypeScript checks",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44016621384,
+      "event": "workflow_dispatch",
+      "headSha": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+      "name": "Java Release Candidate",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44016621384",
+      "jobs": [
+        {
+          "name": "Validate and stage Java",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44016628198,
+      "event": "workflow_dispatch",
+      "headSha": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+      "name": "TypeScript Release Candidate",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44016628198",
+      "jobs": [
+        {
+          "name": "Validate and stage TypeScript",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "java_junit": {
+    "tests": 126,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "java_worker": {
+    "tests": 8,
+    "failures": 0
+  },
+  "typescript_per_runner": {
+    "main_tests": 267,
+    "worker_tests": 14,
+    "failures": 0,
+    "runners": [
+      "ubuntu-24.04 (Linux x64)",
+      "macos-15 (macOS ARM64)"
+    ]
+  },
+  "public_api_unchanged": {
+    "java_class_entries": 66,
+    "typescript_declaration_files": 59
+  },
+  "release_candidates": [
+    {
+      "language": "java",
+      "run_id": 44016621384,
+      "github_artifacts": [
+        {
+          "id": 14299127163,
+          "name": "java-candidate-44016621384-1",
+          "size_in_bytes": 515857,
+          "digest": "sha256:a74340a2ea472b15507c31dc8dca02b1f78b529743cba1375f2937731d4ff886",
+          "expired": false
+        }
+      ],
+      "manifest": {
+        "schemaVersion": 1,
+        "language": "java",
+        "version": "0.1.0-SNAPSHOT",
+        "sourceCommit": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+        "sourceRef": "refs/heads/main",
+        "repository": "RecycleFarm/recanet-sdk",
+        "workflow": "Java Release Candidate",
+        "runId": "44016621384",
+        "runAttempt": "1",
+        "buildPlatform": {
+          "os": "Linux",
+          "architecture": "x86_64",
+          "node": "v22.23.5"
+        },
+        "package": {
+          "groupId": "com.youngminkim.recanet",
+          "artifactId": "RecanetJava",
+          "version": "0.1.0-SNAPSHOT"
+        },
+        "published": false,
+        "publishReady": false,
+        "blockers": [
+          "Publication intentionally disabled in Phase 3",
+          "Maven artifactId must be lowercase before GitHub Packages publication"
+        ]
+      },
+      "checksums_verified": true,
+      "files": [
+        {
+          "file": "manifest.json",
+          "sha256": "00e11c6c53283fc3f8c34c452aeb200f844fde08d51a73190b6af359c4c7a274"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/RecanetJava/0.1.0-SNAPSHOT/RecanetJava-0.1.0-SNAPSHOT-javadoc.jar",
+          "sha256": "83396e5454d42e8882fb89b3356b270e0a9b30042ba1b96c191fed6f9bc0f87c"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/RecanetJava/0.1.0-SNAPSHOT/RecanetJava-0.1.0-SNAPSHOT-sources.jar",
+          "sha256": "d498c4b35faebc1ed0ff9603da8c8c2655c5694bd0438ef689dc67a445032a07"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/RecanetJava/0.1.0-SNAPSHOT/RecanetJava-0.1.0-SNAPSHOT.jar",
+          "sha256": "024f756e1c7de8a70ce7d20a69bbeca7590c312afe74916687f785f43f10c1d8"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/RecanetJava/0.1.0-SNAPSHOT/RecanetJava-0.1.0-SNAPSHOT.module",
+          "sha256": "5ddc1eb992d9f9ee87071d1e187315d501991e24cf298dc6bdd6df4b5f0b99a9"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/RecanetJava/0.1.0-SNAPSHOT/RecanetJava-0.1.0-SNAPSHOT.pom",
+          "sha256": "474d42cf643857019599df609885ff9eabf3be8e67e060e2b8f905a84ec041a3"
+        }
+      ]
+    },
+    {
+      "language": "typescript",
+      "run_id": 44016628198,
+      "github_artifacts": [
+        {
+          "id": 14298319996,
+          "name": "typescript-candidate-44016628198-1",
+          "size_in_bytes": 198176,
+          "digest": "sha256:528b980a5d1fdbb13e908c7544db961a8df3a63e651cf13e65dcf5fd7b5b773f",
+          "expired": false
+        }
+      ],
+      "manifest": {
+        "schemaVersion": 1,
+        "language": "typescript",
+        "version": "0.1.0",
+        "sourceCommit": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+        "sourceRef": "refs/heads/main",
+        "repository": "RecycleFarm/recanet-sdk",
+        "workflow": "TypeScript Release Candidate",
+        "runId": "44016628198",
+        "runAttempt": "1",
+        "buildPlatform": {
+          "os": "Linux",
+          "architecture": "x86_64",
+          "node": "v22.23.5"
+        },
+        "package": {
+          "name": "recanet-typescript",
+          "version": "0.1.0",
+          "private": true,
+          "engines": {
+            "node": ">=22"
+          },
+          "exports": {
+            ".": {
+              "types": "./dist/index.d.ts",
+              "import": "./dist/index.js"
+            }
+          }
+        },
+        "published": false,
+        "publishReady": false,
+        "blockers": [
+          "Publication intentionally disabled in Phase 3",
+          "Native tarball is specific to the recorded build OS/architecture",
+          "package.json is private; publication requires a separate approved change",
+          "GitHub npm package scope/name has not been finalized"
+        ]
+      },
+      "checksums_verified": true,
+      "files": [
+        {
+          "file": "manifest.json",
+          "sha256": "f61022775c8cabb68c530469493b2b55c12d8480cf0ae674e91304b5107d384a"
+        },
+        {
+          "file": "recanet-typescript-0.1.0.tgz",
+          "sha256": "d4bbac2df0bfcf094ad421d48390ea38840bfed0b05b2b4070047e5287a829c8"
+        }
+      ]
+    }
+  ],
+  "registry_publication_performed": false,
+  "github_release_created": false,
+  "tags_created": false,
+  "distribution_repository_created": false,
+  "sdk_source_trees_unchanged": true,
+  "packages_write_permission_granted": false
+}

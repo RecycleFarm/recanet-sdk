@@ -15,6 +15,6 @@
 
 전체 API 대응과 숫자·오류·시간 경계 차이는 [설계 가이드](monorepo-migration-guide.md#4-공개-api와-기능-차이) 및 [원본 TS 비교 문서](../sdks/typescript/docs/java-parity.md)를 참조한다. API baseline은 Java class entry66개의 public 선언과 TS 선언파일59개를 비교한다. .d.ts는 내부 선언도 포함하는 더 강한 동일성 검사이며59개가 모두 직접 공개 진입점이라는 뜻은 아니다.
 
-현재 플랫폼 실행 증거는 macOS ARM64의 JDK17/Node22·Node25다. Linux/x64/Windows는 이번 이관에서 실행하지 않았다. 단일 머신에서 생성한 native 바이너리를 범용 배포물로 취급하지 않는다.
+Phase 2 실행 증거는 macOS ARM64의 JDK17/Node22·Node25다. Phase 3 원격 CI에서는 Ubuntu24.04 x64의 Java/TS와 macOS15 ARM64의 TS 전체 검사를 추가로 통과했다. Linux ARM64·Windows와 기타 CPU는 이번 원격 CI에서 실행하지 않았다. [실행 근거](migration/phase3-ci.md). 단일 머신에서 생성한 native 바이너리를 범용 배포물로 취급하지 않는다.
 
 보안 검사에서 Greenfield 의존성 npm28건과 Java OSV 고유 권고12건, Bouncy Castle artifact 중복을 확인했다. 실제 영향과 수정 정책은 별도 검토 대상이며 이번에는 버전을 바꾸지 않았다. [상세 결과](phase1-additional-validation.md).

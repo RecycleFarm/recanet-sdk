@@ -38,6 +38,7 @@ npm --prefix sdks/typescript run check:package
 
 - [Monorepo 구조와 마이그레이션 가이드](docs/monorepo-migration-guide.md)
 - [CI와 릴리스 후보 가이드](docs/release-guide.md)
+- [Phase 3 원격 실행 결과](docs/migration/phase3-ci.md)
 - [Phase 2 이관 결과](docs/migration/phase2-migration.md)
 - [원본 refs·SHA·트리·백업 기록](docs/migration/phase2-source-manifest.json)
 - [API 보존 baseline](docs/migration/phase2-public-api-baseline.json)
