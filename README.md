@@ -37,6 +37,7 @@ npm --prefix sdks/typescript run check:package
 ## 설계와 이관 기록
 
 - [Monorepo 구조와 마이그레이션 가이드](docs/monorepo-migration-guide.md)
+- [Phase 4 배포 전 결정·권한·미해결 문제](docs/phase4-readiness.md)
 - [CI와 릴리스 후보 가이드](docs/release-guide.md)
 - [Phase 3 원격 실행 결과](docs/migration/phase3-ci.md)
 - [Phase 2 이관 결과](docs/migration/phase2-migration.md)

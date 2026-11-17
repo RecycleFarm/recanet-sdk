@@ -1,0 +1,55 @@
+{
+  "date_kst": "2026-11-17",
+  "scope": "Phase 4 preparation only; candidate read-only audit",
+  "source_commit": "b1f8f73f4d62c907a55213a536f67742257c4e2f",
+  "java": {
+    "groupId": "com.youngminkim.recanet",
+    "artifactId": "RecanetJava",
+    "version": "0.1.0-SNAPSHOT"
+  },
+  "npm": {
+    "name": "recanet-typescript",
+    "version": "0.1.0",
+    "private": true,
+    "repository": null,
+    "publishConfig": null,
+    "docs": [
+      "package/docs/acceptance.md",
+      "package/docs/decisions.md",
+      "package/docs/evidence-v4.md",
+      "package/docs/greenfield-dependencies.md",
+      "package/docs/java-parity.md",
+      "package/docs/linux-verification.md",
+      "package/docs/progress.md",
+      "package/docs/qa-guide.md",
+      "package/docs/spec-audit.md"
+    ],
+    "source_map_count": 59,
+    "native_elf": true,
+    "native_elf_machine": 62
+  },
+  "candidates_publish_ready": false,
+  "checksums_reverified": true,
+  "registry_visible_counts": {
+    "maven": 0,
+    "npm": 0
+  },
+  "organization_plan": "free",
+  "configured_environments": 0,
+  "decisions_status": "pending; recommendations are not approvals",
+  "no_package_publication": true,
+  "distribution": {
+    "repository": "RecycleFarm/recanet-sdk-distribution",
+    "private": true,
+    "default_branch": "main",
+    "preparation_commit": "3efbc2b87e0b1def2a12f7af128459183b0cd2ed",
+    "publishing_enabled": false,
+    "outside_collaborators": 0,
+    "pending_invitations": 0,
+    "preparation_check": {
+      "run_id": 44018915812,
+      "conclusion": "success",
+      "url": "https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44018915812"
+    }
+  }
+}

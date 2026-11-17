@@ -13,3 +13,7 @@
 ## Phase 3 범위
 
 사용자는 언어별 CI와 릴리스 워크플로를 승인하고 실제 패키지 배포는 보류했다. 따라서 릴리스는 테스트·버전/출처 검증과 내부 Actions artifact 생성까지만 구성했다. Registry·GitHub Release·distribution 발행과 패키지명 변경을 포함하지 않았다. 구현과 실제 실행은 [Phase 3 기록](migration/phase3-ci.md)에 있다.
+
+## Phase 4 준비 범위
+
+사용자는 distribution과 Maven/npm의 준비 및 실제 배포 전 결정·권한·문제 정리를 요청했다. Private distribution에 파트너 문서·설정 예시와 발행 비활성 정책만 준비했다. [결정 표](phase4-readiness.md)의 이름·버전·플랫폼·제공 파일·보안·승인 방식은 권고이며 아직 미확정이다. 토큰·패키지 발행·파트너 초대·SDK 변경은 수행하지 않았다.

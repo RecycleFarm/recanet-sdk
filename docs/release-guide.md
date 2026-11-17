@@ -60,3 +60,6 @@ python3 scripts/stage-release.py --language typescript --version 0.1.0
 ## 발행 전 남은 조건
 
 Java의 대문자 artifactId, npm private/scope/name, native 플랫폼 배포 전략과 의존성 보안 검토는 해결하지 않았다. distribution 연결·파트너 접근·발행 인증·실제 외부 설치는 후속 단계다. 현재 워크플로에 Registry 주소와 발행 step을 추가하기 전 별도 승인 및 검증이 필요하다. 이번에는 배포 토큰이나 GitHub App·Secrets를 만들지 않았다.
+
+
+현재 Phase 4의 준비 상태와 실제 발행 전 결정은 [배포 준비 보고서](phase4-readiness.md)에 정리했다. distribution 문서/설정 초안은 생성했지만 발행 workflow와 실제 Registry 발행은 여전히 보류 상태다.
