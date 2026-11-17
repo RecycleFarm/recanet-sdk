@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ActivityRequest, DeclaredMethodology, DmrvnClient, DmrvnCrypto, DmrvnError, DmrvnJson, PrivyApiError } from '../dist/index.js';
+import { ActivityRequest, DeclaredMethodology, DmrvnClient, DmrvnError, PrivyApiError } from '../dist/index.js';
+
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { userActivityFixture } from './helpers/user-activity.mjs';
 
 const request = (options = {}, source = 'source-event') => new ActivityRequest(' member raw ', source, { custom: ['kg', 3] },

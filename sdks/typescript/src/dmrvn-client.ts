@@ -1,3 +1,5 @@
+import { normalizeAddress } from './dmrvn-crypto.js';
+import { DmrvnError } from './errors.js';
 import type { DeclaredMethodology } from './declared-methodology.js';
 import type { DmrvnConfig } from './dmrvn-config.js';
 import { DmrvnPreflight, type DmrvnPreflightResult } from './dmrvn-preflight.js';
@@ -30,9 +32,19 @@ export class DmrvnClient {
   #context: OperationContext;
   #preflight: DmrvnPreflight;
   constructor(config: DmrvnConfig, rpc: EvmRpc, operator: EvmSigner, storage: GreenfieldStorage,
-    methodology: DeclaredMethodology, journal?: OperationJournal) {
+    methodology: DeclaredMethodology, journal?: OperationJournal | null);
+  constructor(config: DmrvnConfig, rpc: EvmRpc, approver: EvmSigner, relay: EvmSigner, storage: GreenfieldStorage,
+    methodology: DeclaredMethodology, journal?: OperationJournal | null);
+  constructor(config: DmrvnConfig, rpc: EvmRpc, operator: EvmSigner, storageOrRelay: GreenfieldStorage | EvmSigner,
+    methodologyOrStorage: DeclaredMethodology | GreenfieldStorage, journalOrMethodology?: OperationJournal | DeclaredMethodology | null,
+    suppliedJournal?: OperationJournal | null) {
+    const separated = storageOrRelay != null && 'signMessage' in storageOrRelay;
+    if (separated && (!operator || normalizeAddress(operator.address) !== normalizeAddress(storageOrRelay.address))) throw new DmrvnError('INVALID_INPUT');
+    const storage = (separated ? methodologyOrStorage : storageOrRelay) as GreenfieldStorage;
+    const methodology = (separated ? journalOrMethodology : methodologyOrStorage) as DeclaredMethodology;
+    const journal = (separated ? suppliedJournal : journalOrMethodology) as OperationJournal | null | undefined;
     this.#preflight = new DmrvnPreflight(config, rpc, operator, storage, methodology);
-    this.#context = new OperationContext(config, rpc, operator, storage, methodology, journal);
+    this.#context = new OperationContext(config, rpc, operator, storage, methodology, journal ?? undefined);
   }
   preflight(signal?: AbortSignal): Promise<DmrvnPreflightResult> { return this.#preflight.run(signal); }
   prepareEvidence(operationId: string, claimId: string, beneficiary: string, objectName: string,
@@ -69,9 +81,9 @@ export class DmrvnClient {
   }
   async #submitMemberActivity(wallets: UserWalletClient, userId: string, operationId: string, claimId: string,
     objectName: string, body: Readonly<Record<string, unknown>>, gas: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
-    const snapshot = copyState(body);
+    if (wallets == null) throw new TypeError('wallets required');
     const signer = await wallets.signerFor(userId, signal);
-    return submitActivity(this.#context, signer, operationId, claimId, objectName, snapshot, gas, signal);
+    return submitActivity(this.#context, signer, operationId, claimId, objectName, body, gas, signal);
   }
   readResult(operationId: string, reader: DmrvnReader, fromBlock?: bigint | number | null, reportTxHash?: string | null,
     waitTimedOut = false, signal?: AbortSignal): Promise<Record<string, unknown>> {

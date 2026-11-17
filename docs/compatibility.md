@@ -1,4 +1,8 @@
+> 2026-11-17: 공통 Contract 기준으로 TypeScript API와 동작을 Java에 정렬했다. 현재 불일치 해소·실행 검증은 [공통 Contract](../contracts/gaps.md), 현재 API 동결은 [Contract baseline](../contracts/public-api-baseline.json)을 따른다. 아래 Phase 2/3 내용은 당시 이관 기록이며 원본 baseline은 보존한다.
+
 # SDK 호환성 현황
+
+양언어의 목표 동작은 [Recanet SDK 공통 Contract](../contracts/recanet-sdk-contract.md)에 정의한다. 전체 public 메서드 대응과 현재 해소해야 할 차이는 [대응표](../contracts/api-map.md) 및 [준수 차이 목록](../contracts/gaps.md)을 따른다. 아래는 현재 구현/과거 검증 상태이며 공통 계약의 언어별 예외가 아니다.
 
 이관 기준은 Java main `37c78cfa01d9892ca26de61bb74df827923917cf`, TypeScript main `eb132e7d03110d7238e14627b3f87be6cb7b8798`이다. Phase 2의 원본 import tree와 refs는 고정 이력으로 보존한다. 이후 사용자 승인에 따라 rc.1의 좌표·버전·보안 의존성·배포 구성을 바꿨으며 공개 API baseline은 유지한다. 기능 차이 자체를 해소하지 않았다.
 

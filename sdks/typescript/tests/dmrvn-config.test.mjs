@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { DmrvnConfig, DmrvnDeployment, DmrvnCrypto } from '../dist/index.js';
+import { DmrvnConfig, DmrvnDeployment } from '../dist/index.js';
+
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
 
 const raw = async name => JSON.parse(await readFile(new URL('../src/resources/dmrvn/' + name, import.meta.url), 'utf8'));
 const code = expected => error => { assert.equal(error.code, expected); return true; };

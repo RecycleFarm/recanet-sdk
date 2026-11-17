@@ -1,8 +1,12 @@
-import { PrivyApiError } from './errors.js';
+import { privyOrigin } from './internal/dmrvn-uri.js';
+import { javaHttpFetch } from './internal/java-http.js';
+import { PrivyClientConfig, PrivyTokenVerificationConfig } from './privy-config.js';
+import { Duration, duration } from './duration.js';
+import { PrivyApiError, IllegalStateError } from './errors.js';
 import { requestJson, type HttpSettings } from './internal/http.js';
 import { isJavaBlank } from './member-identity.js';
 import { PrivyTokenVerifier, type TokenVerificationOptions, type AuthenticatedUser } from './token-verifier.js';
-import { BackendWalletRegistration, type BackendWalletCreateRequest, type BackendWallet } from './backend-wallet.js';
+import { BackendWalletRegistration, type BackendWalletCreateRequest, type BackendWallet, BackendWalletKeyPair } from './backend-wallet.js';
 import { registerWallet, listWallets, isBackendWallet, memberWallets, type UserWalletClient } from './internal/wallets.js';
 import { createPrivySigner } from './internal/privy-signer.js';
 import type { EvmSigner } from './evm-signer.js';
@@ -12,10 +16,11 @@ export interface PrivyClientOptions {
   readonly appId: string;
   readonly appSecret: string;
   readonly origin?: string;
-  readonly timeoutMs?: number;
+  readonly timeoutMs?: number | bigint;
+  readonly requestTimeout?: Duration;
   /** 테스트와 서비스별 연결 설정에 사용하는 fetch. */
   readonly fetch?: typeof globalThis.fetch;
-  readonly tokenVerification?: TokenVerificationOptions;
+  readonly tokenVerification?: TokenVerificationOptions | PrivyTokenVerificationConfig;
 }
 
 function settings(options: PrivyClientOptions): HttpSettings {
@@ -26,49 +31,50 @@ function settings(options: PrivyClientOptions): HttpSettings {
   if (typeof options.appSecret !== 'string' || isJavaBlank(options.appSecret)) {
     throw new TypeError('appSecret은 비공백 문자열이어야 합니다');
   }
-  const origin = options.origin ?? 'https://api.privy.io';
-  // WHATWG URL이 /, query, 역슬래시 등을 정규화하기 전에 원문을 검사한다.
-  if (!/^https?:\/\/[^/\\?#@\s]+$/i.test(origin)) throw new TypeError('API origin이 올바르지 않습니다');
-  let url: URL;
-  try { url = new URL(origin); } catch { throw new TypeError('API origin이 올바르지 않습니다'); }
-  const host = origin.replace(/^https?:\/\//i, '').replace(/:\d+$/, '').toLowerCase();
-  if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(host)) {
-    throw new TypeError('API origin은 HTTPS 또는 loopback HTTP여야 합니다');
-  }
-  const timeoutMs = options.timeoutMs ?? 30000;
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) throw new TypeError('timeoutMs는 양의 안전한 정수여야 합니다');
-  const fetch = options.fetch ?? globalThis.fetch;
+  const origin = privyOrigin(options.origin ?? 'https://api.privy.io');
+  const timeout = options.requestTimeout ?? duration(options.timeoutMs ?? 30000);
+  const timeoutMs = timeout.toMillis();
+  if (timeout.isNegative() || timeoutMs < 1n) throw new TypeError('timeoutMs는 양의 안전한 정수여야 합니다');
+  const fetch = options.fetch ?? javaHttpFetch();
   if (typeof fetch !== 'function') throw new TypeError('fetch가 필요합니다');
-  return Object.freeze({ appId: options.appId, appSecret: options.appSecret, origin: url.origin, timeoutMs, fetch });
+  return Object.freeze({ appId: options.appId, appSecret: options.appSecret, origin, timeoutMs, timeout, fetch });
 }
 
 /** 생성은 네트워크 호출을 하지 않는다. 인스턴스를 서비스 수명 동안 재사용한다. */
 export class PrivyClient {
   #settings: HttpSettings;
   #verifier: PrivyTokenVerifier | undefined;
+  #config: PrivyClientConfig;
 
-  constructor(options: PrivyClientOptions) {
+  constructor(input: PrivyClientOptions | PrivyClientConfig, fetch?: typeof globalThis.fetch) {
+    const options: PrivyClientOptions = input instanceof PrivyClientConfig ? {
+      appId: input.appId(), appSecret: input.appSecret(), origin: input.baseUri(), requestTimeout: input.requestTimeout(),
+      ...(input.verificationOptions() ? { tokenVerification: input.verificationOptions()! } : {}), ...(fetch ? { fetch } : {}),
+    } : input;
     this.#settings = settings(options);
-    this.#verifier = options.tokenVerification === undefined ? undefined
-      : new PrivyTokenVerifier(this.#settings.appId, options.tokenVerification);
+    const verification = options.tokenVerification instanceof PrivyTokenVerificationConfig ? options.tokenVerification.options() : options.tokenVerification;
+    this.#config = new PrivyClientConfig(options.appId, options.appSecret, this.#settings.origin, this.#settings.timeout);
+    if (verification) this.#config = this.#config.withTokenVerification(verification);
+    this.#verifier = verification === undefined ? undefined : new PrivyTokenVerifier(this.#settings.appId, verification);
   }
+  config(): PrivyClientConfig { return this.#config; }
 
   /** 미설정은 사용자 인증 실패가 아닌 구성 오류다. */
   verifyAccessToken(token: string | null | undefined): Promise<AuthenticatedUser> {
-    if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
+    if (!this.#verifier) throw new IllegalStateError('Token verification is not configured');
     return this.#verifier.verifyAccessToken(token);
   }
 
   authenticateAuthorizationHeader(header: string | null | undefined): Promise<AuthenticatedUser> {
-    if (!this.#verifier) throw new TypeError('tokenVerification 설정이 필요합니다');
+    if (!this.#verifier) throw new IllegalStateError('Token verification is not configured');
     return this.#verifier.authenticateAuthorizationHeader(header);
   }
 
   /** 사용자 조회 권한을 진단한다. 지갑 쓰기 권한까지 검증하지 않는다. */
   async verifyAppCredentials(signal?: AbortSignal): Promise<void> {
-    const response = await requestJson(this.#settings, '/v1/users?limit=1', 'GET', undefined, signal);
+    const response = await requestJson(this.#settings, '/v1/users?limit=1.0', 'GET', undefined, signal);
     if (!response || typeof response !== 'object' || !('data' in response) || !Array.isArray(response.data)) {
-      throw new PrivyApiError('INVALID_RESPONSE');
+      throw new PrivyApiError('INVALID_RESPONSE', 200);
     }
   }
 
@@ -77,8 +83,24 @@ export class PrivyClient {
     return registerWallet(this.#request, registration, input, signal);
   }
 
-  listBackendWallets(publicKey: string, signal?: AbortSignal): Promise<readonly BackendWallet[]> {
+  listWalletsByAuthorizationKey(publicKey: string, signal?: AbortSignal): Promise<readonly BackendWallet[]> {
     return listWallets(this.#request, publicKey, signal);
+  }
+  async ensureBackendWallet(request: BackendWalletCreateRequest): Promise<BackendWallet> {
+    if (request == null) throw new TypeError('request required');
+    await this.verifyAppCredentials();
+    const publicKey = process.env.BACKEND_WALLET_PUBLIC_KEY, privateKey = process.env.BACKEND_WALLET_PRIVATE_KEY;
+    if (typeof publicKey === 'string' && !isJavaBlank(publicKey) && typeof privateKey === 'string' && !isJavaBlank(privateKey)) {
+      const registration = new BackendWalletRegistration(publicKey, privateKey);
+      const existing = await this.listWalletsByAuthorizationKey(publicKey);
+      return existing.length ? existing[0]! : this.registerBackendWallet(registration, request);
+    }
+    return this.registerBackendWallet(BackendWalletKeyPair.generateAndLog().registration(), request);
+  }
+  async exportWalletPrivateKeyAndLog(walletId: string, registration: BackendWalletRegistration): Promise<string> {
+    const key = await this.exportWalletPrivateKey(walletId, registration);
+    console.warn('BACKEND_BLOCKCHAIN_WALLET_PRIVATE_KEY=' + key);
+    return key;
   }
   /** 호출 서비스의 접근 제어가 필요하다. 복호화한 블록체인 개인키를 출력/저장하지 않는다. */
   exportWalletPrivateKey(walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal): Promise<string> {

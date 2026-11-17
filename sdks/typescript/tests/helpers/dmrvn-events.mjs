@@ -1,4 +1,4 @@
-import { DmrvnAbi } from '../../dist/index.js';
+import { DmrvnAbi } from '../../dist/dmrvn-abi.js';
 
 /** ABI 출력을 만들지 않고 실제 event의 indexed topic/data를 구성한다. */
 export function eventLog(abi, name, values, address, extra = {}) {

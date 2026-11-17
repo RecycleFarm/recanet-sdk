@@ -21,7 +21,7 @@ npm --prefix sdks/typescript run check
 npm --prefix sdks/typescript run check:package
 ```
 
-`make help`에서 전체 명령을 확인할 수 있다. `make check`는 원본 이력·고정 이관 스냅샷, Java/worker/WASM, TypeScript/worker/tarball 소비자, 공개 API baseline을 검증한다. 실제 지갑 생성·거래 전송·Greenfield 저장이나 패키지 발행은 실행하지 않는다.
+`make help`에서 전체 명령을 확인할 수 있다. `make check`는 원본 이력·고정 이관 스냅샷, Java/worker/WASM, TypeScript/worker/tarball 소비자, 현재 Contract API baseline과 Java·TypeScript 공통 실행 벡터를 검증한다. 실제 지갑 생성·거래 전송·Greenfield 저장이나 패키지 발행은 실행하지 않는다.
 
 ## 디렉터리
 
@@ -31,11 +31,12 @@ npm --prefix sdks/typescript run check:package
 | [sdks/typescript](sdks/typescript) | 원본 npm TypeScript SDK 전체, native·worker·테스트 포함 |
 | [docs](docs) | 구조 설계, 조사 근거, 이관·호환성 기록 |
 | [scripts](scripts) | Phase 2 이력·소스·공개 API 보존 확인 |
-| [contracts](contracts) | 공통 검증의 경계 안내. 기존 fixture는 각 SDK에 유지 |
+| [contracts](contracts) | Java 기준 양언어 공통 SDK Contract와 전체 API 대응. 기존 fixture는 각 SDK에 유지 |
 | [examples](examples) | 실제 SDK 내 기존 예제 연결 |
 
 ## 설계와 이관 기록
 
+- [Recanet SDK 공통 Contract](contracts/recanet-sdk-contract.md)
 - [Monorepo 구조와 마이그레이션 가이드](docs/monorepo-migration-guide.md)
 - [검증된 Linux x64 rc.1 후보](docs/migration/phase4-rc1-validation.md)
 - [Phase 4 배포 전 결정·권한·미해결 문제](docs/phase4-readiness.md)
@@ -62,7 +63,7 @@ legacy/typescript/main
 
 telemetry는 보존만 했고 제품 main에 병합하지 않았다. 위 브랜치에는 원래 SDK 루트 구조가 남아 있으므로 현재 Monorepo 구조와 혼동하지 않는다. 새 기능 개발은 main에서 시작한다.
 
-Phase 2 보존 검사는 고정 import commit의 원본 tree와 legacy refs·조상 관계를 확인한다. 이후 승인된 SDK 변경을 허용하되 과거 이관 tree나 원본 SHA를 덮어쓰지 않는다. 공개 API 검사는 현재 빌드 결과를 기존 baseline과 비교한다. API 변경을 자동 승인하는 도구는 아니다.
+Phase 2 보존 검사는 고정 import commit의 원본 tree와 legacy refs·조상 관계를 확인한다. 이후 승인된 SDK 변경을 허용하되 과거 이관 tree나 원본 SHA를 덮어쓰지 않는다. 공개 API 검사는 현재 빌드 결과를 `contracts/public-api-baseline.json`과 비교하며 기존 Phase 2 baseline은 보존한다. API 변경을 자동 승인하는 도구는 아니다.
 
 ## 배포 상태
 

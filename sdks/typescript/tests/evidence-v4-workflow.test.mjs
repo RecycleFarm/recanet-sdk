@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ActivityRequest, DmrvnAbi, DmrvnClient, DmrvnConfig, DmrvnCrypto, DmrvnJson, DmrvnPreflight, DmrvnProtocol, FileOperationJournal } from '../dist/index.js';
+import { ActivityRequest, DmrvnClient, DmrvnConfig, DmrvnProtocol, FileOperationJournal } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
+import { DmrvnPreflight } from '../dist/dmrvn-preflight.js';
 import { workflowFixture } from './helpers/dmrvn-workflow.mjs';
 import { resolutionFixture } from './helpers/dmrvn-resolution.mjs';
 import { userActivityFixture } from './helpers/user-activity.mjs';
@@ -11,11 +16,11 @@ import { userActivityFixture } from './helpers/user-activity.mjs';
 const vector = JSON.parse(await readFile(new URL('./fixtures/evidence-v4-pet-v3.json', import.meta.url), 'utf8'));
 const code = expected => error => error.code === expected;
 
-test('PET 프로필과 다른 partner 설정은 초기화 시 거부해 회원 지갑 확보 이전에 중단한다', () => {
+test('일반 Java 방법론은 초기화에 partner 전용 제약을 추가하지 않는다', () => {
   const f = workflowFixture(undefined, { petV3: true });
   const other = new DmrvnConfig({ ...f.config, partnerId: 102 });
-  assert.throws(() => new DmrvnClient(other, f.rpc, f.operator, f.storage, f.methodology), code('INVALID_INPUT'));
-  assert.throws(() => new DmrvnPreflight(other, f.rpc, f.operator, f.storage, f.methodology), code('INVALID_INPUT'));
+  assert.doesNotThrow(() => new DmrvnClient(other, f.rpc, f.operator, f.storage, f.methodology));
+  assert.doesNotThrow(() => new DmrvnPreflight(other, f.rpc, f.operator, f.storage, f.methodology));
   assert.equal(f.calls.length, 0); assert.equal(f.counts.messages, 0); assert.equal(f.counts.creates, 0);
 });
 
@@ -38,8 +43,8 @@ test('v4 Evidence는 고정된 전체 canonical bytes로 저장·SEALED 재읽�
   assert.equal(f.counts.messages, 1); assert.equal(f.counts.creates, 1); assert.equal(f.counts.uploads, 1);
 });
 
-test('확정 프로필에서 잘못된 입력 키·과거 본문 버전은 서명·생성·작업 예약 전에 거부한다', async () => {
-  for (const body of [{ ...vector.body, schemaVersion: 3 }, { ...vector.body, inputs: { bottleCount: 3 } },
+test('확정 프로필에서 다른 방법론·과거 본문 버전은 서명·생성·작업 예약 전에 거부한다', async () => {
+  for (const body of [{ ...vector.body, schemaVersion: 3 },
     { ...vector.body, methodology: { id: 2003, version: 1 } }]) {
     const f = workflowFixture(undefined, { petV3: true });
     await assert.rejects(f.client.prepareEvidence('invalid-pet', f.claimId, f.beneficiary, f.objectName, body), code('INVALID_INPUT'));

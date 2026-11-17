@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DmrvnAbi, DmrvnChain, DmrvnCrypto, DmrvnError } from '../dist/index.js';
+import { DmrvnError } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import { DmrvnChain } from '../dist/dmrvn-chain.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
 import { chainFixture, address } from './helpers/dmrvn-chain.mjs';
 import { eventLog } from './helpers/dmrvn-events.mjs';
 

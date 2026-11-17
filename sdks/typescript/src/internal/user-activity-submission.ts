@@ -48,14 +48,14 @@ export async function submitUserActivity(context: OperationContext, wallets: Ben
     const body = methodology.evidenceBody(config.partnerId, user.address, request.sourceEventId, request.inputs);
     let sent = await submitActivity(run, user, operationId, claimId, objectName, body, request.gas, signal);
     if (sent.status !== 'CONFIRMED') {
-      const until = performance.now() + request.confirmationTimeoutMs;
+      const until = process.hrtime.bigint() + request.confirmationTimeout.toNanos();
       while (true) {
         try { sent = await resolveSubmission(run, operationId, stateString(sent.txHash), signal); break; }
         catch (error) {
           if (!(error instanceof DmrvnError) || error.code !== 'SUBMISSION_UNRESOLVED') throw error;
-          const remaining = until - performance.now();
-          if (remaining <= 0) throw error;
-          try { await sleep(Math.min(remaining, request.pollIntervalMs), undefined, signal ? { signal } : undefined); }
+          const remaining = until - process.hrtime.bigint();
+          if (remaining <= 0n) throw error;
+          try { await sleep(Number(remaining < request.pollInterval.toNanos() ? remaining : request.pollInterval.toNanos()) / 1000000, undefined, signal ? { signal } : undefined); }
           catch { throw new DmrvnError('INTERRUPTED'); }
         }
       }

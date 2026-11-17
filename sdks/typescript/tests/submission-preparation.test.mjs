@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Wallet } from 'ethers';
-import { DmrvnAbi, DmrvnCrypto, DmrvnError, DmrvnJson, DmrvnProtocol } from '../dist/index.js';
+import { DmrvnError, DmrvnProtocol } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { workflowFixture } from './helpers/dmrvn-workflow.mjs';
 
 const operation = 'operation-one', key = 'operation:' + operation;

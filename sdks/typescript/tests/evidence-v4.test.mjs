@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Wallet } from 'ethers';
-import { DeclaredMethodology, DmrvnCrypto, DmrvnJson, DmrvnProtocol } from '../dist/index.js';
+import { DeclaredMethodology, DmrvnProtocol } from '../dist/index.js';
+
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { petV3Methodology } from './helpers/evidence-v4.mjs';
 
 const vector = JSON.parse(await readFile(new URL('./fixtures/evidence-v4-pet-v3.json', import.meta.url), 'utf8'));
@@ -18,13 +21,13 @@ test('확정 PET v3 factory는 Evidence 4와 방법론 2003/3을 구분하며 re
   assert.deepEqual(calls, [[1003, 2003, 3, f.hash]]);
 });
 
-test('PET factory는 과거 방법론·다른 활동·hash/WASM 불일치를 거부하고 승인 hash를 내장하지 않는다', () => {
+test('일반 Java 방법론은 활동·방법론을 추론하지 않고 hash/WASM 결속을 검사한다', () => {
   const f = petV3Methodology();
   for (const changes of [{ methodology: { id: 2003, version: 1 } }, { methodology: { id: 2004, version: 3 } }, { activityId: 1004 }]) {
-    assert.throws(() => petV3Methodology(() => true, changes), code('METHODOLOGY_UNAVAILABLE'));
+    assert.doesNotThrow(() => petV3Methodology(() => true, changes));
   }
-  assert.throws(() => DeclaredMethodology.petV3(f.bytes, f.wasm, DeclaredMethodology.PET_HASH, () => true), code('METHODOLOGY_UNAVAILABLE'));
-  assert.throws(() => DeclaredMethodology.petV3(f.bytes, new Uint8Array([1]), f.hash, () => true), code('METHODOLOGY_UNAVAILABLE'));
+  assert.throws(() => new DeclaredMethodology(f.bytes, f.wasm, DeclaredMethodology.PET_HASH, () => true, 4), code('METHODOLOGY_UNAVAILABLE'));
+  assert.throws(() => new DeclaredMethodology(f.bytes, new Uint8Array([1]), f.hash, () => true, 4), code('METHODOLOGY_UNAVAILABLE'));
 });
 
 test('확정 본문의 필드·canonical UTF8·bodyHash는 수작업 정렬 JSON의 고정 벡터와 일치한다', () => {
@@ -40,19 +43,10 @@ test('확정 본문의 필드·canonical UTF8·bodyHash는 수작업 정렬 JSON
   assert.equal(DmrvnJson.canonical(reordered), vector.bodyCanonical);
 });
 
-test('PET 프로필은 partner101·수치 metadata·정확한 petBottleCount 키를 확인하되 미결 값 범위를 추정하지 않는다', () => {
+test('일반 Java 경로는 partner101이나 petBottleCount-only 제약을 추가하지 않는다', () => {
   const { methodology } = petV3Methodology();
   for (const inputs of [{}, { bottleCount: 3 }, { petBottleCount: 3, extra: true }]) {
-    assert.throws(() => methodology.evidenceBody(101, vector.beneficiary, 'event', inputs), code('INVALID_INPUT'));
-  }
-  assert.throws(() => methodology.evidenceBody(102, vector.beneficiary, 'event', { petBottleCount: 3 }), code('INVALID_INPUT'));
-  for (const field of ['schemaVersion', 'partnerId', 'activityId']) {
-    assert.throws(() => methodology.validate({ ...vector.body, [field]: String(vector.body[field]) }, 101, vector.beneficiary), code('INVALID_INPUT'));
-  }
-  // JSON 구조 검사만 제공한다. 아래 값의 업무상/validator 수용을 승인하는 시험이 아니다.
-  for (const value of [null, -1, '3', { unconfirmed: [2, 1] }]) {
-    assert.equal(DmrvnJson.canonical(methodology.evidenceBody(101, vector.beneficiary, 'event', { petBottleCount: value }).inputs),
-      DmrvnJson.canonical({ petBottleCount: value }));
+    assert.equal(DmrvnJson.canonical(methodology.evidenceBody(102, vector.beneficiary, 'event', inputs).inputs), DmrvnJson.canonical(inputs));
   }
 });
 

@@ -1,4 +1,6 @@
 import { FileOperationJournal } from '../../dist/index.js';
+
+
 const [directory, mode, count] = process.argv.slice(2), journal = new FileOperationJournal(directory);
 if (mode === 'increment') {
   for (let i = 0; i < Number(count); i++) await journal.withLock('counter', async () => {

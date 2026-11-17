@@ -1,5 +1,8 @@
 import { Wallet } from 'ethers';
-import { DmrvnAbi, DmrvnCrypto, DmrvnProtocol } from '../../dist/index.js';
+import { DmrvnProtocol } from '../../dist/index.js';
+
+import { DmrvnAbi } from '../../dist/dmrvn-abi.js';
+import * as DmrvnCrypto from '../../dist/dmrvn-crypto.js';
 import { workflowFixture } from './dmrvn-workflow.mjs';
 import { eventLog } from './dmrvn-events.mjs';
 

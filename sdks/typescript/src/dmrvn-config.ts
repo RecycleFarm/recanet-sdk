@@ -35,7 +35,19 @@ export class DmrvnConfig implements DmrvnConfigOptions {
   readonly confirmations: number;
   readonly deployment: DmrvnDeployment;
 
-  constructor(options: DmrvnConfigOptions) {
+  constructor(options: DmrvnConfigOptions);
+  constructor(chainId: number | bigint, rpcUrl: string, claimAddress: string, forwarderAddress: string,
+    claimRuntimeCodeHash: string, greenfieldChainId: string, bucketName: string, objectPrefix: string,
+    partnerId: number, maxRelayCostWei: bigint, confirmations: number, deployment?: DmrvnDeployment);
+  constructor(input: DmrvnConfigOptions | number | bigint, rpcUrl?: string, claimAddress?: string, forwarderAddress?: string,
+    claimRuntimeCodeHash?: string, greenfieldChainId?: string, bucketName?: string, objectPrefix?: string,
+    partnerId?: number, maxRelayCostWei?: bigint, confirmations?: number, deployment?: DmrvnDeployment) {
+    const options: DmrvnConfigOptions = typeof input === 'object' ? input : {
+      chainId: input, rpcUrl: rpcUrl!, claimAddress: claimAddress!, forwarderAddress: forwarderAddress!,
+      claimRuntimeCodeHash: claimRuntimeCodeHash!, greenfieldChainId: greenfieldChainId!, bucketName: bucketName!,
+      objectPrefix: objectPrefix!, partnerId: partnerId!, maxRelayCostWei: maxRelayCostWei!, confirmations: confirmations!,
+      deployment: deployment === undefined ? DmrvnDeployment.historicalDirectTestnet() : deployment,
+    };
     const chain = uint(options.chainId, 53);
     if (chain === 0n) throw new DmrvnError('INVALID_INPUT');
     this.chainId = Number(chain);
@@ -74,6 +86,7 @@ export class DmrvnConfig implements DmrvnConfigOptions {
       bucketName: 'dmrvn', objectPrefix, partnerId, maxRelayCostWei, confirmations: 1 });
   }
   deploymentId(): string { return this.chainId + ':' + this.claimAddress; }
+  /** @internal */
   checkObject(name: string): void {
     if (typeof name !== 'string' || !name.startsWith(this.objectPrefix) || name.length <= this.objectPrefix.length
       || javaUtf8(name).length > 1024 || name.includes('..') || /[\x00-\x1f\x7f-\x9f]/.test(name)) throw new DmrvnError('INVALID_INPUT');

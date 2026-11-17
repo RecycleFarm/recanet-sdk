@@ -1,3 +1,4 @@
+import { deadlineTimer } from '../duration.js';
 import { spawn } from 'node:child_process';
 import { DmrvnJson } from '../dmrvn-json.js';
 import { DmrvnError, isDmrvnErrorCode } from '../errors.js';
@@ -5,7 +6,7 @@ import { stateMap } from './dmrvn-state.js';
 
 /** 단일 요청/프로세스. stdout protocol 외 stderr·원래 오류·부모 환경은 외부에 노출하지 않는다. */
 export async function runGreenfieldWorker(node: string, worker: string, request: Record<string, unknown>, secret: string,
-  timeoutMs: number, signal?: AbortSignal): Promise<Record<string, unknown>> {
+  timeoutMs: bigint, signal?: AbortSignal): Promise<Record<string, unknown>> {
   if (signal?.aborted) throw new DmrvnError('INTERRUPTED');
   try {
     const input = DmrvnJson.bytes(request);
@@ -14,12 +15,12 @@ export async function runGreenfieldWorker(node: string, worker: string, request:
       const chunks: Buffer[] = [];
       let length = 0, ended = false, exited = false, settled = false, exitTimer: ReturnType<typeof setTimeout> | undefined;
       const cleanup = (): void => {
-        clearTimeout(timer); if (exitTimer) clearTimeout(exitTimer);
+        cancelTimer(); if (exitTimer) clearTimeout(exitTimer);
         signal?.removeEventListener('abort', interrupted); child.kill('SIGKILL');
       };
       const fail = (error: DmrvnError): void => { if (!settled) { settled = true; cleanup(); reject(error); } };
       const interrupted = (): void => fail(new DmrvnError('INTERRUPTED'));
-      const timer = setTimeout(() => fail(new DmrvnError('STORAGE_UNAVAILABLE')), timeoutMs);
+      let cancelTimer = () => {};
       const finish = (): void => {
         if (settled || !ended || !exited) return;
         try {
@@ -40,14 +41,16 @@ export async function runGreenfieldWorker(node: string, worker: string, request:
       });
       child.stdout.once('error', () => fail(new DmrvnError('STORAGE_UNAVAILABLE')));
       child.stdout.once('end', () => {
-        ended = true; clearTimeout(timer);
+        ended = true; cancelTimer();
         if (!exited) exitTimer = setTimeout(() => fail(new DmrvnError('STORAGE_UNAVAILABLE')), 1000);
         finish();
       });
       child.stdin.once('error', () => fail(new DmrvnError('STORAGE_UNAVAILABLE')));
       signal?.addEventListener('abort', interrupted, { once: true });
       if (signal?.aborted) interrupted();
-      if (!settled) child.stdin.end(input);
+      if (!settled) child.stdin.end(input, () => {
+        if (!settled && !ended) cancelTimer = deadlineTimer(timeoutMs * 1000000n, () => fail(new DmrvnError('STORAGE_UNAVAILABLE')));
+      });
     });
   } catch (error) { throw error instanceof DmrvnError ? error : new DmrvnError('STORAGE_UNAVAILABLE'); }
 }

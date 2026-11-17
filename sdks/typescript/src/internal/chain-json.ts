@@ -1,3 +1,4 @@
+import { Float32, Float64 } from '../number-value.js';
 import { DmrvnError } from '../errors.js';
 import { JsonNumber, parseLosslessJson, type JsonValue } from './lossless-json.js';
 
@@ -118,11 +119,14 @@ function quoted(value: string): string {
 
 /** 기준 Java Json의 객체 key 정렬·제어문자 대문자 escape. JCS 차이는 D-30에 남긴다. */
 export function canonicalChainJson(value: unknown, depth = 0): string {
-  if (depth > 128) return invalid();
   if (value === null) return 'null';
   if (typeof value === 'string') return quoted(value);
   if (typeof value === 'boolean') return String(value);
   if (value instanceof DmrvnDecimal) return JSON.stringify(numeric(value));
+  if (value instanceof Float32 || value instanceof Float64) {
+    if (!Number.isFinite(value.value)) return invalid();
+    return JSON.stringify(numeric(new JsonNumber(value.toString())));
+  }
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return invalid();
     return JSON.stringify(value);

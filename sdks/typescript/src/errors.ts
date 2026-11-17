@@ -77,3 +77,8 @@ export class PrivyApiError extends Error {
     this.retryAfterMs = retryAfterMs;
   }
 }
+
+/** Same logical precondition failure as Java IllegalStateException; no domain error code. */
+export class IllegalStateError extends Error {
+  constructor(message: string) { super(message); this.name = 'IllegalStateException'; }
+}

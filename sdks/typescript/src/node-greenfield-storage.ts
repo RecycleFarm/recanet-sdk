@@ -1,3 +1,4 @@
+import { Duration, duration } from './duration.js';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalizeAddress, uint } from './dmrvn-crypto.js';
@@ -12,22 +13,22 @@ import { decodeBase64 } from './internal/base64.js';
 export interface NodeGreenfieldStorageOptions {
   readonly rpcUrl: string; readonly chainId: string; readonly address: string;
   readonly keyEnvironmentVariable: string; readonly feeGranter?: string | null;
-  readonly timeoutMs?: number; readonly nodePath?: string; readonly workerPath?: string;
+  readonly timeoutMs?: number | bigint; readonly timeout?: Duration; readonly nodePath?: string; readonly workerPath?: string;
 }
 
 /** 공식 Greenfield SDK worker 경계. EVM/Privy 자격 증명을 자식 환경에 전달하지 않는다. */
 export class NodeGreenfieldStorage implements GreenfieldStorage {
   readonly address: string;
   readonly chainId: string;
-  #node: string; #worker: string; #rpc: string; #keyEnv: string; #granter: string; #timeout: number;
+  #node: string; #worker: string; #rpc: string; #keyEnv: string; #granter: string; #timeout: bigint;
   constructor(options: NodeGreenfieldStorageOptions) {
     this.#node = resolve(options.nodePath ?? process.execPath);
     this.#worker = resolve(options.workerPath ?? fileURLToPath(new URL('../tools/greenfield/worker.cjs', import.meta.url)));
     this.#rpc = dmrvnUri(options.rpcUrl); this.chainId = uint(stateString(options.chainId), 64).toString();
     this.address = normalizeAddress(options.address); this.#keyEnv = stateString(options.keyEnvironmentVariable);
     this.#granter = options.feeGranter == null || options.feeGranter === '' ? '' : normalizeAddress(options.feeGranter);
-    this.#timeout = options.timeoutMs === undefined ? 240000 : options.timeoutMs;
-    requireState(Number.isInteger(this.#timeout) && this.#timeout > 0 && this.#timeout <= 2147483647, 'INVALID_INPUT');
+    this.#timeout = (options.timeout ?? duration(options.timeoutMs ?? 240000)).toMillis();
+    requireState(this.#timeout > 0n, 'INVALID_INPUT');
     Object.freeze(this);
   }
   async head(location: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<GreenfieldHead> {

@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { hashMessage, Wallet } from 'ethers';
-import { DmrvnCrypto as crypto, DmrvnDecimal, DmrvnJson } from '../dist/index.js';
+import { DmrvnDecimal } from '../dist/index.js';
+import * as crypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 
 const fixture = async name => JSON.parse(await readFile(new URL('./fixtures/' + name, import.meta.url), 'utf8'));
 const code = expected => error => { assert.equal(error.code, expected); return true; };

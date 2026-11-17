@@ -4,6 +4,8 @@ import { inspect } from 'node:util';
 import { createServer } from 'node:http';
 import { PrivyClient, PrivyApiError } from '../dist/index.js';
 
+
+
 const credentials = { appId: 'app', appSecret: 'secret' };
 const errorIs = (code, status = 0) => error => {
   assert.ok(error instanceof PrivyApiError);
@@ -18,7 +20,7 @@ test('초기화 무통신, 설정 snapshot과 secret 비노출, 정확한 인증
   let calls = 0;
   const options = { ...credentials, fetch: async (url, init) => {
     calls++;
-    assert.equal(url, 'https://api.privy.io/v1/users?limit=1');
+    assert.equal(url, 'https://api.privy.io/v1/users?limit=1.0');
     assert.equal(init.headers.authorization, 'Basic YXBwOnNlY3JldA==');
     assert.equal(init.headers['privy-app-id'], 'app');
     assert.equal(init.body, undefined);
@@ -71,7 +73,7 @@ test('API 상태 오류와 Retry-After를 보존하고 자동 재시도하지 �
 test('잘못된 JSON/구조와 전송 예외의 원문을 노출하지 않는다', async () => {
   for (const body of ['not-json', '{}', 'null', '{"data":null}']) {
     const client = new PrivyClient({ ...credentials, fetch: async () => new Response(body) });
-    await assert.rejects(client.verifyAppCredentials(), errorIs('INVALID_RESPONSE'));
+    await assert.rejects(client.verifyAppCredentials(), errorIs('INVALID_RESPONSE', 200));
   }
   const client = new PrivyClient({ ...credentials, fetch: async () => { throw new Error('leaked-secret'); } });
   await assert.rejects(client.verifyAppCredentials(), errorIs('UNAVAILABLE'));
@@ -117,9 +119,9 @@ test('정확히 4 MiB는 수용하고 초과 body는 취소한다', async () => 
 });
 
 test('로컬 HTTP의 header 이후 멈춘 body에도 timeout과 취소가 적용된다', async t => {
-  let calls = 0;
+  let calls = 0, received;
   const server = createServer((req, res) => {
-    calls++;
+    calls++; received?.();
     res.writeHead(200, { 'content-type': 'application/json' });
     res.write('{"data":[');
   });
@@ -128,8 +130,10 @@ test('로컬 HTTP의 header 이후 멈춘 body에도 timeout과 취소가 적용
   const client = new PrivyClient({ ...credentials, origin: `http://127.0.0.1:${server.address().port}`, timeoutMs: 100 });
   await assert.rejects(client.verifyAppCredentials(), errorIs('UNAVAILABLE'));
   const controller = new AbortController();
+  const started = new Promise(resolve => { received = resolve; });
   const pending = client.verifyAppCredentials(controller.signal);
-  setTimeout(() => controller.abort('leaked-secret'), 20);
+  await started;
+  controller.abort('leaked-secret');
   await assert.rejects(pending, errorIs('INTERRUPTED'));
   assert.equal(calls, 2);
 });

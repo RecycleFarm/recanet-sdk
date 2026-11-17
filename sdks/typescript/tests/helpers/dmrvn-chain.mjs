@@ -1,4 +1,7 @@
-import { DmrvnAbi, DmrvnConfig, DmrvnCrypto as crypto, DmrvnDeployment, IMPLEMENTATION_SLOT } from '../../dist/index.js';
+import { DmrvnConfig, DmrvnDeployment } from '../../dist/index.js';
+import * as crypto from '../../dist/dmrvn-crypto.js';
+import { DmrvnAbi } from '../../dist/dmrvn-abi.js';
+import { IMPLEMENTATION_SLOT } from '../../dist/dmrvn-chain.js';
 
 export const address = digit => '0x' + digit.repeat(40);
 export function chainFixture(proxy = true, confirmations = 1) {

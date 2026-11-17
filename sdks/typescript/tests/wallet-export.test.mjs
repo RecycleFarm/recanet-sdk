@@ -5,6 +5,8 @@ import { createPublicKey, verify } from 'node:crypto';
 import { CipherSuite, DhkemP256HkdfSha256, HkdfSha256, Aes128Gcm } from '@hpke/core';
 import { Chacha20Poly1305 } from '@hpke/chacha20poly1305';
 import { BackendWalletRegistration, PrivyApiError, PrivyClient } from '../dist/index.js';
+
+
 import { canonicalPrivy059 } from '../dist/internal/authorization.js';
 import { createExportReceiver, openExportMessage } from '../dist/internal/privy-hpke.js';
 

@@ -1,3 +1,5 @@
+import { Duration, duration, deadlineTimer } from './duration.js';
+import { javaHttpFetch } from './internal/java-http.js';
 import { DmrvnError } from './errors.js';
 import { canonicalChainJson, parseChainJson, rpcIdText } from './internal/chain-json.js';
 import { JsonNumber } from './internal/lossless-json.js';
@@ -9,26 +11,30 @@ export interface EvmRpc {
 
 export interface HttpEvmRpcOptions {
   readonly fetch?: typeof globalThis.fetch;
-  readonly timeoutMs?: number;
-  /** Fetch가 응답 header를 반환할 때까지의 연결 단계 상한. */
-  readonly connectTimeoutMs?: number;
+  readonly timeoutMs?: number | bigint;
+  readonly timeout?: Duration;
+  /** 기본 transport의 TCP/TLS 연결 단계 상한. */
+  readonly connectTimeoutMs?: number | bigint;
+  readonly connectTimeout?: Duration;
 }
 
 /** 제한된 EVM JSON-RPC 2.0 전송. 비밀 header·배치·자동 재시도를 사용하지 않는다. */
 export class HttpEvmRpc implements EvmRpc {
   #url: string;
   #fetch: typeof globalThis.fetch;
-  #timeout: number;
-  #connect: number;
+  #timeout: Duration;
+  #connect: Duration;
   #id = 0;
 
   constructor(url: string, options: HttpEvmRpcOptions = {}) {
     this.#url = dmrvnUri(url);
-    this.#fetch = options.fetch ?? globalThis.fetch;
-    this.#timeout = options.timeoutMs ?? 30000;
-    this.#connect = options.connectTimeoutMs ?? 10000;
-    if (typeof this.#fetch !== 'function' || ![this.#timeout, this.#connect].every(value =>
-      Number.isSafeInteger(value) && value >= 1)) throw new DmrvnError('INVALID_INPUT');
+    try { this.#timeout = options.timeout ?? duration(options.timeoutMs ?? 30000); } catch { throw new DmrvnError('INVALID_INPUT'); }
+    try { this.#connect = options.connectTimeout ?? duration(options.connectTimeoutMs ?? 10000); } catch { throw new DmrvnError('INVALID_INPUT'); }
+    if (!(this.#timeout instanceof Duration) || this.#timeout.isNegative() || this.#timeout.isZero()
+      || !(this.#connect instanceof Duration) || this.#connect.isNegative() || this.#connect.isZero()) throw new DmrvnError('INVALID_INPUT');
+    this.#timeout.toMillis();
+    this.#fetch = options.fetch ?? javaHttpFetch(this.#connect);
+    if (typeof this.#fetch !== 'function') throw new DmrvnError('INVALID_INPUT');
   }
 
   async call(method: string, params: readonly unknown[], signal?: AbortSignal): Promise<unknown> {
@@ -39,36 +45,21 @@ export class HttpEvmRpc implements EvmRpc {
     const body = canonicalChainJson({ jsonrpc: '2.0', id, method, params });
     const controller = new AbortController();
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-    let timer: ReturnType<typeof setTimeout> | undefined;
     let rejectStop: (error: DmrvnError) => void;
     const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
-    const start = performance.now();
-    let deadline = start + Math.min(this.#connect, this.#timeout);
     const stop = (code: 'INTERRUPTED' | 'RPC_UNAVAILABLE') => {
       controller.abort();
       void reader?.cancel().catch(() => {});
       rejectStop(new DmrvnError(code));
     };
-    const schedule = () => {
-      const remaining = deadline - performance.now();
-      if (remaining <= 0) stop('RPC_UNAVAILABLE');
-      else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
-    };
+    let cancelTimer = () => {};
     const onAbort = () => stop('INTERRUPTED');
     signal?.addEventListener('abort', onAbort, { once: true });
     if (signal?.aborted) onAbort();
-    else schedule();
     const execute = async () => {
       if (controller.signal.aborted) throw new DmrvnError('INTERRUPTED');
       const response = await this.#fetch(this.#url, { method: 'POST', headers: { 'content-type': 'application/json' },
         body, signal: controller.signal, redirect: 'error', credentials: 'omit' });
-      if (controller.signal.aborted) {
-        void response.body?.cancel().catch(() => {});
-        throw new DmrvnError('RPC_UNAVAILABLE');
-      }
-      clearTimeout(timer);
-      deadline = start + this.#timeout;
-      schedule();
       if (controller.signal.aborted) {
         void response.body?.cancel().catch(() => {});
         throw new DmrvnError('RPC_UNAVAILABLE');
@@ -104,12 +95,16 @@ export class HttpEvmRpc implements EvmRpc {
       if (!Object.hasOwn(result, 'result')) throw new DmrvnError('RPC_UNAVAILABLE');
       return result.result;
     };
-    try { return await Promise.race([stopped, execute()]); }
+    try {
+      const pending = execute();
+      cancelTimer = deadlineTimer(this.#timeout.toMillis() * 1000000n, () => stop('RPC_UNAVAILABLE'));
+      return await Promise.race([stopped, pending]);
+    }
     catch (error) {
       if (error instanceof DmrvnError) throw error;
       throw new DmrvnError(signal?.aborted ? 'INTERRUPTED' : 'RPC_UNAVAILABLE');
     } finally {
-      clearTimeout(timer);
+      cancelTimer();
       signal?.removeEventListener('abort', onAbort);
     }
   }

@@ -1,3 +1,4 @@
+import { Duration, deadlineTimer } from '../duration.js';
 import { PrivyApiError, type PrivyApiErrorCode } from '../errors.js';
 import type { SignedRequest } from './authorization.js';
 
@@ -5,7 +6,8 @@ export interface HttpSettings {
   readonly origin: string;
   readonly appId: string;
   readonly appSecret: string;
-  readonly timeoutMs: number;
+  readonly timeoutMs: bigint;
+  readonly timeout: Duration;
   readonly fetch: typeof globalThis.fetch;
 }
 
@@ -42,7 +44,6 @@ export async function requestJson(settings: HttpSettings, path: string,
   signed?: SignedRequest): Promise<unknown> {
   const controller = new AbortController();
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
   let rejectStop: (error: PrivyApiError) => void;
   const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
   const stop = (code: 'UNAVAILABLE' | 'INTERRUPTED') => {
@@ -51,16 +52,10 @@ export async function requestJson(settings: HttpSettings, path: string,
     rejectStop(new PrivyApiError(code));
   };
   const onAbort = () => stop('INTERRUPTED');
-  // Node timer의 32비트 한도를 넘는 설정도 즉시 1ms로 바뀌지 않도록 분할한다.
-  const deadline = performance.now() + settings.timeoutMs;
-  const schedule = () => {
-    const remaining = deadline - performance.now();
-    if (remaining <= 0) stop('UNAVAILABLE');
-    else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
-  };
+  const cancelTimer = deadlineTimer(settings.timeout.toMillis() * 1000000n, () => stop('UNAVAILABLE'));
   signal?.addEventListener('abort', onAbort, { once: true });
   if (signal?.aborted) onAbort();
-  else schedule();
+
 
   const execute = async () => {
     if (controller.signal.aborted) throw new PrivyApiError('INTERRUPTED');
@@ -105,7 +100,7 @@ export async function requestJson(settings: HttpSettings, path: string,
     try {
       return JSON.parse(Buffer.concat(chunks, size).toString('utf8')) as unknown;
     } catch {
-      throw new PrivyApiError('INVALID_RESPONSE');
+      throw new PrivyApiError('INVALID_RESPONSE', response.status);
     }
   };
   try {
@@ -114,7 +109,7 @@ export async function requestJson(settings: HttpSettings, path: string,
     if (error instanceof PrivyApiError) throw error;
     throw new PrivyApiError(signal?.aborted ? 'INTERRUPTED' : 'UNAVAILABLE');
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
+    cancelTimer();
     signal?.removeEventListener('abort', onAbort);
   }
 }

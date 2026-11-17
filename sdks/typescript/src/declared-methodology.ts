@@ -21,19 +21,6 @@ export class DeclaredMethodology {
   #registry: MethodologyRegistry;
   #schema: number;
   #explicit: boolean;
-  #petV3 = false;
-
-  /** 2026-11-05 확정 PET 계약. manifest/WASM/hash와 registry 신뢰는 호출자가 제공한다. */
-  static petV3(manifestBytes: Uint8Array, wasmBytes: Uint8Array, expectedHash: string,
-    registry: MethodologyRegistry): DeclaredMethodology {
-    const result = new DeclaredMethodology(manifestBytes, wasmBytes, expectedHash, registry, 4);
-    if (result.activityId() !== 1003 || result.id() !== 2003 || result.version() !== 3) {
-      throw new DmrvnError('METHODOLOGY_UNAVAILABLE');
-    }
-    result.#petV3 = true;
-    return result;
-  }
-
   constructor(manifestBytes: Uint8Array, wasmBytes: Uint8Array, expectedHash: string,
     registry: MethodologyRegistry, evidenceSchemaVersion?: number) {
     this.#manifest = map(DmrvnJson.parse(manifestBytes));
@@ -61,13 +48,9 @@ export class DeclaredMethodology {
     }
   }
 
+  /** @internal */
   requireExplicitEvidenceVersion(): void {
     if (!this.#explicit) throw new DmrvnError('EVIDENCE_CONTRACT_UNCONFIGURED');
-  }
-
-  /** 명시 프로필의 파트너 결속. 일반 방법론에는 파트너별 정책을 추가하지 않는다. */
-  validatePartner(partnerId: bigint | number): void {
-    if (this.#petV3 && chainNumber(partnerId) !== 101n) invalid();
   }
 
   evidenceBody(partnerId: bigint | number, beneficiary: string, sourceEventId: string,
@@ -81,8 +64,8 @@ export class DeclaredMethodology {
     return map(DmrvnJson.copy(body));
   }
 
+  /** @internal */
   validate(body: Readonly<Record<string, unknown>>, partnerId: bigint | number, beneficiary: string): void {
-    this.validatePartner(partnerId);
     const value = map(body);
     const keys = ['schemaVersion', 'sourceEventId', 'partnerId', 'activityId', 'methodology', 'inputs', 'source'];
     if (Object.keys(value).length !== keys.length || keys.some(key => !Object.hasOwn(value, key))) invalid();
@@ -92,10 +75,6 @@ export class DeclaredMethodology {
     if (typeof value.sourceEventId !== 'string' || !/^[A-Za-z0-9:_-]{1,128}$/.test(value.sourceEventId)) invalid();
     if (DmrvnJson.hash(value.source) !== DmrvnJson.hash({ ownerHash: DmrvnProtocol.ownerHash(beneficiary) })) invalid();
     const inputs = map(value.inputs);
-    if (this.#petV3 && (value.schemaVersion !== 4
-      || (value.partnerId !== 101 && value.partnerId !== 101n) || value.activityId !== 1003
-      || Object.keys(inputs).length !== 1 || !Object.hasOwn(inputs, 'petBottleCount'))) invalid();
-    // petBottleCount의 자료형·수치 범위는 확정 댓글에 없으므로 여기서 추정하지 않는다.
     if (DmrvnJson.bytes(value).length > 1048576) invalid();
   }
 }

@@ -4,6 +4,8 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 import { createServer } from 'node:http';
 import { PrivyTokenVerifier, PrivyAuthenticationError } from '../dist/index.js';
 
+
+
 const first = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
 const second = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
 const initial = 1800000000000;

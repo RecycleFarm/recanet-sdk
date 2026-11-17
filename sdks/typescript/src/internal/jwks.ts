@@ -1,11 +1,14 @@
+import { trustedJwksUri } from './dmrvn-uri.js';
+import { isJavaHttpFetch } from './java-http.js';
+import { decodeJavaUtf8 } from './java-utf8.js';
 import { createPublicKey, type KeyObject } from 'node:crypto';
 import { PrivyAuthenticationError } from '../errors.js';
 import { jsonObject, parseLosslessJson } from './lossless-json.js';
 
 export interface JwksPolicy {
-  readonly timeoutMs?: number;
-  readonly cacheTtlMs?: number;
-  readonly refreshCooldownMs?: number;
+  readonly timeoutMs?: number | bigint;
+  readonly cacheTtlMs?: number | bigint;
+  readonly refreshCooldownMs?: number | bigint;
 }
 
 interface VerificationKey {
@@ -17,23 +20,9 @@ interface VerificationKey {
 
 const failure = () => new PrivyAuthenticationError('KEY_SOURCE_UNAVAILABLE');
 
-function positive(value: number, name: string): number {
-  if (!Number.isSafeInteger(value) || value < 1) throw new TypeError(`${name}는 양의 안전한 정수여야 합니다`);
-  return value;
-}
-
-function jwksUrl(input: string): string {
-  // URL parser의 공백 제거·역슬래시·숫자 host 정규화를 허용하지 않는다.
-  if (typeof input !== 'string' || /[\x00-\x20\x7f\\#]/.test(input)) throw new TypeError('JWKS URL이 올바르지 않습니다');
-  const authority = /^https?:\/\/([^/?#]+)/i.exec(input)?.[1];
-  if (!authority || authority.includes('@')) throw new TypeError('JWKS URL이 올바르지 않습니다');
-  let url: URL;
-  try { url = new URL(input); } catch { throw new TypeError('JWKS URL이 올바르지 않습니다'); }
-  const host = authority.replace(/:\d+$/, '').toLowerCase();
-  if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]'].includes(host)) {
-    throw new TypeError('JWKS URL은 HTTPS 또는 loopback HTTP여야 합니다');
-  }
-  return url.href;
+function positive(value: number | bigint, name: string): bigint {
+  if ((typeof value === 'number' && !Number.isSafeInteger(value)) || BigInt(value) < 1n || BigInt(value) > 9223372036854775807n) throw new TypeError(`${name}는 양의 안전한 정수여야 합니다`);
+  return BigInt(value);
 }
 
 async function retrieve(url: string, fetch: typeof globalThis.fetch, timeoutMs: number): Promise<VerificationKey[]> {
@@ -58,7 +47,7 @@ async function retrieve(url: string, fetch: typeof globalThis.fetch, timeoutMs: 
     void pending.then(response => {
       if (controller.signal.aborted) void response.body?.cancel().catch(() => {});
     }, () => {});
-    const response = await timed(pending);
+    const response = await (isJavaHttpFetch(fetch) ? pending : timed(pending));
     if (response.status !== 200 || !response.body) {
       void response.body?.cancel().catch(() => {});
       throw failure();
@@ -73,8 +62,8 @@ async function retrieve(url: string, fetch: typeof globalThis.fetch, timeoutMs: 
       if (size > 131072) throw failure();
       chunks.push(value);
     }
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks, size));
-    const jwks = jsonObject(parseLosslessJson(text));
+    const text = decodeJavaUtf8(Buffer.concat(chunks, size));
+    const jwks = jsonObject(parseLosslessJson(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text, 255));
     if (!Array.isArray(jwks.keys)) throw failure();
     const result: VerificationKey[] = [];
     for (const item of jwks.keys) {
@@ -82,16 +71,20 @@ async function retrieve(url: string, fetch: typeof globalThis.fetch, timeoutMs: 
       if (typeof jwk.kty !== 'string') throw failure();
       if (jwk.kty !== 'EC') continue;
       if (typeof jwk.crv !== 'string') throw failure();
-      if (jwk.crv !== 'P-256') continue;
       for (const field of ['kid', 'use', 'alg']) {
         if (jwk[field] != null && typeof jwk[field] !== 'string') throw failure();
       }
-      for (const field of ['x', 'y']) {
-        const value = jwk[field];
-        if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(value)
-          || Buffer.from(value, 'base64url').length !== 32) throw failure();
-      }
-      const key = createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: jwk.x as string, y: jwk.y as string }, format: 'jwk' });
+      const size = jwk.crv === 'P-256' ? 32 : jwk.crv === 'P-384' ? 48 : jwk.crv === 'P-521' ? 66 : 0;
+      if (!size) throw failure();
+      const coordinate = (value: unknown): string => {
+        if (typeof value !== 'string') throw failure();
+        let decoded = Buffer.from(value, 'base64');
+        while (decoded.length > size && decoded[0] === 0) decoded = decoded.subarray(1);
+        if (decoded.length > size) throw failure();
+        return Buffer.concat([Buffer.alloc(size - decoded.length), decoded]).toString('base64url');
+      };
+      const key = createPublicKey({ key: { kty: 'EC', crv: jwk.crv, x: coordinate(jwk.x), y: coordinate(jwk.y) }, format: 'jwk' });
+      if (jwk.crv !== 'P-256') continue;
       result.push({ key, kid: jwk.kid as string | undefined, alg: jwk.alg as string | undefined,
         use: jwk.use as string | undefined });
     }
@@ -110,19 +103,21 @@ export class JwksSource {
   #url: string;
   #fetch: typeof globalThis.fetch;
   #timeout: number;
-  #ttl: number;
-  #cooldown: number;
+  #ttl: bigint;
+  #cooldown: bigint;
   #now: () => number;
   #keys: VerificationKey[] | undefined;
-  #expires = 0;
-  #windowEnd = 0;
+  #expires = 0n;
+  #windowEnd = 0n;
   #calls = 0;
   #pending: Promise<VerificationKey[]> | undefined;
 
   constructor(url: string, policy: JwksPolicy, fetch: typeof globalThis.fetch, now: () => number) {
-    this.#url = jwksUrl(url);
+    this.#url = trustedJwksUri(url);
     this.#fetch = fetch;
-    this.#timeout = positive(policy.timeoutMs ?? 5000, 'JWKS timeoutMs');
+    const timeout = positive(policy.timeoutMs ?? 5000, 'JWKS timeoutMs');
+    if (timeout > 2147483647n) throw new TypeError('JWKS timeout too large');
+    this.#timeout = Number(timeout);
     this.#ttl = positive(policy.cacheTtlMs ?? 300000, 'cacheTtlMs');
     this.#cooldown = positive(policy.refreshCooldownMs ?? 30000, 'refreshCooldownMs');
     if (this.#timeout > 2147483647 || this.#ttl <= this.#cooldown) throw new TypeError('JWKS 캐시/timeout 설정이 올바르지 않습니다');
@@ -132,28 +127,26 @@ export class JwksSource {
 
   async keys(kid: string | undefined): Promise<readonly KeyObject[]> {
     let keys = this.#keys;
-    let fetched = false;
-    if (!keys || this.#now() >= this.#expires) {
+    if (!keys || BigInt(this.#now()) >= this.#expires) {
       keys = await this.#refresh();
-      fetched = true;
     }
     const select = (entries: VerificationKey[]) => entries.filter(entry =>
       (kid === undefined || entry.kid === kid) && (entry.alg == null || entry.alg === 'ES256')
       && (entry.use == null || entry.use === 'sig')).map(entry => entry.key);
     let result = select(keys);
-    if (result.length === 0 && !fetched) result = select(await this.#refresh());
+    if (result.length === 0) result = select(await this.#refresh());
     return result;
   }
 
   #refresh(): Promise<VerificationKey[]> {
     if (this.#pending) return this.#pending;
-    const now = this.#now();
+    const now = BigInt(this.#now());
     if (now >= this.#windowEnd) { this.#windowEnd = now + this.#cooldown; this.#calls = 0; }
     if (this.#calls >= 2) return Promise.reject(failure());
     this.#calls++;
     const pending = retrieve(this.#url, this.#fetch, this.#timeout).then(keys => {
       this.#keys = keys;
-      this.#expires = this.#now() + this.#ttl;
+      this.#expires = BigInt(this.#now()) + this.#ttl;
       return keys;
     }).finally(() => { this.#pending = undefined; });
     this.#pending = pending;

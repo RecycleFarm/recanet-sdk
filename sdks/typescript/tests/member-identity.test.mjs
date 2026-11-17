@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { memberExternalId } from '../dist/index.js';
+import { memberExternalId } from '../dist/member-identity.js';
 
 // 명세의 문서 계산 벡터. 실제 Privy 또는 Java 실행 결과를 뜻하지 않는다.
 test('고정 회원 식별자 벡터 8개', () => {

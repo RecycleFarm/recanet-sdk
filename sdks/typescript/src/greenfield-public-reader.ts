@@ -1,3 +1,5 @@
+import { Duration, duration, deadlineTimer } from './duration.js';
+import { javaHttpFetch } from './internal/java-http.js';
 import { javaUtf8 } from './dmrvn-crypto.js';
 import { DmrvnError } from './errors.js';
 import { dmrvnUri } from './internal/dmrvn-uri.js';
@@ -7,8 +9,8 @@ export interface ReportReader {
 }
 export interface GreenfieldPublicReaderOptions {
   readonly fetch?: typeof globalThis.fetch;
-  readonly timeoutMs?: number;
-  readonly connectTimeoutMs?: number;
+  readonly timeoutMs?: number | bigint;
+  readonly connectTimeoutMs?: number | bigint;
 }
 
 function encode(value: string): string {
@@ -23,57 +25,39 @@ export class GreenfieldPublicReader implements ReportReader {
   #endpoint: string;
   #chainId: string;
   #fetch: typeof globalThis.fetch;
-  #timeout: number;
-  #connect: number;
+  #timeout: Duration;
+  #connect: Duration;
   constructor(endpoint: string, chainId: string, options: GreenfieldPublicReaderOptions = {}) {
     this.#endpoint = dmrvnUri(endpoint).replace(/\/+$/, '');
     if (endpoint.includes('?') || typeof chainId !== 'string') throw new DmrvnError('INVALID_INPUT');
     this.#chainId = chainId;
-    this.#fetch = options.fetch ?? globalThis.fetch;
-    this.#timeout = options.timeoutMs ?? 30000;
-    this.#connect = options.connectTimeoutMs ?? 10000;
-    if (typeof this.#fetch !== 'function' || ![this.#timeout, this.#connect].every(value =>
-      Number.isSafeInteger(value) && value >= 1)) throw new DmrvnError('INVALID_INPUT');
+    this.#timeout = duration(options.timeoutMs ?? 30000); this.#connect = duration(options.connectTimeoutMs ?? 10000);
+    if (this.#timeout.toMillis() < 1n || this.#connect.toMillis() < 1n) throw new DmrvnError('INVALID_INPUT');
+    this.#fetch = options.fetch ?? javaHttpFetch(this.#connect);
+    if (typeof this.#fetch !== 'function') throw new DmrvnError('INVALID_INPUT');
   }
 
   async read(location: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<Uint8Array> {
     if (location.chainId !== this.#chainId || String(location.storageType) !== '1') throw new DmrvnError('WRONG_CHAIN');
     if (typeof location.bucketName !== 'string' || typeof location.objectName !== 'string') throw new DmrvnError('INVALID_INPUT');
     const parts = location.objectName.split('/');
-    // WHATWG Fetch는 dot segment를 정규화하므로 다른 객체를 읽는 대신 명시적으로 거부한다 (TS-26).
-    if ([location.bucketName, ...parts].some(part => part === '.' || part === '..')) throw new DmrvnError('INVALID_INPUT');
     const url = this.#endpoint + '/' + encode(location.bucketName) + '/' + parts.map(encode).join('/');
     const controller = new AbortController();
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-    let timer: ReturnType<typeof setTimeout> | undefined;
     let rejectStop!: (error: DmrvnError) => void;
     const stopped = new Promise<never>((_, reject) => { rejectStop = reject; });
-    const start = performance.now();
-    let deadline = start + Math.min(this.#connect, this.#timeout);
     const stop = (code: 'INTERRUPTED' | 'STORAGE_UNAVAILABLE') => {
       rejectStop(new DmrvnError(code));
       controller.abort();
       void reader?.cancel().catch(() => {});
     };
-    const schedule = () => {
-      const remaining = deadline - performance.now();
-      if (remaining <= 0) stop('STORAGE_UNAVAILABLE');
-      else timer = setTimeout(schedule, Math.min(remaining, 2147483647));
-    };
+    const cancelTimer = deadlineTimer(this.#timeout.nanoseconds, () => stop('STORAGE_UNAVAILABLE'));
     const onAbort = () => stop('INTERRUPTED');
     signal?.addEventListener('abort', onAbort, { once: true });
     if (signal?.aborted) onAbort();
-    else schedule();
     const execute = async () => {
       if (controller.signal.aborted) throw new DmrvnError('INTERRUPTED');
       const response = await this.#fetch(url, { method: 'GET', signal: controller.signal, redirect: 'error', credentials: 'omit' });
-      if (controller.signal.aborted) {
-        void response.body?.cancel().catch(() => {});
-        throw new DmrvnError('STORAGE_UNAVAILABLE');
-      }
-      clearTimeout(timer);
-      deadline = start + this.#timeout;
-      schedule();
       if (controller.signal.aborted) {
         void response.body?.cancel().catch(() => {});
         throw new DmrvnError('STORAGE_UNAVAILABLE');
@@ -102,7 +86,7 @@ export class GreenfieldPublicReader implements ReportReader {
       if (error instanceof DmrvnError) throw error;
       throw new DmrvnError(signal?.aborted ? 'INTERRUPTED' : 'STORAGE_UNAVAILABLE');
     } finally {
-      clearTimeout(timer);
+      cancelTimer();
       signal?.removeEventListener('abort', onAbort);
     }
   }

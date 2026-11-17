@@ -42,7 +42,6 @@ export class OperationContext {
     this.journal = journal ?? new MemoryOperationJournal();
     normalizeAddress(operator.address); normalizeAddress(storage.address);
     requireState(storage.chainId === config.greenfieldChainId, 'WRONG_CHAIN');
-    methodology.validatePartner(config.partnerId);
   }
   fork(): OperationContext {
     return new OperationContext(this.config, this.#rpc, this.operator, this.storage, this.methodology, this.suppliedJournal);

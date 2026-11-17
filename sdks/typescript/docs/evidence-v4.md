@@ -17,11 +17,11 @@ message ID는 `00907233-00fd-52c9-801c-c08a4befe633`이다.
 
 ## 사용 경로
 
-`DeclaredMethodology.petV3(manifestBytes, wasmBytes, expectedMethodologyHash, registry)`로 명시적으로 선택한다.
-이 factory는 manifest/WASM/hash를 기존 방식으로 검증하고 activityId=1003·방법론2003/3을 요구한다.
-Evidence 버전을 4로 지정하며, 생성/검증 시 partner101·정확한 petBottleCount 입력 키와 수치 metadata를 검사한다.
-client/preflight도 초기화 시 프로필의 파트너와 config.partnerId 일치를 확인해 회원 지갑 생성 전에 잘못된 설정을 거부한다.
-일반 생성자의 과거 버전 및 다른 방법론 경로를 전역 변경하지 않는다.
+2026-11-17 공통 Contract 정렬 이후에는 Java와 같은 일반 생성자를 사용한다.
+`new DeclaredMethodology(manifestBytes, wasmBytes, expectedMethodologyHash, registry, 4)`로 schema4를 명시한다.
+manifest/WASM/hash를 검증하며 activity/방법론은 manifest에서 읽는다. SDK는 partner101 또는
+petBottleCount-only 제약을 추가하지 않는다. 아래 PET 운영 프로필은 호출자/registry가 확인할 대상이다.
+기존 Evidence bytes/hash와 합성 fixture는 유지한다.
 
 승인된 PET v3 manifest/WASM/hash는 호출자가 공급해야 한다. 기존 PET_HASH와 과거 PET fixture는 v3 승인값으로 사용하지 않는다.
 registry callback의 활성 결과도 실제 승인 registry에 연결해야 하며, factory 성공은 운영 채택 증명이 아니다.

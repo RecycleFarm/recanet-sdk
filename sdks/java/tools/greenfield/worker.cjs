@@ -6,6 +6,7 @@ const { ethers } = require('ethers');
 const { TxRaw, TxBody } = require('@bnb-chain/greenfield-cosmos-types/cosmos/tx/v1beta1/tx');
 const { MsgCreateObject } = require('@bnb-chain/greenfield-cosmos-types/greenfield/storage/tx');
 const crypto = require('node:crypto');
+const { StringDecoder } = require('node:string_decoder');
 const { BroadcastTxError } = require('@cosmjs/stargate');
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 
@@ -111,12 +112,22 @@ function normalizeError(error) {
   if (/permission|unauthori|forbidden|access.denied/i.test(error.message || '')) return 'STORAGE_ACCESS_DENIED';
   return 'STORAGE_UNAVAILABLE';
 }
+async function readRequest(stream) {
+  const decoder = new StringDecoder('utf8');
+  let text = '';
+  for await (const chunk of stream) {
+    text += decoder.write(chunk);
+    if (text.length > 2 * 1024 * 1024) fail('INVALID_INPUT');
+  }
+  text += decoder.end();
+  if (text.length > 2 * 1024 * 1024) fail('INVALID_INPUT');
+  return JSON.parse(text);
+}
 async function main() {
   // SDK diagnostic output must not corrupt the stdout protocol or expose upstream data.
   console.log = console.warn = console.error = () => {};
   try {
-    let text = ''; for await (const chunk of process.stdin) { text += chunk; if (text.length > 2 * 1024 * 1024) fail('INVALID_INPUT'); }
-    const request = JSON.parse(text); const rawKey = process.env.GREENFIELD_STORAGE_PRIVATE_KEY;
+    const request = await readRequest(process.stdin); const rawKey = process.env.GREENFIELD_STORAGE_PRIVATE_KEY;
     if (!rawKey) fail('STORAGE_ACCESS_DENIED');
     const { privateKey: key } = storageIdentity(rawKey, request.address);
     const data = await perform(request, Client.create(request.rpcUrl, request.chainId), key);
@@ -126,4 +137,4 @@ async function main() {
     definitelyRejected: error.definitelyRejected === true }), () => process.exit(0)); }
 }
 if (require.main === module) main();
-module.exports = { perform, normalizeError, storageIdentity };
+module.exports = { perform, normalizeError, storageIdentity, readRequest };

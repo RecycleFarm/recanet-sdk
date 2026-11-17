@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DeclaredMethodology, DmrvnCrypto, DmrvnJson, DmrvnPreflight, DmrvnError } from '../dist/index.js';
+import { DeclaredMethodology, DmrvnError } from '../dist/index.js';
+
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
+import { DmrvnPreflight } from '../dist/dmrvn-preflight.js';
 import { chainFixture, address } from './helpers/dmrvn-chain.mjs';
 
 function methodology(registry = () => true, explicit = true) {
