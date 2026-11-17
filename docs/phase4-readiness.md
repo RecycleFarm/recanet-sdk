@@ -1,6 +1,8 @@
 # Phase 4 배포 준비와 배포 전 결정
 
-확인일: 2026-11-17 KST. 상태: distribution 준비 완료, 실제 패키지 발행 보류. 아래 권고안은 아직 사용자가 확정한 값이 아니다. SDK 이름·버전·소스·의존성, 발행 권한·토큰, 파트너 접근은 변경하지 않았다.
+확인일: 2026-11-17 KST. 상태: 초기 준비 기록과 현재 결정 상태. D1~D4 및 보안 수정 후 rc.1 후보 검증은 사용자 승인으로 반영했다. 발행 권한·토큰·파트너 접근과 실제 패키지 발행은 계속 보류한다.
+
+사용자는 이후 D1~D4와 보안 수정 후 새 후보 검증을 승인했다. 현재 적용·검증 결과는 [Linux x64 rc.1 후보 보고서](migration/phase4-rc1-validation.md)를 기준으로 한다. 아래 초기 조사와 남은 승인 조건은 시점을 구분한다.
 
 ## 1. 준비한 결과와 현재 상태
 
@@ -12,17 +14,17 @@
 
 개발 저장소 environments 조회는 HTTP200·0개였다. 환경 생성이나 설정 변경은 시도하지 않았다. API가 빈 목록을 반환한 사실과 Free private 저장소의 환경 기능 가용성은 구분한다.
 
-Phase 3 후보를 읽기 재검사했다. Java는 `com.youngminkim.recanet:RecanetJava:0.1.0-SNAPSHOT`, npm은 `recanet-typescript@0.1.0`, private=true이며 repository/publishConfig가 없다. 두 후보 모두 published=false/publishReady=false이고 체크섬은 일치했다. [검사 근거](migration/phase4-preparation-evidence.json).
+초기 조사 당시 Phase 3 후보를 읽기 재검사했다. Java는 `com.youngminkim.recanet:RecanetJava:0.1.0-SNAPSHOT`, npm은 `recanet-typescript@0.1.0`, private=true이며 repository/publishConfig가 없다. 두 후보 모두 published=false/publishReady=false이고 체크섬은 일치했다. [검사 근거](migration/phase4-preparation-evidence.json).
 
 ## 2. 배포 전에 확정할 결정
 
 | ID | 결정 | 권고안 | 현재 상태와 이유 |
 | --- | --- | --- | --- |
-| D1 | Maven/npm 이름 | Maven `com.youngminkim.recanet:recanet-java`, npm `@recyclefarm/recanet-sdk` | 미확정. Maven group은 유지하고 artifact만 소문자로 바꾸는 최소 전환안. 회사 명의 group을 원하면 최초 발행 전 `com.recyclefarm` 계열로 별도 결정 |
-| D2 | 첫 외부 검증 버전 | 양쪽 `0.1.0-rc.1`, SDK별 독립 버전 유지 | 미확정. 기존 snapshot/0.1.0을 운영 승인으로 취급하지 않는다. 안정판은 외부 설치·보안 검토 후 결정 |
-| D3 | 첫 PoC 플랫폼 | Ubuntu24.04 Linux x64·Node22, JDK17 | 미확정. 현재 npm 후보의 native는 Linux x86_64 ELF다. macOS/다중 OS 배포는 별도 packaging 구현 필요 |
-| D4 | 파트너 제공 파일 | 실행 바이너리·타입·필수 resource/worker와 선별한 설치 문서. source JAR는 초기 제외 권고 | 미확정. SDK 소스 공개를 허용하려면 source JAR 포함을 명시한다. 내부 QA/결정 문서·source map은 기본 외부 제외 권고 |
-| D5 | 보안 처리 | critical 권고와 BC 중복을 먼저 평가·수정하고 전체 검증 후 외부 PoC | 미확정. 예외를 수용하려면 대상 권고·영향 조건·승인자·만료일을 명시해야 하며 단순 테스트 통과로 대체하지 않는다 |
+| D1 | Maven/npm 이름 | Maven `com.youngminkim.recanet:recanet-java`, npm `@recyclefarm/recanet-sdk` | 확정·반영. Maven group은 유지하고 artifact만 소문자로 바꾸는 최소 전환안. 회사 명의 group을 원하면 최초 발행 전 `com.recyclefarm` 계열로 별도 결정 |
+| D2 | 첫 외부 검증 버전 | 양쪽 `0.1.0-rc.1`, SDK별 독립 버전 유지 | 확정·반영. 기존 snapshot/0.1.0을 운영 승인으로 취급하지 않는다. 안정판은 외부 설치·보안 검토 후 결정 |
+| D3 | 첫 PoC 플랫폼 | Ubuntu24.04 Linux x64·Node22, JDK17 | 확정·검증. 현재 npm 후보의 native는 Linux x86_64 ELF다. macOS/다중 OS 배포는 별도 packaging 구현 필요 |
+| D4 | 파트너 제공 파일 | 실행 바이너리·타입·필수 resource/worker와 선별한 설치 문서. source JAR는 초기 제외 권고 | source JAR·내부 문서·source map 제외로 확정·검증. SDK 소스 공개를 허용하려면 source JAR 포함을 명시한다. 내부 QA/결정 문서·source map은 기본 외부 제외 권고 |
+| D5 | 보안 처리 | critical 권고와 BC 중복을 먼저 평가·수정하고 전체 검증 후 외부 PoC | 알려진 권고 수정·검증 완료. 예외를 수용하려면 대상 권고·영향 조건·승인자·만료일을 명시해야 하며 단순 테스트 통과로 대체하지 않는다 |
 | D6 | 승인/요금제 방식 | PoC는 명시적 수동 승인. 운영은 Team+보호된 승인 manifest 검토, 환경 승인 UI가 필수면 Enterprise 검토 | 미확정. 현재 Free에서 기술적 2인 승인 강제를 구성했다고 주장하지 않는다 |
 | D7 | 외부 검증 대상 | 개발 저장소 권한 없는 실제 파트너 GitHub/CI 계정1개부터 | 미정. 담당 계정·CI OS/CPU·토큰 관리 책임자·비용 범위를 지정해야 한다 |
 | D8 | 배포 조건·담당자 | 파트너 이용 조건, 제3자 고지, 릴리스 승인자·회수 담당자 확정 | 미정. SDK 자체 LICENSE가 없으며 CI 성공은 계약/라이선스 승인이 아니다 |
@@ -65,13 +67,13 @@ outside collaborator는 조직 team에 추가할 수 없다. 유료 plan의 priv
 
 ### Java 좌표와 산출물 연결
 
-현재 artifactId `RecanetJava`는 GitHub Maven의 소문자 규칙에 맞지 않으며 공식 문서는 대문자에422를 명시한다. [Maven 명명 규칙](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-apache-maven-registry).
+초기 후보 artifactId `RecanetJava`는 GitHub Maven의 소문자 규칙에 맞지 않으며 공식 문서는 대문자에422를 명시한다. [Maven 명명 규칙](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-apache-maven-registry).
 
-이름 확정 후에는 Gradle publication, JAR base name, 생성 POM/module의 좌표와 URL, staging의 파일명 조합, API 검사 JAR 경로를 함께 맞춰야 한다. publish artifactId만 바꾸면 현재 staging은 동일 이름의 `build/libs/<artifactId>-<version>.jar`를 찾으므로 실패할 수 있다. Maven binary/POM/module을 맞추고 Gradle/Maven 외부 consumer로 다시 검증해야 한다. snapshot을 rc 버전으로 바꾸는 경우에도 새 후보를 만든다.
+rc.1 반영 전에는 Gradle publication, JAR base name, 생성 POM/module의 좌표와 URL, staging의 파일명 조합, API 검사 JAR 경로를 함께 맞춰야 한다. publish artifactId만 바꾸면 현재 staging은 동일 이름의 `build/libs/<artifactId>-<version>.jar`를 찾으므로 실패할 수 있다. Maven binary/POM/module을 맞추고 Gradle/Maven 외부 consumer로 다시 검증해야 한다. snapshot을 rc 버전으로 바꾸는 경우에도 새 후보를 만든다.
 
 ### npm 이름·private·소비자 검사
 
-GitHub npm은 소문자 scope 패키지를 요구한다. 현재 unscoped 이름, private=true, repository/publishConfig 미설정은 배포 준비 상태가 아니다. 승인된 package name으로 package.json/lockfile, check-package.mjs의 dependency/설치 경로, package-consumer.ts의 import를 함께 갱신해야 한다. distribution 연결과 최초 private visibility/상속을 확인한다. [npm 공식 문서](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry).
+GitHub npm은 소문자 scope 패키지를 요구한다. 초기 unscoped 이름과 repository/publishConfig 미설정은 rc.1에서 수정했다. private=true는 실제 발행 보류를 위해 유지한다. 승인된 package name으로 package.json/lockfile, check-package.mjs의 dependency/설치 경로, package-consumer.ts의 import를 함께 갱신해야 한다. distribution 연결과 최초 private visibility/상속을 확인한다. [npm 공식 문서](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry).
 
 원본 tarball에는 내부 문서9개와 source map59개가 들어 있다. 별도 partner allowlist를 정하고 그에 맞춰 check-package의 문서 동봉 조건/링크 검사도 수정해야 한다. 실행에 필요한 dist/internal JS까지 제거하면 안 되며 JavaScript 실행 코드를 배포하면서 구현 자체의 완전한 비공개를 보장할 수도 없다.
 
@@ -83,7 +85,7 @@ GitHub npm은 소문자 scope 패키지를 요구한다. 현재 unscoped 이름,
 
 ### 보안과 라이선스
 
-Java OSV 고유 권고12건(critical2/high7/moderate3), Greenfield npm28건(high8 포함), BC 두 artifact의 중복 class4,245개가 기존 조사에 남아 있다. SDK의 직접 BC 참조는 Keccak/EC 중심이고 직접 GOST/LDAP 호출은 이번 검색에서 발견되지 않았지만, 전이 라이브러리 전체 도달성이나 실제 악용 불가능성을 증명하지 않는다. [기존 상세 근거](phase1-additional-validation.md).
+초기 조사에서는 Java OSV 고유 권고12건(critical2/high7/moderate3), Greenfield npm28건(high8 포함), BC 중복 class4,245개를 확인했다. rc.1에서 수정 후 알려진 미해결 Registry 권고0건과 BC provider1개를 확인했다. 로컬 패치2개는 별도 hash·독립 회귀로 검증했다. SDK의 직접 BC 참조는 Keccak/EC 중심이고 직접 GOST/LDAP 호출은 이번 검색에서 발견되지 않았지만, 전이 라이브러리 전체 도달성이나 실제 악용 불가능성을 증명하지 않는다. [기존 상세 근거](phase1-additional-validation.md).
 
 외부 PoC 전에 수정 또는 구체적인 위험 수용을 결정하고 변경 후 같은 검사를 다시 실행해야 한다. 두 SDK의 라이선스/파트너 사용 조건과 제3자 고지도 확정해야 한다. 이번에는 의존성 업그레이드나 예외 승인을 대신하지 않았다.
 
@@ -95,7 +97,7 @@ Registry 설치 PoC와 Privy/Greenfield/DMRVN의 업무 인수는 구분한다. 
 
 ### 보존 baseline과 버전 변경
 
-현재 make check의 verify-migration은 HEAD의 SDK tree를 원본과 정확히 비교한다. 패키지명/버전 변경도 이 검사를 실패시킨다. 변경 승인이 나면 과거 이관 commit의 고정 tree와 원본 refs/조상 보존을 검사하는 방식으로 분리하고, 일상 CI에서는 현행 공개 API 검사를 유지해야 한다. 단순히 이관 검사를 지우거나 새 source tree를 원본인 것처럼 덮어쓰지 않는다. verify-public-api의 Java JAR 경로도 version/이름에 고정돼 있어 함께 개선해야 한다.
+초기 verify-migration은 HEAD의 SDK tree를 원본과 비교해 이름/버전 변경에도 실패했다. rc.1에서는 원래 이관 commit의 고정 tree·legacy refs·조상 관계를 검사하도록 분리했다. 현행 공개 API baseline은 그대로 유지하고 Java JAR 경로는 생성 POM에서 찾는다. 과거 tree나 source SHA를 덮어쓰지 않았다.
 
 ## 6. 발행 후보 전달 규약
 
@@ -107,7 +109,7 @@ Registry 설치 PoC와 Privy/Greenfield/DMRVN의 업무 인수는 구분한다. 
 4. 확정된 보안·라이선스·승인 기록, 동일 좌표/version의 중복 발행 거부 정책.
 5. distribution 로그·Actions artifact에 내부 원본 전체, 토큰, 임시 다운로드 URL을 출력하지 않음.
 
-다운로드 권한과 metadata 일치만으로 배포가 승인되는 것은 아니다. 현재 Phase 3 후보는 원래 이름/버전/private 설정과 내부 문서가 남아 있어 그대로 발행할 수 없다. D1~D5 반영 후 새 source revision과 새 run/digest로 다시 빌드해야 한다.
+다운로드 권한과 metadata 일치만으로 배포가 승인되는 것은 아니다. 초기 Phase 3 후보는 원래 이름/버전과 내부 문서가 남아 있어 그대로 발행하지 않는다. D1~D5를 반영한 rc.1은 새 source revision과 새 run/digest로 검증했다. 실제 발행 승인과 외부 설치 검증은 별도로 남아 있다.
 
 현재 두 원격 후보의 보관 만료는2026-12-01 KST다. 만료 후에는 같은 version이라도 새 run/digest 승인이 필요하다. 유한 보관 Actions artifact를 영구 Registry 저장으로 취급하지 않는다.
 

@@ -21,7 +21,7 @@ npm --prefix sdks/typescript run check
 npm --prefix sdks/typescript run check:package
 ```
 
-`make help`에서 전체 명령을 확인할 수 있다. `make check`는 원본 이력·소스 트리, Java/worker/WASM, TypeScript/worker/tarball 소비자, 공개 API baseline을 검증한다. 실제 지갑 생성·거래 전송·Greenfield 저장이나 패키지 발행은 실행하지 않는다.
+`make help`에서 전체 명령을 확인할 수 있다. `make check`는 원본 이력·고정 이관 스냅샷, Java/worker/WASM, TypeScript/worker/tarball 소비자, 공개 API baseline을 검증한다. 실제 지갑 생성·거래 전송·Greenfield 저장이나 패키지 발행은 실행하지 않는다.
 
 ## 디렉터리
 
@@ -37,6 +37,7 @@ npm --prefix sdks/typescript run check:package
 ## 설계와 이관 기록
 
 - [Monorepo 구조와 마이그레이션 가이드](docs/monorepo-migration-guide.md)
+- [검증된 Linux x64 rc.1 후보](docs/migration/phase4-rc1-validation.md)
 - [Phase 4 배포 전 결정·권한·미해결 문제](docs/phase4-readiness.md)
 - [CI와 릴리스 후보 가이드](docs/release-guide.md)
 - [Phase 3 원격 실행 결과](docs/migration/phase3-ci.md)
@@ -61,7 +62,7 @@ legacy/typescript/main
 
 telemetry는 보존만 했고 제품 main에 병합하지 않았다. 위 브랜치에는 원래 SDK 루트 구조가 남아 있으므로 현재 Monorepo 구조와 혼동하지 않는다. 새 기능 개발은 main에서 시작한다.
 
-Phase 2 보존 검사 스크립트는 이관 기준으로 원본과의 정확한 일치를 확인한다. 후속 승인된 SDK 변경이 생기면 이관 검사를 별도 검증으로 분리하거나 baseline 갱신을 명시적으로 검토해야 한다. 변경된 API를 자동 승인하는 스크립트가 아니다.
+Phase 2 보존 검사는 고정 import commit의 원본 tree와 legacy refs·조상 관계를 확인한다. 이후 승인된 SDK 변경을 허용하되 과거 이관 tree나 원본 SHA를 덮어쓰지 않는다. 공개 API 검사는 현재 빌드 결과를 기존 baseline과 비교한다. API 변경을 자동 승인하는 도구는 아니다.
 
 ## 배포 상태
 

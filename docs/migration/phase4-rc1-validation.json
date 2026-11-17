@@ -1,0 +1,411 @@
+{
+  "date_kst": "2026-11-17",
+  "source_commit": "64200672c39fa9b038be93572d2321a56acd0aa9",
+  "scope": "Linux x64 rc.1 candidate validation; no registry publication",
+  "coordinates": {
+    "java": "com.youngminkim.recanet:recanet-java:0.1.0-rc.1",
+    "typescript": "@recyclefarm/recanet-sdk@0.1.0-rc.1"
+  },
+  "runs": [
+    {
+      "conclusion": "success",
+      "databaseId": 44022742674,
+      "headSha": "64200672c39fa9b038be93572d2321a56acd0aa9",
+      "name": "Java CI",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44022742674"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44022742771,
+      "headSha": "64200672c39fa9b038be93572d2321a56acd0aa9",
+      "name": "TypeScript CI",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44022742771"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44022832174,
+      "headSha": "64200672c39fa9b038be93572d2321a56acd0aa9",
+      "name": "Java Release Candidate",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44022832174"
+    },
+    {
+      "conclusion": "success",
+      "databaseId": 44022842828,
+      "headSha": "64200672c39fa9b038be93572d2321a56acd0aa9",
+      "name": "TypeScript Release Candidate",
+      "status": "completed",
+      "url": "https://github.com/RecycleFarm/recanet-sdk/actions/runs/44022842828"
+    }
+  ],
+  "checks": {
+    "workflow_rules_tests": 19,
+    "java_junit": {
+      "tests": 126,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "java_worker": 8,
+    "typescript_main": 267,
+    "typescript_worker": 14,
+    "security_regressions_per_worker": 6,
+    "java_public_class_entries_unchanged": 66,
+    "typescript_declarations_unchanged": 59,
+    "source_jars_in_candidates": 0,
+    "internal_docs_in_candidates": 0,
+    "source_maps_in_candidates": 0,
+    "maven_module_and_pom_consumers": "passed via local file repository; JDK17 on development macOS",
+    "java_worker_production_install_and_load": "passed; npm ci --omit=dev --ignore-scripts; Node22",
+    "security_before": {
+      "java_unique_advisories": 12,
+      "bc_provider_artifacts": 2,
+      "worker_npm_affected_packages": 28
+    },
+    "security_after": {
+      "java_runtime_advisories": 0,
+      "bc_provider_artifacts": 1,
+      "typescript_main_npm_advisories": 0,
+      "worker_npm_advisories": 0,
+      "locally_reviewed_security_fixes": 2
+    },
+    "first_intermediate_java_candidate_superseded": "22c8a99 candidate was regenerated to exclude npm-generated nested directories"
+  },
+  "artifacts": [
+    {
+      "language": "java",
+      "manifest": {
+        "schemaVersion": 1,
+        "language": "java",
+        "version": "0.1.0-rc.1",
+        "sourceCommit": "64200672c39fa9b038be93572d2321a56acd0aa9",
+        "sourceRef": "refs/heads/main",
+        "repository": "RecycleFarm/recanet-sdk",
+        "workflow": "Java Release Candidate",
+        "runId": "44022832174",
+        "runAttempt": "1",
+        "buildPlatform": {
+          "os": "Linux",
+          "architecture": "x86_64",
+          "node": "v22.23.5"
+        },
+        "package": {
+          "groupId": "com.youngminkim.recanet",
+          "artifactId": "recanet-java",
+          "version": "0.1.0-rc.1"
+        },
+        "security": {
+          "status": "passed",
+          "reportSha256": "da41422f40a97ae6a01903153b6c0a82fe94f44793c29186d7cd73cf812d7ba3",
+          "unresolvedRegistryAdvisories": 0,
+          "locallyPatchedAdvisories": [
+            {
+              "id": "GHSA-848j-6mx2-7j84",
+              "cve": "CVE-2025-14505",
+              "original": "elliptic@6.6.1",
+              "fork": "@recyclefarm/recanet-elliptic@6.6.1-recanet.1",
+              "change": "Preserve the fixed-width RFC6979 generated nonce bit length; custom nonce callbacks unchanged",
+              "upstream": "https://github.com/indutny/elliptic/issues/321",
+              "validation": "Independent noble P-521 leading-zero nonce regression; secp256k1/P-256 vectors unchanged"
+            },
+            {
+              "id": "GHSA-p6mc-m468-83gw",
+              "original": "lodash.set@4.3.2",
+              "replacement": "local adapter to lodash@4.18.1 set",
+              "validation": "Normal nested paths and prototype pollution regressions"
+            }
+          ]
+        },
+        "pocPlatforms": [
+          "linux-x64"
+        ],
+        "sourceJarIncluded": false,
+        "internalDocumentationIncluded": false,
+        "sourceMapsIncluded": false,
+        "published": false,
+        "publishReady": false,
+        "blockers": [
+          "Actual publication has not been approved"
+        ]
+      },
+      "security": {
+        "schemaVersion": 1,
+        "language": "java",
+        "status": "passed",
+        "sourceCommit": "64200672c39fa9b038be93572d2321a56acd0aa9",
+        "main": {
+          "components": [
+            {
+              "group": "com.fasterxml.jackson.core",
+              "name": "jackson-annotations",
+              "version": "2.22",
+              "advisories": []
+            },
+            {
+              "group": "com.fasterxml.jackson.core",
+              "name": "jackson-core",
+              "version": "2.22.4",
+              "advisories": []
+            },
+            {
+              "group": "com.fasterxml.jackson.core",
+              "name": "jackson-databind",
+              "version": "2.22.4",
+              "advisories": []
+            },
+            {
+              "group": "com.fasterxml.jackson.datatype",
+              "name": "jackson-datatype-jdk8",
+              "version": "2.22.4",
+              "advisories": []
+            },
+            {
+              "group": "com.fasterxml.jackson.datatype",
+              "name": "jackson-datatype-jsr310",
+              "version": "2.22.4",
+              "advisories": []
+            },
+            {
+              "group": "com.nimbusds",
+              "name": "nimbus-jose-jwt",
+              "version": "10.10",
+              "advisories": []
+            },
+            {
+              "group": "commons-io",
+              "name": "commons-io",
+              "version": "2.18.0",
+              "advisories": []
+            },
+            {
+              "group": "io.github.erdtman",
+              "name": "java-json-canonicalization",
+              "version": "1.1",
+              "advisories": []
+            },
+            {
+              "group": "io.privy.api",
+              "name": "privy-java",
+              "version": "0.59.0",
+              "advisories": []
+            },
+            {
+              "group": "jakarta.annotation",
+              "name": "jakarta.annotation-api",
+              "version": "3.0.0",
+              "advisories": []
+            },
+            {
+              "group": "org.bouncycastle",
+              "name": "bcprov-jdk15to18",
+              "version": "1.85",
+              "advisories": []
+            },
+            {
+              "group": "org.openapitools",
+              "name": "jackson-databind-nullable",
+              "version": "0.2.6",
+              "advisories": []
+            }
+          ],
+          "advisory_count": 0
+        },
+        "greenfield": {
+          "counts": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "advisories": []
+        },
+        "locallyPatchedAdvisories": [
+          {
+            "id": "GHSA-848j-6mx2-7j84",
+            "cve": "CVE-2025-14505",
+            "original": "elliptic@6.6.1",
+            "fork": "@recyclefarm/recanet-elliptic@6.6.1-recanet.1",
+            "change": "Preserve the fixed-width RFC6979 generated nonce bit length; custom nonce callbacks unchanged",
+            "upstream": "https://github.com/indutny/elliptic/issues/321",
+            "validation": "Independent noble P-521 leading-zero nonce regression; secp256k1/P-256 vectors unchanged"
+          },
+          {
+            "id": "GHSA-p6mc-m468-83gw",
+            "original": "lodash.set@4.3.2",
+            "replacement": "local adapter to lodash@4.18.1 set",
+            "validation": "Normal nested paths and prototype pollution regressions"
+          }
+        ],
+        "note": "Registry scans cannot identify local fork fixes; reviewed file hashes and independent regression tests are required."
+      },
+      "checksums": [
+        {
+          "file": "greenfield-worker-linux-x64.tar.gz",
+          "sha256": "a8cbf8e52b8267ee697ebefb91512eef00a4a021ecdf67934408c7b23afb0e79"
+        },
+        {
+          "file": "manifest.json",
+          "sha256": "683cf047dc9da9e2be64d8dac4ce4a011f12be3173b25659ff5bacf7bf73ad4f"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/recanet-java/0.1.0-rc.1/recanet-java-0.1.0-rc.1-javadoc.jar",
+          "sha256": "2019b78c40db69ae6ad47476f2faf125a016da99af6bf85746966297650c33b4"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/recanet-java/0.1.0-rc.1/recanet-java-0.1.0-rc.1.jar",
+          "sha256": "6e7e09ce4015e3a090ebe8bd7a4a2d91314b29bd89c46592ec78adc84c2b2ffc"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/recanet-java/0.1.0-rc.1/recanet-java-0.1.0-rc.1.module",
+          "sha256": "ee51a7ca8a56ed90539c1bfb17c06dff687f4d0575351d877f4c4b47464c4302"
+        },
+        {
+          "file": "maven/com/youngminkim/recanet/recanet-java/0.1.0-rc.1/recanet-java-0.1.0-rc.1.pom",
+          "sha256": "ed5d1fae40bec46cc259f099f22813d65850cefec1682656cb09abd63e553329"
+        }
+      ],
+      "artifact_contents_verified": true
+    },
+    {
+      "language": "typescript",
+      "manifest": {
+        "schemaVersion": 1,
+        "language": "typescript",
+        "version": "0.1.0-rc.1",
+        "sourceCommit": "64200672c39fa9b038be93572d2321a56acd0aa9",
+        "sourceRef": "refs/heads/main",
+        "repository": "RecycleFarm/recanet-sdk",
+        "workflow": "TypeScript Release Candidate",
+        "runId": "44022842828",
+        "runAttempt": "1",
+        "buildPlatform": {
+          "os": "Linux",
+          "architecture": "x86_64",
+          "node": "v22.23.5"
+        },
+        "package": {
+          "name": "@recyclefarm/recanet-sdk",
+          "version": "0.1.0-rc.1",
+          "private": true,
+          "engines": {
+            "node": ">=22 <23"
+          },
+          "exports": {
+            ".": {
+              "types": "./dist/index.d.ts",
+              "import": "./dist/index.js"
+            }
+          }
+        },
+        "security": {
+          "status": "passed",
+          "reportSha256": "4b5ba74913fb9c87302f19d206afa7f6f9bf79a5376eca98f6169ffd7a3a341e",
+          "unresolvedRegistryAdvisories": 0,
+          "locallyPatchedAdvisories": [
+            {
+              "id": "GHSA-848j-6mx2-7j84",
+              "cve": "CVE-2025-14505",
+              "original": "elliptic@6.6.1",
+              "fork": "@recyclefarm/recanet-elliptic@6.6.1-recanet.1",
+              "change": "Preserve the fixed-width RFC6979 generated nonce bit length; custom nonce callbacks unchanged",
+              "upstream": "https://github.com/indutny/elliptic/issues/321",
+              "validation": "Independent noble P-521 leading-zero nonce regression; secp256k1/P-256 vectors unchanged"
+            },
+            {
+              "id": "GHSA-p6mc-m468-83gw",
+              "original": "lodash.set@4.3.2",
+              "replacement": "local adapter to lodash@4.18.1 set",
+              "validation": "Normal nested paths and prototype pollution regressions"
+            }
+          ]
+        },
+        "pocPlatforms": [
+          "linux-x64"
+        ],
+        "sourceJarIncluded": false,
+        "internalDocumentationIncluded": false,
+        "sourceMapsIncluded": false,
+        "published": false,
+        "publishReady": false,
+        "blockers": [
+          "Actual publication has not been approved",
+          "Native tarball is specific to the recorded build OS/architecture",
+          "package.json is private; publication requires a separate approved change"
+        ]
+      },
+      "security": {
+        "schemaVersion": 1,
+        "language": "typescript",
+        "status": "passed",
+        "sourceCommit": "64200672c39fa9b038be93572d2321a56acd0aa9",
+        "main": {
+          "counts": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "advisories": []
+        },
+        "greenfield": {
+          "counts": {
+            "info": 0,
+            "low": 0,
+            "moderate": 0,
+            "high": 0,
+            "critical": 0,
+            "total": 0
+          },
+          "advisories": []
+        },
+        "locallyPatchedAdvisories": [
+          {
+            "id": "GHSA-848j-6mx2-7j84",
+            "cve": "CVE-2025-14505",
+            "original": "elliptic@6.6.1",
+            "fork": "@recyclefarm/recanet-elliptic@6.6.1-recanet.1",
+            "change": "Preserve the fixed-width RFC6979 generated nonce bit length; custom nonce callbacks unchanged",
+            "upstream": "https://github.com/indutny/elliptic/issues/321",
+            "validation": "Independent noble P-521 leading-zero nonce regression; secp256k1/P-256 vectors unchanged"
+          },
+          {
+            "id": "GHSA-p6mc-m468-83gw",
+            "original": "lodash.set@4.3.2",
+            "replacement": "local adapter to lodash@4.18.1 set",
+            "validation": "Normal nested paths and prototype pollution regressions"
+          }
+        ],
+        "note": "Registry scans cannot identify local fork fixes; reviewed file hashes and independent regression tests are required."
+      },
+      "checksums": [
+        {
+          "file": "manifest.json",
+          "sha256": "a3ad3852ffa56e70629af6fa1e525335e615872a5445e9b90daa0b3d3805c792"
+        },
+        {
+          "file": "recyclefarm-recanet-sdk-0.1.0-rc.1.tgz",
+          "sha256": "5d89296b1bd0fac20ad07d08cdf1eadd7700e0ecd022dd207b22ef9e8dd4a1e5"
+        }
+      ],
+      "artifact_contents_verified": true
+    }
+  ],
+  "original_repositories_unchanged": true,
+  "organization_plan": "free",
+  "plan_changed": false,
+  "packages_published": false,
+  "partner_registry_installation_verified": false,
+  "limitations": [
+    "Registry scans do not identify patched local forks; source provenance, hashes and independent regression tests are retained.",
+    "CosmJS 0.32 deprecation warning remains upstream; official Greenfield SDK compatibility is retained and its elliptic use resolves to the reviewed fork.",
+    "No formal cryptographic certification or live provider/blockchain/storage acceptance was performed.",
+    "Linux x64/Ubuntu24.04, Node22, JDK17 is the first PoC scope.",
+    "Actual registry authentication, publisher credentials, licensing/partner acceptance and publication approval remain separate."
+  ]
+}

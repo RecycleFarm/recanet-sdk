@@ -17,3 +17,7 @@
 ## Phase 4 준비 범위
 
 사용자는 distribution과 Maven/npm의 준비 및 실제 배포 전 결정·권한·문제 정리를 요청했다. Private distribution에 파트너 문서·설정 예시와 발행 비활성 정책만 준비했다. [결정 표](phase4-readiness.md)의 이름·버전·플랫폼·제공 파일·보안·승인 방식은 권고이며 아직 미확정이다. 토큰·패키지 발행·파트너 초대·SDK 변경은 수행하지 않았다.
+
+## 승인된 rc.1 후보
+
+사용자는 권고 좌표와 양쪽0.1.0-rc.1, 첫 Linux x64 PoC, source JAR/내부 문서/source map 제외, 보안 수정 후 후보 검증을 승인했다. Monorepo에서만 반영하고 원본 refs/import snapshot은 보존했다. [최종 검증](migration/phase4-rc1-validation.md)에 실행과 파일 hash가 있다. 실제 발행·요금제 변경·파트너 초대는 승인하지 않았으므로 계속 보류한다.
