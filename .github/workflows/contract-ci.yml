@@ -45,6 +45,7 @@ jobs:
           name: common-sdk-contract
           path: |
             reports/contracts/parity.json
+            reports/contracts/typescript-api.actual.json
             contract-test.log
             linux-package-check.log
           if-no-files-found: ignore

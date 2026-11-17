@@ -6,6 +6,7 @@ coverage check, not a Java/TypeScript behavioral conformance test. Never rewrite
 only regenerates the human-readable Markdown table.
 """
 import json
+import difflib
 from pathlib import Path
 import re
 import subprocess
@@ -44,7 +45,10 @@ def typescript_surface():
 def validate_inventory(contract, actual_java, actual_ts):
     recorded_java = [{k: row[k] for k in ('owner', 'declaration')} for row in contract['java']]
     assert actual_java == recorded_java, 'Java API drift or missing overload: review api-map.json'
-    assert actual_ts == contract['typescript'], 'TypeScript export/signature drift: review api-map.json'
+    expected_lines = json.dumps(contract['typescript'], ensure_ascii=False, indent=2).splitlines()
+    actual_lines = json.dumps(actual_ts, ensure_ascii=False, indent=2).splitlines()
+    assert actual_ts == contract['typescript'], 'TypeScript export/signature drift: review api-map.json\n' + '\n'.join(
+        difflib.unified_diff(expected_lines, actual_lines, fromfile='reviewed', tofile='actual', n=2))
     ts_keys = {row['key'] for row in actual_ts}
     assert set(contract['typescriptCoverage']) == ts_keys, 'Unclassified TypeScript API'
     for row in contract['java']:
@@ -86,6 +90,9 @@ def check(render=False):
     contract = json.loads((ROOT / 'contracts/api-map.json').read_text())
     actual_java = java_surface()
     actual_ts = typescript_surface()
+    evidence_dir = ROOT / 'reports/contracts'
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    (evidence_dir / 'typescript-api.actual.json').write_text(json.dumps(actual_ts, ensure_ascii=False, indent=2) + '\n')
     validate_inventory(contract, actual_java, actual_ts)
     ts_keys = {row['key'] for row in actual_ts}
     rendered = render_api_map(contract)
