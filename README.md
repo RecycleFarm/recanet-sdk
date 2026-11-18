@@ -8,8 +8,10 @@ Privy 기반 서버 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제
 
 | SDK | 사용 환경 및 배포 형태 | 안내 |
 | --- | --- | --- |
-| TypeScript / ESM JavaScript | Node 22(`>=22 <23`), Ubuntu 24.04 Linux x64 또는 macOS ARM64. `.tgz`에 두 플랫폼의 네이티브 바이너리 포함 | [설치·동작 확인·사용 예제](sdks/typescript/README.md) |
+| TypeScript / ESM JavaScript | Node 22(`>=22 <23`), Ubuntu 24.04 Linux x64 또는 macOS ARM64. 비공개 GitHub Packages에 두 플랫폼의 네이티브 바이너리를 포함해 배포 | [Registry 설치 방법](sdks/typescript/README.md#github-packages에서-설치) |
 | Java | JDK 17. 의존성 메타데이터와 함께 사용하는 라이브러리 JAR | [환경·빌드·사용 예제](sdks/java/README.md) |
+
+패키지는 배포 저장소 `RecycleFarm/recanet-sdk-distribution`의 접근 권한을 상속한다. 파트너는 배포 저장소에 `Read`로 초대받고 npm 인증을 마치면 개발 저장소 접근이나 `.tgz` 파일 전달 없이 `npm install @recyclefarm/recanet-sdk@0.1.0-rc.1`을 실행할 수 있다. [배포 저장소 접근 설정](https://github.com/RecycleFarm/recanet-sdk-distribution/settings/access)
 
 TypeScript 배포 패키지 사용자는 C compiler·Node headers가 필요 없다. Java SDK 자체는 Node 네이티브 모듈을 사용하지 않으며, Greenfield 어댑터를 사용할 때는 별도의 Node worker가 필요하다. 현재 CI의 Java 기준 환경은 Linux x64다. Java 로컬 macOS 빌드·테스트 결과와 TypeScript 플랫폼 검증을 Java의 전체 macOS 배포 인수로 확대하지 않는다.
 

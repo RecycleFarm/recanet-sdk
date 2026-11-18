@@ -8,7 +8,9 @@ Recanet 파트너용 서버 SDK의 `0.1.0-rc.1`은 GitHub Packages에 비공개�
 
 ## GitHub Packages에서 설치
 
-패키지 읽기 권한이 있는 계정의 classic PAT(`read:packages`)를 `GITHUB_PACKAGES_TOKEN` 환경변수에 설정한다. 프로젝트의 `.npmrc`에 다음 두 줄을 추가한다.
+비공개 패키지는 `RecycleFarm/recanet-sdk-distribution`의 권한을 상속한다. 배포 담당자는 파트너 GitHub 계정을 배포 저장소의 외부 협업자로 초대하고 `Read`를 부여한다. 파트너는 초대를 수락하면 개발 저장소 `RecycleFarm/recanet-sdk` 접근 없이 설치할 수 있다. [패키지 설정](https://github.com/orgs/RecycleFarm/packages/npm/recanet-sdk/settings) · [배포 저장소 접근 설정](https://github.com/RecycleFarm/recanet-sdk-distribution/settings/access)
+
+파트너는 본인 계정의 classic PAT(`read:packages`)를 `GITHUB_PACKAGES_TOKEN` 환경변수에 설정한다. 설치할 프로젝트의 `.npmrc`에는 토큰 원문 대신 다음 두 줄을 추가한다.
 
 ```ini
 @recyclefarm:registry=https://npm.pkg.github.com
@@ -17,6 +19,7 @@ Recanet 파트너용 서버 SDK의 `0.1.0-rc.1`은 GitHub Packages에 비공개�
 
 ```sh
 npm install @recyclefarm/recanet-sdk@0.1.0-rc.1
+npm ls @recyclefarm/recanet-sdk
 ```
 
 토큰 원문은 환경변수 또는 CI Secrets로 제공한다. 파트너의 계정 권한과 인증에 관한 자세한 절차는 [배포 저장소의 설치 안내](https://github.com/RecycleFarm/recanet-sdk-distribution/blob/main/docs/typescript-installation.md)를 참고한다.
@@ -151,4 +154,4 @@ mkdir -p staging/typescript
 
 패키지에는 내부 문서와 source map을 포함하지 않는다. 두 플랫폼의 native 바이너리와 필요한 runtime JS·타입·resources·worker를 포함한다. 영속 journal은 단일 호스트 로컬 파일시스템을 전제로 한다.
 
-파트너 배포를 준비하는 [distribution 저장소](https://github.com/RecycleFarm/recanet-sdk-distribution)는 별도 접근 권한이 필요할 수 있다. Registry에서의 이름 기반 설치와 journal 실행은 [Linux x64·macOS ARM64에서 검증했다](https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44219967674).
+Registry에서의 이름 기반 설치와 journal 실행을 Linux x64와 macOS ARM64의 Node 22에서 검증했다. [Registry 설치 검증 결과](https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44219967674)
