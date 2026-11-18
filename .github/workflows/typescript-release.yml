@@ -16,7 +16,7 @@ on:
         description: Package registry
         type: choice
         options: [github-packages, npmjs]
-        default: github-packages
+        default: npmjs
 permissions:
   contents: read
 defaults:
@@ -132,7 +132,11 @@ jobs:
           npm publish "./$tarball" --registry=https://registry.npmjs.org --access=public --tag="$tag"
   verify-public-install:
     needs: publish
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
     timeout-minutes: 10
     steps:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -144,7 +148,9 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           cd "$(mktemp -d)"
-          npm install --registry=https://registry.npmjs.org --no-audit --no-fund "@recyclefarm/recanet-sdk@$VERSION"
+          unset NODE_AUTH_TOKEN NPM_TOKEN
+          export NPM_CONFIG_USERCONFIG=/dev/null NPM_CONFIG_GLOBALCONFIG=/dev/null
+          npm install --registry=https://registry.npmjs.org --cache="$PWD/.npm-cache" --no-audit --no-fund "@recyclefarm/recanet-sdk@$VERSION"
           node --input-type=module <<'JS'
           import { FileOperationJournal } from '@recyclefarm/recanet-sdk';
           const journal = new FileOperationJournal('./journal');

@@ -16,7 +16,7 @@ on:
         description: Package registry
         type: choice
         options: [github-packages, maven-central]
-        default: github-packages
+        default: maven-central
 permissions:
   contents: read
 defaults:
@@ -122,12 +122,14 @@ jobs:
           group=$(jq -er '.package.groupId' manifest.json)
           artifact=$(jq -er '.package.artifactId' manifest.json)
           cache=$(mktemp -d)
-          mvn --batch-mode --no-transfer-progress -Dmaven.repo.local="$cache" \
+          printf '%s\n' '<settings/>' > "$cache/settings.xml"
+          mvn --batch-mode --no-transfer-progress --settings "$cache/settings.xml" \
+            --global-settings "$cache/settings.xml" "-Dmaven.repo.local=$cache/repository" \
             org.apache.maven.plugins:maven-dependency-plugin:3.9.0:get -Dartifact="$group:$artifact:$VERSION"
           layout="${group//./\/}/$artifact/$VERSION"
-          cmp "maven/$layout/$artifact-$VERSION.jar" "$cache/$layout/$artifact-$VERSION.jar"
+          cmp "maven/$layout/$artifact-$VERSION.jar" "$cache/repository/$layout/$artifact-$VERSION.jar"
           for path in "maven/$layout/"*; do
-            curl --fail --silent --show-error --max-time 30 \
+            curl --disable --location --fail --silent --show-error --max-time 30 \
               "https://repo.maven.apache.org/maven2/$layout/${path##*/}" -o "$cache/published"
             cmp "$path" "$cache/published"
           done

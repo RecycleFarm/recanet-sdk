@@ -1,6 +1,6 @@
 # CI와 SDK 릴리스
 
-언어별 릴리스 워크플로는 기본값으로 후보를 검증하고 보관한다. `main`에서 수동으로 공개 발행을 선택하면 같은 실행에서 검증한 산출물을 선택한 레지스트리에 발행한다. 기본 발행 대상은 GitHub Packages다.
+언어별 릴리스 워크플로는 기본값으로 후보를 검증하고 보관한다. `main`에서 수동으로 공개 발행을 선택하면 같은 실행에서 검증한 산출물을 선택한 레지스트리에 발행한다. 기본 발행 대상은 TypeScript의 npmjs와 Java의 Maven Central이다.
 
 ## 빌드·테스트 CI
 
@@ -62,7 +62,7 @@ python3 scripts/stage-release.py --language typescript --version 0.1.0-rc.2
 1. GitHub Packages의 npm 패키지 설정에서 `RecycleFarm/recanet-sdk`에 Actions **Write** 권한을 부여하고 패키지의 공개 상태를 확인한다. Maven은 `recanet-sdk` 저장소의 공개 상태를 상속한다.
 2. 두 SDK의 버전을 맞춘다. TypeScript는 `package.json`과 `package-lock.json`, Java는 `build.gradle.kts`를 갱신한다.
 3. `main`에서 **TypeScript Release**와 **Java Release**를 각각 실행한다. 정확한 버전, `publish`, `registry: github-packages`를 지정한다. 두 작업은 GitHub Actions의 `GITHUB_TOKEN`을 사용한다. npm prerelease는 `next` 태그로 발행한다.
-4. 두 발행 작업의 레지스트리 설치 검사를 확인한다. 배포 저장소 전환 시에는 조직 외부 계정의 classic PAT(`read:packages`)로도 두 SDK를 설치한 뒤 배포 저장소를 아카이브한다.
+4. 두 발행 작업의 레지스트리 설치 검사를 확인한다.
 
 ## npmjs와 Maven Central 발행
 
@@ -70,6 +70,6 @@ python3 scripts/stage-release.py --language typescript --version 0.1.0-rc.2
 2. npmjs에 `@recyclefarm` 조직 발행 권한을 확보한다. 최초 발행에 사용할 패키지 생성 권한과 2FA 우회가 설정된 granular access token을 GitHub Actions의 `npmjs` 환경 비밀 `NPM_TOKEN`에 등록한다. 최초 발행 이후에는 npmjs 패키지 설정에 `RecycleFarm/recanet-sdk`, `typescript-release.yml`, 환경 `npmjs`로 Trusted Publisher를 등록하고 `NPM_TOKEN`을 제거할 수 있다. [npm 발행 문서](https://docs.npmjs.com/creating-and-publishing-scoped-public-packages/), [Trusted Publishing 문서](https://docs.npmjs.com/trusted-publishers/)
 3. Central Portal에서 `com.youngminkim.recanet`을 사용할 수 있는 네임스페이스 소유권을 확인하고, 토큰과 서명 키를 GitHub Actions의 `maven-central` 환경에 등록한다. 비밀 이름은 `CENTRAL_USERNAME`, `CENTRAL_PASSWORD`, `CENTRAL_GPG_PRIVATE_KEY`(ASCII-armored), `CENTRAL_GPG_PASSPHRASE`다. Central에서 조회할 수 있는 키서버에 공개키를 올린다. [Central 네임스페이스 문서](https://central.sonatype.org/register/namespace/), [서명 요구 사항](https://central.sonatype.org/publish/requirements/gpg/)
 4. 변경이 `main`에 반영되면 GitHub Actions에서 **TypeScript Release**와 **Java Release**를 각각 실행한다. `main`, 정확한 버전, `publish`를 선택하고 각 레지스트리로 `npmjs`와 `maven-central`을 지정한다. npm prerelease의 dist-tag는 `next`이며 정식 버전은 `latest`다. Maven Central에는 서명과 체크섬을 포함한 번들이 발행된다. 업로드 후 실행이 중단되면 Central Portal의 deployment 상태를 확인한 뒤 재실행한다.
-5. 두 워크플로의 `verify-public-install` 성공을 확인한다. npm 검사는 인증 없이 npmjs에서 패키지를 설치하고 네이티브 journal을 실행한다. Java 검사는 빈 Maven 캐시에 SDK 및 전이 의존성을 해결하고 Central의 JAR·POM·Gradle module·sources·Javadoc·Greenfield worker를 후보 파일과 비교한다.
+5. 두 워크플로의 `verify-public-install` 성공을 확인한다. npm 검사는 Linux x64와 macOS ARM64의 새 캐시에서 인증 없이 npmjs 패키지를 설치하고 네이티브 journal을 실행한다. Java 검사는 비어 있는 Maven 설정과 캐시로 SDK 및 전이 의존성을 해결하고 Central의 JAR·POM·Gradle module·sources·Javadoc·Greenfield worker를 후보 파일과 비교한다. 두 레지스트리의 무인증 설치가 모두 확인되면 [배포 저장소](https://github.com/RecycleFarm/recanet-sdk-distribution)를 아카이브한다.
 
 공개 발행 후 Java Greenfield worker는 Maven Central에서 `recanet-sdk-java-<version>-greenfield-worker-linux-x64.tar.gz`를 받을 수 있다. SDK와 같은 버전을 사용하고, 압축을 푼 `greenfield/`에서 `npm ci --omit=dev --ignore-scripts`를 실행한다.
