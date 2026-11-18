@@ -1,7 +1,6 @@
 {
   "name": "@recyclefarm/recanet-sdk",
-  "version": "0.1.0-rc.1",
-  "private": true,
+  "version": "0.1.0-rc.2",
   "type": "module",
   "description": "Recanet backend TypeScript SDK",
   "engines": {
@@ -61,7 +60,6 @@
     "directory": "sdks/typescript"
   },
   "publishConfig": {
-    "registry": "https://registry.npmjs.org",
-    "access": "public"
+    "registry": "https://npm.pkg.github.com"
   }
 }

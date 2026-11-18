@@ -1,0 +1,71 @@
+name: GitHub Packages External Install
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: GitHub login of the external installation account
+        required: true
+        type: string
+      version:
+        description: SDK version to install from GitHub Packages
+        required: true
+        type: string
+permissions: {}
+jobs:
+  install:
+    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: github-packages-external
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.23.5'
+          package-manager-cache: false
+          registry-url: https://npm.pkg.github.com
+          scope: '@recyclefarm'
+      - name: Verify the test credential identity
+        env:
+          GH_TOKEN: ${{ secrets.EXTERNAL_PACKAGES_TOKEN }}
+          EXPECTED_LOGIN: ${{ inputs.username }}
+        run: |
+          test -n "$GH_TOKEN"
+          actual=$(gh api user --jq .login)
+          test "$actual" = "$EXPECTED_LOGIN"
+      - name: Install TypeScript SDK and run the native journal
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.EXTERNAL_PACKAGES_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          cd "$(mktemp -d)"
+          npm install --ignore-scripts --no-audit --no-fund "@recyclefarm/recanet-sdk@$VERSION"
+          node --input-type=module <<'JS'
+          import { FileOperationJournal } from '@recyclefarm/recanet-sdk';
+          const journal = new FileOperationJournal('./journal');
+          await journal.withLock('external-install', async () => journal.store('external-install', { ok: true }));
+          if (!(await journal.load('external-install'))?.ok) throw new Error('Native journal smoke test failed');
+          JS
+      - name: Resolve Java SDK and its dependencies in a fresh Maven cache
+        env:
+          GITHUB_PACKAGES_TOKEN: ${{ secrets.EXTERNAL_PACKAGES_TOKEN }}
+          GITHUB_PACKAGES_USER: ${{ inputs.username }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          temp=$(mktemp -d)
+          cat > "$temp/settings.xml" <<'XML'
+          <settings>
+            <servers>
+              <server>
+                <id>recanet-github</id>
+                <username>${env.GITHUB_PACKAGES_USER}</username>
+                <password>${env.GITHUB_PACKAGES_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          XML
+          mvn --batch-mode --no-transfer-progress --settings "$temp/settings.xml" \
+            "-Dmaven.repo.local=$temp/repository" \
+            org.apache.maven.plugins:maven-dependency-plugin:3.9.0:get \
+            "-Dartifact=com.youngminkim.recanet:recanet-java:$VERSION" \
+            -DremoteRepositories=recanet-github::default::https://maven.pkg.github.com/recyclefarm/recanet-sdk
+          test -s "$temp/repository/com/youngminkim/recanet/recanet-java/$VERSION/recanet-java-$VERSION.jar"

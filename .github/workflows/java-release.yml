@@ -9,9 +9,14 @@ on:
         required: true
         type: string
       publish:
-        description: Publish to Maven Central from main after all checks pass
+        description: Publish to the selected registry from main after all checks pass
         type: boolean
         default: false
+      registry:
+        description: Package registry
+        type: choice
+        options: [github-packages, maven-central]
+        default: github-packages
 permissions:
   contents: read
 defaults:
@@ -48,7 +53,7 @@ jobs:
         run: python3 scripts/verify-public-api.py --language java
       - name: Generate Gradle module metadata
         env:
-          PUBLISH: ${{ inputs.publish }}
+          PUBLISH: ${{ inputs.publish && inputs.registry == 'maven-central' }}
         working-directory: sdks/java
         run: |
           args=()
@@ -56,10 +61,12 @@ jobs:
           ./gradlew assemble generatePomFileForMavenJavaPublication generateMetadataFileForMavenJavaPublication --console=plain "${args[@]}"
       - name: Stage versioned artifacts and SHA256 checksums
         env:
-          PUBLISH: ${{ inputs.publish }}
+          GITHUB_PACKAGES: ${{ inputs.publish && inputs.registry == 'github-packages' }}
+          PUBLISH: ${{ inputs.publish && inputs.registry == 'maven-central' }}
         run: |
           args=()
           if [[ "$PUBLISH" == true ]]; then args+=(--public); fi
+          if [[ "$GITHUB_PACKAGES" == true ]]; then args+=(--github-packages); fi
           python3 scripts/stage-release.py --language java "${args[@]}"
       - name: Save security evidence separately from the candidate
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -77,7 +84,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   publish:
-    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main' && inputs.publish
+    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main' && inputs.publish && inputs.registry == 'maven-central'
     needs: stage
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -123,4 +130,78 @@ jobs:
             curl --fail --silent --show-error --max-time 30 \
               "https://repo.maven.apache.org/maven2/$layout/${path##*/}" -o "$cache/published"
             cmp "$path" "$cache/published"
+          done
+  publish-github-packages:
+    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main' && inputs.publish && inputs.registry == 'github-packages'
+    needs: stage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          artifact-ids: ${{ needs.stage.outputs.candidate-id }}
+          path: candidate
+      - name: Publish and resolve the verified Maven artifacts
+        env:
+          VERSION: ${{ inputs.version }}
+          GITHUB_PACKAGES_TOKEN: ${{ github.token }}
+          GITHUB_PACKAGES_USER: ${{ github.actor }}
+          REGISTRY: https://maven.pkg.github.com/recyclefarm/recanet-sdk
+        run: |
+          cd "candidate/$VERSION"
+          sha256sum -c SHA256SUMS
+          jq -e --arg version "$VERSION" '.publishReady and .version == $version' manifest.json
+          group=$(jq -er '.package.groupId' manifest.json)
+          artifact=$(jq -er '.package.artifactId' manifest.json)
+          layout="${group//./\/}/$artifact/$VERSION"
+          stem="$artifact-$VERSION"
+          base="maven/$layout/$stem"
+          temp=$(mktemp -d)
+          cat > "$temp/settings.xml" <<'XML'
+          <settings>
+            <servers>
+              <server>
+                <id>recanet-github</id>
+                <username>${env.GITHUB_PACKAGES_USER}</username>
+                <password>${env.GITHUB_PACKAGES_TOKEN}</password>
+              </server>
+            </servers>
+          </settings>
+          XML
+          mvn --batch-mode --no-transfer-progress --settings "$temp/settings.xml" \
+            org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
+            "-DrepositoryId=recanet-github" "-Durl=$REGISTRY" \
+            "-DpomFile=$base.pom" "-Dfile=$base.jar" \
+            "-Dfiles=$base-javadoc.jar,$base.module,greenfield-worker-linux-x64.tar.gz" \
+            "-Dtypes=jar,module,tar.gz" "-Dclassifiers=javadoc,,greenfield-worker-linux-x64"
+          cat > "$temp/pom.xml" <<XML
+          <project xmlns="http://maven.apache.org/POM/4.0.0">
+            <modelVersion>4.0.0</modelVersion>
+            <groupId>com.recyclefarm.verification</groupId>
+            <artifactId>maven-consumer</artifactId>
+            <version>1</version>
+            <repositories>
+              <repository><id>recanet-github</id><url>$REGISTRY</url></repository>
+            </repositories>
+            <dependencies>
+              <dependency><groupId>$group</groupId><artifactId>$artifact</artifactId><version>$VERSION</version></dependency>
+            </dependencies>
+          </project>
+          XML
+          mvn --batch-mode --no-transfer-progress --settings "$temp/settings.xml" \
+            --file "$temp/pom.xml" "-Dmaven.repo.local=$temp/repository" \
+            org.apache.maven.plugins:maven-dependency-plugin:3.9.0:resolve
+          cmp "$base.jar" "$temp/repository/$layout/$stem.jar"
+          for suffix in .pom -javadoc.jar .module -greenfield-worker-linux-x64.tar.gz; do
+            local_file="$base$suffix"
+            if [[ "$suffix" == -greenfield-worker-linux-x64.tar.gz ]]; then
+              local_file=greenfield-worker-linux-x64.tar.gz
+            fi
+            curl --fail --silent --show-error --retry 4 --retry-all-errors --max-time 30 \
+              --user "$GITHUB_PACKAGES_USER:$GITHUB_PACKAGES_TOKEN" \
+              "$REGISTRY/$layout/$stem$suffix" -o "$temp/download"
+            cmp "$local_file" "$temp/download"
           done

@@ -2,16 +2,16 @@
 
 Privy 기반 서버 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공하는 Java·TypeScript SDK 모노레포다. 사용자 토큰 검증, 회원별 지갑 조회·생성·서명, Evidence 저장과 Claim 제출·조회 기능을 제공한다. 공통 입력·결과·오류 계약은 [공통 Contract](contracts/recanet-sdk-contract.md)에 정의한다.
 
-현재 버전은 두 SDK 모두 `0.1.0-rc.1`이다. TypeScript는 GitHub Packages에 비공개로 발행했으며 Java는 내부 후보로 제공한다.
+두 SDK의 GitHub Packages 릴리스 버전은 `0.1.0-rc.2`다.
 
 ## SDK 설치와 사용
 
 | SDK | 사용 환경 및 배포 형태 | 안내 |
 | --- | --- | --- |
-| TypeScript / ESM JavaScript | Node 22(`>=22 <23`), Ubuntu 24.04 Linux x64 또는 macOS ARM64. 비공개 GitHub Packages에 두 플랫폼의 네이티브 바이너리를 포함해 배포 | [Registry 설치 방법](sdks/typescript/README.md#github-packages에서-설치) |
-| Java | JDK 17. 의존성 메타데이터와 함께 사용하는 라이브러리 JAR | [환경·빌드·사용 예제](sdks/java/README.md) |
+| TypeScript / ESM JavaScript | Node 22(`>=22 <23`), Ubuntu 24.04 Linux x64 또는 macOS ARM64. 두 플랫폼의 네이티브 바이너리를 포함해 배포 | [Registry 설치 방법](sdks/typescript/README.md#github-packages에서-설치) |
+| Java | JDK 17. 의존성 메타데이터와 함께 사용하는 라이브러리 JAR | [Registry 설치 방법](sdks/java/README.md#github-packages에서-설치) |
 
-패키지는 배포 저장소 `RecycleFarm/recanet-sdk-distribution`의 접근 권한을 상속한다. 파트너는 배포 저장소에 `Read`로 초대받고 npm 인증을 마치면 개발 저장소 접근이나 `.tgz` 파일 전달 없이 `npm install @recyclefarm/recanet-sdk@0.1.0-rc.1`을 실행할 수 있다. [배포 저장소 접근 설정](https://github.com/RecycleFarm/recanet-sdk-distribution/settings/access)
+GitHub Packages에서 설치하려면 GitHub 계정의 classic PAT(`read:packages`)를 사용한다.
 
 TypeScript 배포 패키지 사용자는 C compiler·Node headers가 필요 없다. Java SDK 자체는 Node 네이티브 모듈을 사용하지 않으며, Greenfield 어댑터를 사용할 때는 별도의 Node worker가 필요하다. 현재 CI의 Java 기준 환경은 Linux x64다. Java 로컬 macOS 빌드·테스트 결과와 TypeScript 플랫폼 검증을 Java의 전체 macOS 배포 인수로 확대하지 않는다.
 
@@ -98,8 +98,6 @@ Phase 2 보존 검사는 고정 import commit의 원본 tree와 legacy refs·조
 
 ## 배포 상태
 
-Java 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.1`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.1`이다. TypeScript 패키지는 [GitHub Packages](https://github.com/orgs/RecycleFarm/packages/npm/package/recanet-sdk)에서 패키지 읽기 권한을 받은 계정으로 설치한다. SDK 소스의 `private: true`는 소스 디렉터리에서의 직접 발행을 막는다. 배포 저장소의 수동 workflow가 검증된 후보를 비공개로 발행한다.
+GitHub Packages의 Java 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.2`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.2`다. [릴리스 가이드](docs/release-guide.md#github-packages-발행)
 
 Java 후보는 라이브러리 JAR·Javadoc JAR·POM·Gradle module metadata와 별도 Greenfield worker를 포함한다. sources JAR는 생성·배포하지 않는다. npm 후보는 runtime JS·타입·resources·두 플랫폼 네이티브 바이너리·Greenfield worker를 포함하며 source map과 내부 문서는 제외한다. npm README와 필수 라이선스 고지는 포함한다.
-
-TypeScript Registry 설치와 로컬 journal 실행은 [Linux x64·macOS ARM64에서 검증했다](https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44219967674). 파트너 계정별 읽기 권한은 배포 담당자가 부여한다.

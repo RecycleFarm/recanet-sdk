@@ -141,7 +141,7 @@ def bundle_java_worker(sdk, destination, license_file=None):
                         archive.addfile(info, content)
 
 
-def stage(language, version, output, public=False):
+def stage(language, version, output, public=False, github_packages=False):
     require_main_ancestor()
     sdk = ROOT / 'sdks' / language
     if language == 'java':
@@ -164,6 +164,8 @@ def stage(language, version, output, public=False):
                 raise ValueError('npm publication requires license metadata and removal of private: true')
             if not (sdk / 'LICENSE').is_file() or (sdk / 'LICENSE').read_bytes() != license_file.read_bytes():
                 raise ValueError('Copy the repository LICENSE into sdks/typescript before release')
+    if github_packages and language == 'typescript' and package.get('private'):
+        raise ValueError('GitHub Packages publication requires removal of private: true')
     security = security_evidence(language)
     if os.environ.get('GITHUB_ACTIONS') == 'true':
         # Expected build outputs are ignored by Git; tracked inputs must remain unchanged.
@@ -218,6 +220,7 @@ def stage(language, version, output, public=False):
             blockers.append('package.json is private; publication requires a separate approved change')
         if not package['name'].startswith('@recyclefarm/'):
             blockers.append('GitHub npm package scope/name has not been finalized')
+    publish_ready = public or github_packages
     manifest = {
         'schemaVersion': 1, 'language': language, 'version': version,
         'sourceCommit': git('rev-parse', 'HEAD'), 'sourceRef': os.environ.get('GITHUB_REF'),
@@ -226,7 +229,7 @@ def stage(language, version, output, public=False):
         'runAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
         'buildPlatform': {'os': platform.system(), 'architecture': platform.machine(),
                           'node': subprocess.check_output(['node', '--version'], text=True).strip()},
-        'package': package, 'security': security, 'pocPlatforms': ['linux-x64', 'darwin-arm64'] if language == 'typescript' else ['linux-x64'], 'sourceJarIncluded': public and language == 'java', 'internalDocumentationIncluded': False, 'sourceMapsIncluded': False, 'published': False, 'publishReady': public, 'blockers': [] if public else blockers,
+        'package': package, 'security': security, 'pocPlatforms': ['linux-x64', 'darwin-arm64'] if language == 'typescript' else ['linux-x64'], 'sourceJarIncluded': public and language == 'java', 'internalDocumentationIncluded': False, 'sourceMapsIncluded': False, 'published': False, 'publishReady': publish_ready, 'blockers': [] if publish_ready else blockers,
     }
     (destination / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     checksums = []
@@ -243,10 +246,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--language', choices=('java', 'typescript'), required=True)
     parser.add_argument('--version')
-    parser.add_argument('--public', action='store_true', help='Stage artifacts for the public registry')
+    registry = parser.add_mutually_exclusive_group()
+    registry.add_argument('--public', action='store_true', help='Stage artifacts for npmjs or Maven Central')
+    registry.add_argument('--github-packages', action='store_true', help='Stage artifacts for GitHub Packages')
     parser.add_argument('--output', type=Path, default=ROOT / 'staging')
     args = parser.parse_args()
-    stage(args.language, requested_version(args.language, args.version), args.output, args.public)
+    stage(args.language, requested_version(args.language, args.version), args.output, args.public, args.github_packages)
 
 
 if __name__ == '__main__':

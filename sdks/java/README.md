@@ -1,6 +1,6 @@
 # Recanet Java SDK
 
-Privy 공식 Java server SDK를 기반으로 하는 서버 라이브러리입니다. 서버 자격 증명·사용자 access token 검증, 백엔드·회원 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공합니다. 현재 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.1`입니다. 기존 파트너용 패키지는 비공개 GitHub Packages에서 제공하며, Maven Central 공개 발행은 프로젝트 라이선스 확정 후 진행합니다.
+Privy 공식 Java server SDK를 기반으로 하는 서버 라이브러리입니다. 서버 자격 증명·사용자 access token 검증, 백엔드·회원 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공합니다. 현재 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.2`입니다.
 
 ## 환경
 
@@ -15,6 +15,38 @@ Gradle wrapper를 저장소에 포함합니다. Java 라이브러리 자체에�
 공식 SDK는 `implementation` 의존성으로 사용하며 Privy 서버 요청과 지갑 승인을 위임합니다. 사용자 access token 검증은 Nimbus로 구현했습니다. 공개 API에는 Privy/Nimbus 타입을 노출하지 않습니다.
 
 이 라이브러리는 서버 요청을 인증하고 전달된 Privy access token을 검증합니다. 사용자의 로그인 시작, OTP 전송, refresh token 처리는 구현하지 않았습니다. P-256 authorization 공개키를 Privy wallet owner로 등록하고, `authorization_key`로 해당 키에 연결된 지갑을 조회합니다. 블록체인 wallet의 `public_key`와 authorization 공개키는 서로 다른 용도입니다. 개인키는 Privy 등록 요청에 포함하지 않으며 호출자 측에서 안전하게 보관해야 합니다.
+
+## GitHub Packages에서 설치
+
+Maven 소비자 프로젝트의 `pom.xml`에 저장소와 의존성을 추가합니다.
+
+```xml
+<repositories>
+  <repository>
+    <id>recanet-github</id>
+    <url>https://maven.pkg.github.com/recyclefarm/recanet-sdk</url>
+  </repository>
+</repositories>
+<dependencies>
+  <dependency>
+    <groupId>com.youngminkim.recanet</groupId>
+    <artifactId>recanet-java</artifactId>
+    <version>0.1.0-rc.2</version>
+  </dependency>
+</dependencies>
+```
+
+`~/.m2/settings.xml`의 `servers`에 다음 항목을 추가합니다. `GITHUB_PACKAGES_USER`에 GitHub 사용자명을, `GITHUB_PACKAGES_TOKEN`에 classic PAT(`read:packages`)를 설정합니다.
+
+```xml
+<server>
+  <id>recanet-github</id>
+  <username>${env.GITHUB_PACKAGES_USER}</username>
+  <password>${env.GITHUB_PACKAGES_TOKEN}</password>
+</server>
+```
+
+Greenfield를 사용하는 경우 같은 버전의 `greenfield-worker-linux-x64` 분류자와 `tar.gz` 확장자로 worker를 받습니다.
 
 ## 클라이언트와 백엔드 지갑
 
@@ -282,7 +314,7 @@ JWKS cache TTL 안에 이미 확보된 키는 네트워크 호출 없이 사용�
 
 테스트에서는 생성한 P-256 키와 로컬 HTTP 서버를 사용해 위조·만료·잘못된 claim, 인증 헤더, 키 교체, 캐시 공유, JWKS 장애, 서버 인증 오류, 429, 본문 timeout/크기 제한, interrupt를 검증합니다. 실제 Privy 계정의 자격 증명 확인이나 실제 로그인은 수행하지 않습니다.
 
-기본 빌드는 `recanet-java-0.1.0-rc.1.jar`와 `recanet-java-0.1.0-rc.1-javadoc.jar`를 생성합니다. 공개 발행용 빌드는 `-PpublicRelease`로 sources JAR도 생성합니다. 오래된 빌드 파일은 `./gradlew clean`으로 제거할 수 있습니다.
+기본 빌드는 `recanet-java-0.1.0-rc.2.jar`와 `recanet-java-0.1.0-rc.2-javadoc.jar`를 생성합니다. 공개 발행용 빌드는 `-PpublicRelease`로 sources JAR도 생성합니다. 오래된 빌드 파일은 `./gradlew clean`으로 제거할 수 있습니다.
 
 설계 판단과 문서 검토 내용은 [docs/BACKEND_AUTH.md](docs/BACKEND_AUTH.md)를 참고하세요. `PrivyEvmSigner`와 wallet private key export는 이미 공식 SDK의 `AuthorizationContext`를 내부에서 구성합니다. 이 승인은 사용자 access token 검증과 별도입니다.
 

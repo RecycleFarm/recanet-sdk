@@ -9,9 +9,14 @@ on:
         required: true
         type: string
       publish:
-        description: Publish to npmjs from main after all checks pass
+        description: Publish to the selected registry from main after all checks pass
         type: boolean
         default: false
+      registry:
+        description: Package registry
+        type: choice
+        options: [github-packages, npmjs]
+        default: github-packages
 permissions:
   contents: read
 defaults:
@@ -58,10 +63,12 @@ jobs:
         run: python3 scripts/verify-public-api.py --language typescript
       - name: Stage versioned artifacts and SHA256 checksums
         env:
-          PUBLISH: ${{ inputs.publish }}
+          GITHUB_PACKAGES: ${{ inputs.publish && inputs.registry == 'github-packages' }}
+          PUBLISH: ${{ inputs.publish && inputs.registry == 'npmjs' }}
         run: |
           args=()
           if [[ "$PUBLISH" == true ]]; then args+=(--public); fi
+          if [[ "$GITHUB_PACKAGES" == true ]]; then args+=(--github-packages); fi
           python3 scripts/stage-release.py --language typescript "${args[@]}"
       - name: Save security evidence separately from the candidate
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -79,7 +86,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   publish:
-    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main' && inputs.publish
+    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main' && inputs.publish && inputs.registry == 'npmjs'
     needs: stage
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -143,4 +150,52 @@ jobs:
           const journal = new FileOperationJournal('./journal');
           await journal.withLock('public-install', async () => journal.store('public-install', { ok: true }));
           if (!(await journal.load('public-install'))?.ok) throw new Error('Native journal smoke test failed');
+          JS
+  publish-github-packages:
+    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main' && inputs.publish && inputs.registry == 'github-packages'
+    needs: stage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.23.5'
+          package-manager-cache: false
+          registry-url: https://npm.pkg.github.com
+          scope: '@recyclefarm'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          artifact-ids: ${{ needs.stage.outputs.candidate-id }}
+          path: candidate
+      - name: Publish the verified tarball to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          cd "candidate/$VERSION"
+          sha256sum -c SHA256SUMS
+          jq -e --arg version "$VERSION" '.publishReady and .version == $version' manifest.json
+          name=$(jq -er '.package.name' manifest.json)
+          tarball="recyclefarm-${name#*/}-$VERSION.tgz"
+          tag=latest
+          if [[ "${VERSION%%+*}" == *-* ]]; then tag=next; fi
+          npm publish "./$tarball" --registry=https://npm.pkg.github.com --tag="$tag" --ignore-scripts
+      - name: Verify installation from GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          CC: /recanet-no-compiler
+          RECANET_NODE_INCLUDE: /recanet-no-headers
+        run: |
+          name=$(jq -er '.package.name' "candidate/$VERSION/manifest.json")
+          cd "$(mktemp -d)"
+          npm install --ignore-scripts --no-audit --no-fund "$name@$VERSION"
+          PACKAGE_NAME="$name" node --input-type=module <<'JS'
+          const { FileOperationJournal } = await import(process.env.PACKAGE_NAME);
+          const journal = new FileOperationJournal('./journal');
+          await journal.withLock('registry-install', async () => journal.store('registry-install', { ok: true }));
+          if (!(await journal.load('registry-install'))?.ok) throw new Error('Native journal smoke test failed');
           JS
