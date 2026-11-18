@@ -149,7 +149,8 @@ jobs:
         run: |
           cd "$(mktemp -d)"
           unset NODE_AUTH_TOKEN NPM_TOKEN
-          export NPM_CONFIG_USERCONFIG=/dev/null NPM_CONFIG_GLOBALCONFIG=/dev/null
+          export NPM_CONFIG_USERCONFIG="$PWD/user.npmrc" NPM_CONFIG_GLOBALCONFIG="$PWD/global.npmrc"
+          touch "$NPM_CONFIG_USERCONFIG" "$NPM_CONFIG_GLOBALCONFIG"
           npm install --registry=https://registry.npmjs.org --cache="$PWD/.npm-cache" --no-audit --no-fund "@recyclefarm/recanet-sdk@$VERSION"
           node --input-type=module <<'JS'
           import { FileOperationJournal } from '@recyclefarm/recanet-sdk';
