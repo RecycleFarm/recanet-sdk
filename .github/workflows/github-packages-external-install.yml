@@ -66,6 +66,8 @@ jobs:
           mvn --batch-mode --no-transfer-progress --settings "$temp/settings.xml" \
             "-Dmaven.repo.local=$temp/repository" \
             org.apache.maven.plugins:maven-dependency-plugin:3.9.0:get \
-            "-Dartifact=com.youngminkim.recanet:recanet-java:$VERSION" \
+            "-Dartifact=com.youngminkim.recanet:recanet-sdk-java:$VERSION" \
             -DremoteRepositories=recanet-github::default::https://maven.pkg.github.com/recyclefarm/recanet-sdk
-          test -s "$temp/repository/com/youngminkim/recanet/recanet-java/$VERSION/recanet-java-$VERSION.jar"
+          test -s "$temp/repository/com/youngminkim/recanet/recanet-sdk-java/$VERSION/recanet-sdk-java-$VERSION.jar"
+          rg -Fx "recanet-sdk-java-$VERSION.jar>recanet-github=" \
+            "$temp/repository/com/youngminkim/recanet/recanet-sdk-java/$VERSION/_remote.repositories"

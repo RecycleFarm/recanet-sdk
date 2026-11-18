@@ -8,6 +8,7 @@ version = "0.1.0-rc.2"
 
 val publicRelease = providers.gradleProperty("publicRelease").isPresent
 val releaseLicense = providers.gradleProperty("recanetLicense")
+val sdkArtifactId = "recanet-sdk-java"
 val repositoryUrl = "https://github.com/RecycleFarm/recanet-sdk"
 val projectLicenseFile = rootProject.file("../../LICENSE")
 
@@ -46,7 +47,7 @@ tasks.register<Test>("dmrvnPetLiveTest") {
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
-            artifactId = "recanet-java"
+            artifactId = sdkArtifactId
             from(components["java"])
             pom {
                 name.set("Recanet Java SDK")
@@ -100,6 +101,6 @@ tasks.register<JavaExec>("dmrvnPet") {
 }
 
 tasks.withType<Jar>().configureEach {
-    archiveBaseName.set("recanet-java")
+    archiveBaseName.set(sdkArtifactId)
     from(projectLicenseFile) { into("META-INF") }
 }

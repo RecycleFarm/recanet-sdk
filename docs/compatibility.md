@@ -9,8 +9,8 @@
 | 항목 | Java | TypeScript |
 | --- | --- | --- |
 | 런타임 | JDK17 | Node22+, ESM |
-| 버전 | 0.1.0-rc.1 | 0.1.0-rc.1, private=true(발행 보류) |
-| 패키지 | com.youngminkim.recanet:recanet-java | @recyclefarm/recanet-sdk |
+| 버전 | 0.1.0-rc.2 | 0.1.0-rc.2 |
+| 패키지 | com.youngminkim.recanet:recanet-sdk-java | @recyclefarm/recanet-sdk |
 | 공개 경계 | com.youngminkim.recanet 및 dmrvn 공개 타입 | src/index.ts의 exports |
 | PET v3 전용 factory | 없음, 일반/명시 schema 생성자 유지 | DeclaredMethodology.petV3 존재 |
 | 영속 journal | Java 파일 잠금 | 배포 패키지에 Linux x64/macOS ARM64 Node-API v8 바이너리 포함 |

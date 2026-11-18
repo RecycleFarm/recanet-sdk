@@ -98,6 +98,6 @@ Phase 2 보존 검사는 고정 import commit의 원본 tree와 legacy refs·조
 
 ## 배포 상태
 
-GitHub Packages의 Java 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.2`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.2`다. [릴리스 가이드](docs/release-guide.md#github-packages-발행)
+GitHub Packages의 Java 좌표는 `com.youngminkim.recanet:recanet-sdk-java:0.1.0-rc.2`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.2`다. [릴리스 가이드](docs/release-guide.md#github-packages-발행)
 
 Java 후보는 라이브러리 JAR·Javadoc JAR·POM·Gradle module metadata와 별도 Greenfield worker를 포함한다. sources JAR는 생성·배포하지 않는다. npm 후보는 runtime JS·타입·resources·두 플랫폼 네이티브 바이너리·Greenfield worker를 포함하며 source map과 내부 문서는 제외한다. npm README와 필수 라이선스 고지는 포함한다.

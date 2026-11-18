@@ -72,4 +72,4 @@ python3 scripts/stage-release.py --language typescript --version 0.1.0-rc.2
 4. 변경이 `main`에 반영되면 GitHub Actions에서 **TypeScript Release**와 **Java Release**를 각각 실행한다. `main`, 정확한 버전, `publish`를 선택하고 각 레지스트리로 `npmjs`와 `maven-central`을 지정한다. npm prerelease의 dist-tag는 `next`이며 정식 버전은 `latest`다. Maven Central에는 서명과 체크섬을 포함한 번들이 발행된다. 업로드 후 실행이 중단되면 Central Portal의 deployment 상태를 확인한 뒤 재실행한다.
 5. 두 워크플로의 `verify-public-install` 성공을 확인한다. npm 검사는 인증 없이 npmjs에서 패키지를 설치하고 네이티브 journal을 실행한다. Java 검사는 빈 Maven 캐시에 SDK 및 전이 의존성을 해결하고 Central의 JAR·POM·Gradle module·sources·Javadoc·Greenfield worker를 후보 파일과 비교한다.
 
-공개 발행 후 Java Greenfield worker는 Maven Central에서 `recanet-java-<version>-greenfield-worker-linux-x64.tar.gz`를 받을 수 있다. SDK와 같은 버전을 사용하고, 압축을 푼 `greenfield/`에서 `npm ci --omit=dev --ignore-scripts`를 실행한다.
+공개 발행 후 Java Greenfield worker는 Maven Central에서 `recanet-sdk-java-<version>-greenfield-worker-linux-x64.tar.gz`를 받을 수 있다. SDK와 같은 버전을 사용하고, 압축을 푼 `greenfield/`에서 `npm ci --omit=dev --ignore-scripts`를 실행한다.
