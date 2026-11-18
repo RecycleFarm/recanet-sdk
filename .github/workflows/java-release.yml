@@ -171,12 +171,21 @@ jobs:
             </servers>
           </settings>
           XML
-          mvn --batch-mode --no-transfer-progress --settings "$temp/settings.xml" \
-            org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
-            "-DrepositoryId=recanet-github" "-Durl=$REGISTRY" \
-            "-DpomFile=$base.pom" "-Dfile=$base.jar" \
-            "-Dfiles=$base-javadoc.jar,$base.module,greenfield-worker-linux-x64.tar.gz" \
-            "-Dtypes=jar,module,tar.gz" "-Dclassifiers=javadoc,,greenfield-worker-linux-x64"
+          status=$(curl --location --silent --show-error --max-time 30 \
+            --user "$GITHUB_PACKAGES_USER:$GITHUB_PACKAGES_TOKEN" \
+            "$REGISTRY/$layout/$stem.jar" -o "$temp/existing.jar" -w '%{http_code}')
+          case "$status" in
+            200) cmp "$base.jar" "$temp/existing.jar" ;;
+            404)
+              mvn --batch-mode --no-transfer-progress --settings "$temp/settings.xml" \
+                org.apache.maven.plugins:maven-deploy-plugin:3.1.4:deploy-file \
+                "-DrepositoryId=recanet-github" "-Durl=$REGISTRY" \
+                "-DpomFile=$base.pom" "-Dfile=$base.jar" \
+                "-Dfiles=$base-javadoc.jar,$base.module,greenfield-worker-linux-x64.tar.gz" \
+                "-Dtypes=jar,module,tar.gz" "-Dclassifiers=javadoc,,greenfield-worker-linux-x64"
+              ;;
+            *) echo "GitHub Packages lookup returned HTTP $status" >&2; exit 1 ;;
+          esac
           cat > "$temp/pom.xml" <<XML
           <project xmlns="http://maven.apache.org/POM/4.0.0">
             <modelVersion>4.0.0</modelVersion>
@@ -200,7 +209,7 @@ jobs:
             if [[ "$suffix" == -greenfield-worker-linux-x64.tar.gz ]]; then
               local_file=greenfield-worker-linux-x64.tar.gz
             fi
-            curl --fail --silent --show-error --retry 4 --retry-all-errors --max-time 30 \
+            curl --location --fail --silent --show-error --retry 4 --retry-all-errors --max-time 30 \
               --user "$GITHUB_PACKAGES_USER:$GITHUB_PACKAGES_TOKEN" \
               "$REGISTRY/$layout/$stem$suffix" -o "$temp/download"
             cmp "$local_file" "$temp/download"

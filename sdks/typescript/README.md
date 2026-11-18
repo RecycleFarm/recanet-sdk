@@ -154,4 +154,4 @@ mkdir -p staging/typescript
 
 패키지에는 내부 문서와 source map을 포함하지 않는다. 두 플랫폼의 native 바이너리와 필요한 runtime JS·타입·resources·worker를 포함한다. 영속 journal은 단일 호스트 로컬 파일시스템을 전제로 한다.
 
-Registry에서의 이름 기반 설치와 journal 실행을 Linux x64와 macOS ARM64의 Node 22에서 검증했다. [Registry 설치 검증 결과](https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44219967674)
+이전 `0.1.0-rc.1`의 Registry 설치와 journal 실행은 Linux x64와 macOS ARM64의 Node 22에서 검증했다. [rc.1 검증 결과](https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44219967674)
