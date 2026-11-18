@@ -84,12 +84,15 @@ export class DmrvnDeployment {
   forwarderAddress(): string { return str(this.#metadata.forwarderAddress); }
   isProxy(): boolean { return this.#metadata.deploymentKind === 'proxy'; }
   runtimeCodeHash(): string { return str(map(this.#metadata.codeHashes)[this.isProxy() ? 'proxy' : 'contract']); }
+  /** @internal */
   requireWritable(): void { if (!this.isProxy()) throw new DmrvnError('DEPLOYMENT_NOT_READY'); }
+  /** @internal */
   release(address: string): Record<string, unknown> | null {
     if (!this.isProxy()) return null;
     const result = (this.#metadata.approvedReleases as Record<string, unknown>[]).find(value => value.address === address);
     return result ? copy(result) : null;
   }
+  /** @internal */
   assertCompatible(saved: Readonly<Record<string, unknown>>): void {
     for (const field of ['chainId', 'contractAddress', 'forwarderAddress', 'protocolVersion', 'deploymentKind']) {
       if (String(this.#metadata[field]) !== String(saved[field])) throw new DmrvnError('DEPLOYMENT_COLLISION');

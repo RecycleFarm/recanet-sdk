@@ -29,26 +29,39 @@ jobs:
       - id: paths
         name: Select SDK checks
         run: python3 scripts/ci-changes.py --language typescript
+  native:
+    needs: changes
+    if: needs.changes.outputs.changed == 'true'
+    uses: ./.github/workflows/typescript-native.yml
   build:
     name: TypeScript build and tests
-    needs: changes
+    needs: [changes, native]
     if: needs.changes.outputs.changed == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04]
+        os: [ubuntu-24.04, macos-15]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
       - uses: ./.github/actions/setup-sdk
+      - name: Verify supported OS and CPU
+        run: |
+          node -e 'const expected = process.env.RUNNER_OS === "macOS" ? "darwin/arm64" : "linux/x64"; if (`${process.platform}/${process.arch}` !== expected) throw new Error(`Expected ${expected}`);'
       - name: Install locked dependencies
         run: |
           npm ci --prefix sdks/typescript
           npm ci --prefix sdks/typescript/tools/greenfield
+      - name: Collect both native prebuilds from this workflow run
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: recanet-native-*
+          path: sdks/typescript/prebuilds/
+          merge-multiple: true
       - name: Build and test
         run: make typescript-check 2>&1 | tee typescript-check.log
       - name: Verify dependency security and reviewed forks

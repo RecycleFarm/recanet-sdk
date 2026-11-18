@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
 import { DmrvnError, EvmTransactionClient, TransactionQueryError } from '../dist/index.js';
 
+
+
 const hash = '0x' + 'AB'.repeat(32);
 const blockHash = '0x' + 'CD'.repeat(32);
 const from = '0x' + 'aB'.repeat(20);

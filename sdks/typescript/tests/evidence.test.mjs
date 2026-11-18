@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DmrvnClient, DmrvnConfig, DmrvnError, DmrvnJson, MemoryOperationJournal } from '../dist/index.js';
+import { DmrvnClient, DmrvnConfig, DmrvnError } from '../dist/index.js';
+
+import { DmrvnJson } from '../dist/dmrvn-json.js';
+import { MemoryOperationJournal } from '../dist/memory-operation-journal.js';
 import { workflowFixture } from './helpers/dmrvn-workflow.mjs';
 
 const code = expected => error => { assert.equal(error.code, expected); return true; };

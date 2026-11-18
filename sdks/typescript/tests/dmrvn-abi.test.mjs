@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { AbiCoder, Interface } from 'ethers';
-import { DmrvnAbi, DmrvnCrypto as crypto, DmrvnDecimal } from '../dist/index.js';
+import { DmrvnDecimal } from '../dist/index.js';
+import * as crypto from '../dist/dmrvn-crypto.js';
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
 
 const fixture = async name => JSON.parse(await readFile(new URL('./fixtures/' + name, import.meta.url), 'utf8'));
 const invalid = error => { assert.equal(error.code, 'INVALID_INPUT'); return true; };

@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install build test check java-build typescript-build java-test typescript-test java-check typescript-check verify-migration verify-api ci-rules security-java security-typescript
+.PHONY: help install build test check java-build typescript-build java-test typescript-test java-check typescript-check verify-migration verify-api contract-check contract-test ci-rules security-java security-typescript
 
 help:
 	@echo 'make install          Install existing npm dependencies for both SDKs'
@@ -9,7 +9,9 @@ help:
 	@echo 'make java-check       Check Java, Greenfield worker, and local PET WASM'
 	@echo 'make typescript-check Check TypeScript, worker, and packed consumer'
 	@echo 'make verify-migration Verify original refs and exact SDK source trees'
-	@echo 'make verify-api       Compare built APIs with the Phase 2 baseline'
+	@echo 'make verify-api       Compare built APIs with the current Contract baseline'
+	@echo 'make contract-test    Compare Java and TypeScript on common executable vectors'
+	@echo 'make contract-check   Check complete Java/TypeScript API contract coverage'
 
 install:
 	npm ci --prefix sdks/java/tools/greenfield
@@ -49,6 +51,14 @@ verify-migration:
 verify-api:
 	python3 scripts/verify-public-api.py
 
+contract-check: java-build
+	python3 -m unittest discover -s tests/contracts -v
+	python3 scripts/check-sdk-contract.py
+
+contract-test: build
+	python3 scripts/test-sdk-contract.py
+	node tests/contracts/typescript/worker-parity.mjs
+
 # Keep API comparison after both builds even when make is invoked with -j.
 security-java:
 	python3 scripts/check-security.py --language java
@@ -61,3 +71,7 @@ ci-rules:
 
 check: ci-rules verify-migration java-check typescript-check security-java security-typescript
 	python3 scripts/verify-public-api.py
+	python3 -m unittest discover -s tests/contracts -v
+	python3 scripts/check-sdk-contract.py
+	python3 scripts/test-sdk-contract.py
+	node tests/contracts/typescript/worker-parity.mjs

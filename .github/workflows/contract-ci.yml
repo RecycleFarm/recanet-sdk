@@ -1,0 +1,61 @@
+name: Common SDK Contract
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: contract-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    uses: ./.github/workflows/typescript-native.yml
+  contract:
+    needs: native
+    name: Java and TypeScript common contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-sdk
+      - name: Verify Linux x64 runtime
+        run: |
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          node -e 'if (process.platform !== "linux" || process.arch !== "x64") process.exit(1); console.log({platform: process.platform, arch: process.arch, node: process.version});'
+      - name: Install locked dependencies
+        run: make install
+      - name: Collect both native prebuilds from this workflow run
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: recanet-native-*
+          path: sdks/typescript/prebuilds/
+          merge-multiple: true
+      - name: Compare executable common contract
+        run: make contract-test 2>&1 | tee contract-test.log
+      - name: Check complete API coverage and reviewed declarations
+        run: |
+          make contract-check
+          make verify-api
+      - name: Install and execute packed Linux x64 consumer
+        run: npm --prefix sdks/typescript run check:package 2>&1 | tee linux-package-check.log
+      - name: Save conformance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: common-sdk-contract
+          path: |
+            reports/contracts/parity.json
+            reports/contracts/typescript-api.actual.json
+            contract-test.log
+            linux-package-check.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DmrvnError, NodeGreenfieldStorage } from '../dist/index.js';
 
+
+
 const keyEnv = 'RECANET_TEST_STORAGE_KEY', secret = 'test-only-storage-key';
 const location = { storageType: 1, chainId: '5600', bucketName: 'private', objectName: 'evidence.json' };
 const common = "import fs from 'node:fs/promises';\nlet wire=''; for await(const chunk of process.stdin) wire+=chunk;\nconst request=JSON.parse(wire);\n";
@@ -47,8 +49,8 @@ test('worker에는 저장소 전용 환경만 전달하고 wire/argv에 키를 �
 
 test('잘못된 설정/네트워크/빈 저장소 키는 spawn 전에 거부하고 키는 호출마다 환경에서 다시 읽는다', async t => {
   const f = await fixture(t, 'process.stdout.write(JSON.stringify({ok:true,data:{exists:true}}));');
-  for (const patch of [{ chainId: '05600' }, { rpcUrl: 'http://external.invalid' }, { timeoutMs: 0 }, { timeoutMs: 2147483648 },
-    { timeoutMs: 1.1 }, { address: 'invalid' }, { feeGranter: 'invalid' }]) assert.throws(() => new NodeGreenfieldStorage({ ...f.options, ...patch }));
+  for (const patch of [{ chainId: '05600' }, { rpcUrl: 'http://external.invalid' }, { timeoutMs: 0 },
+     { address: 'invalid' }, { feeGranter: 'invalid' }]) assert.throws(() => new NodeGreenfieldStorage({ ...f.options, ...patch }));
   await rejects(() => f.storage.head({ ...location, chainId: 5600 }), 'WRONG_CHAIN');
   delete process.env[keyEnv]; await rejects(() => f.storage.head(location), 'STORAGE_ACCESS_DENIED');
   process.env[keyEnv] = '\u3000'; await rejects(() => f.storage.head(location), 'STORAGE_ACCESS_DENIED');

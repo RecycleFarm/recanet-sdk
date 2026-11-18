@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DeclaredMethodology, DmrvnCrypto, DmrvnDecimal, DmrvnJson, DmrvnProtocol } from '../dist/index.js';
+import { DeclaredMethodology, DmrvnDecimal, DmrvnProtocol } from '../dist/index.js';
+
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 
 const beneficiary = '0x' + '11'.repeat(20);
 const wasm = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);

@@ -7,7 +7,7 @@ Phase 3에서는 언어별 CI와 내부 릴리스 후보 생성을 구성했다.
 | 워크플로 | 실행과 검사 |
 | --- | --- |
 | Java CI | PR, main push, 수동 실행. Ubuntu24.04, JDK17, Node22.23.5에서 JUnit·JAR/POM·예제 컴파일·Greenfield worker·로컬 WASM·공개 API 검사 |
-| TypeScript CI | 같은 이벤트. 첫 PoC 범위인 Ubuntu24.04 x64에서 본체·worker·tarball 소비자·공개 타입 검사 |
+| TypeScript CI | 같은 이벤트. Ubuntu24.04 x64와 macOS15 ARM64에서 본체·worker·tarball 소비자·공개 타입 검사 |
 
 Java 소스 변경은 Java, TS 소스 변경은 TS를 실행한다. contracts, scripts, workflow/공통 action, CI 규칙 테스트, Makefile, API baseline 변경은 양쪽을 실행한다. 일반 문서만 바뀌면 SDK 빌드는 생략하되 CI 규칙 테스트와 최종 상태 확인은 실행한다. 변경 이력 조회에 실패하거나 수동 실행한 경우에는 해당 SDK의 전체 검사를 실행한다.
 
@@ -30,7 +30,7 @@ GitHub의 Actions에서 해당 Release Candidate를 선택하고 Run workflow로
 
 Java는 binary JAR·javadoc JAR·생성 POM·Gradle module metadata를 Maven 경로로 보관한다. source JAR와 sources variant는 제외한다. 별도 Greenfield runtime worker 압축물을 동봉하며 설치 시 Node22와 npm ci --omit=dev --ignore-scripts가 필요하다.
 
-TS는 현재 package.json의 files/exports로 npm pack한 tarball을 보관하고 이름·버전·기본 JS/타입/native 파일을 확인한다. 빌드 OS/architecture를 manifest에 기록한다. 릴리스 후보는 Ubuntu24.04 x64에서 생성하므로 TS native tarball도 Linux x64용이다. macOS CI가 통과하더라도 그 Linux tarball을 macOS에 설치해 사용할 수 있다는 뜻은 아니다.
+TS는 package.json의 files/exports로 npm pack한 tarball을 보관하고 이름·버전·JS/타입과 Linux x64·macOS ARM64의 .node 바이너리 및 빌드 해시를 확인한다. 재사용 native workflow가 같은 revision을 각 OS에서 빌드·OS 잠금 실행 검증하고, CI·release·contract workflow가 두 artifact를 모은다. 빌드 OS/architecture는 manifest에 기록하되 동일 tarball을 Linux x64와 macOS ARM64에 설치할 수 있다. 설치에서는 컴파일이나 바이너리 다운로드를 하지 않는다. CI에서 C compiler·Node headers 경로를 사용할 수 없도록 설정하고, 일반 설치 및 --ignore-scripts 재설치 후 journal 실행까지 검증한다. prepack은 두 바이너리의 형식·CPU·소스 해시·바이너리 해시를 확인하고 불완전한 패키지를 거부한다.
 
 각 후보에 manifest.json과 SHA256SUMS를 동봉한다. manifest에는 SDK·버전·commit·ref·workflow/run ID·attempt·빌드 플랫폼과 도구, package metadata가 있다. 항상 published=false, publishReady=false이며 미해결 발행 조건을 명시한다. SHA256SUMS는 manifest와 모든 후보 파일을 포함한다. 다운로드한 후보 디렉터리에서 다음과 같이 확인한다.
 
@@ -67,6 +67,6 @@ Java의 대문자 artifactId, npm private/scope/name, native 플랫폼 배포 �
 
 ## rc.1 승인 반영
 
-현재 후보 이름은 com.youngminkim.recanet:recanet-java:0.1.0-rc.1 및 @recyclefarm/recanet-sdk@0.1.0-rc.1이다. 첫 PoC는 Linux x64·Node22·JDK17로 제한한다. npm의 os/cpu 제한과 Linux ELF 검사로 후보를 확인하고 내부 문서/source map을 거부한다. npm private=true와 모든 workflow의 발행 비활성은 유지한다.
+현재 후보 이름은 com.youngminkim.recanet:recanet-java:0.1.0-rc.1 및 @recyclefarm/recanet-sdk@0.1.0-rc.1이다. Java 첫 PoC는 Linux x64·JDK17이며 TypeScript는 Linux x64 또는 macOS ARM64·Node22를 지원한다. npm os/cpu, 플랫폼 검사 스크립트와 두 플랫폼의 사전 빌드 바이너리·해시를 검사하며 내부 문서/source map을 거부한다. npm private=true와 모든 workflow의 발행 비활성은 유지한다.
 
 보안 조회가 성공하고 알려진 미해결 권고가0건이며 검토된 로컬 호환 모듈 hash와 회귀 시험을 통과해야 후보를 생성한다. 같은 commit의 보안 보고서 hash를 manifest에 넣고, 보안 보고서는 후보와 분리한 내부 artifact로 보관한다. [보안 수정 근거](security/rc1-remediation.md).

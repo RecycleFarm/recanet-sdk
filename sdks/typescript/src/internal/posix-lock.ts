@@ -7,7 +7,7 @@ let binding: NativeLocks | undefined;
 export function nativeLocks(): NativeLocks {
   try {
     if (binding === undefined) {
-      const loaded: unknown = createRequire(import.meta.url)('../native/posix-lock.node');
+      const loaded: unknown = createRequire(import.meta.url)(`../../prebuilds/${process.platform}-${process.arch}/posix-lock.node`);
       if (!loaded || typeof loaded !== 'object' || !('tryLock' in loaded) || typeof loaded.tryLock !== 'function'
         || !('unlock' in loaded) || typeof loaded.unlock !== 'function') throw new Error();
       binding = loaded as NativeLocks;

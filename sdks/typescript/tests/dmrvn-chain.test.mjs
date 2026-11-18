@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DmrvnAbi, DmrvnChain, DmrvnCrypto, DmrvnError, IMPLEMENTATION_SLOT, ADMIN_SLOT } from '../dist/index.js';
+import { DmrvnError } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import { DmrvnChain } from '../dist/dmrvn-chain.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { IMPLEMENTATION_SLOT } from '../dist/dmrvn-chain.js';
+import { ADMIN_SLOT } from '../dist/dmrvn-chain.js';
 import { chainFixture, address } from './helpers/dmrvn-chain.mjs';
 
 const code = expected => error => { assert.equal(error.code, expected); assert.equal(error.cause, undefined); return true; };

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BackendWalletRegistration, DmrvnError, PrivyClient, memberExternalId } from '../dist/index.js';
+import { BackendWalletRegistration, DmrvnError, PrivyClient } from '../dist/index.js';
+
+import { memberExternalId } from '../dist/member-identity.js';
 
 const registration = BackendWalletRegistration.generate();
 const transaction = { to: 'recipient', value: '0x0', gas: '0x1', gasPrice: '0x1', nonce: '0x0' };
@@ -34,7 +36,7 @@ const denied = error => { assert.ok(error instanceof DmrvnError); assert.equal(e
 test('회원 서명은 매번 회원 및 승인키 목록을 확인하고 지갑을 자동 생성하지 않는다', async () => {
   const { client, calls } = fixture();
   const members = client.userWallets(registration, 'service');
-  await assert.rejects(members.signerFor('member'), denied);
+  await assert.rejects(members.signerFor('member'), { name: 'IllegalStateException' });
   assert.equal(calls.length, 1);
   assert.ok(calls.every(call => call.method === 'GET'));
   const wallet = await members.getOrCreateWallet('member');
@@ -110,7 +112,7 @@ test('파트너 식별자는 일반 회원 지갑과 분리하고 signer 확보 
   assert.equal(authorizations, 7);
 });
 
-test('비동기 파트너 권한 대기 중에도 호출 시점 typed/transaction snapshot을 사용한다', async () => {
+test('파트너 권한 확인 후 Java와 같은 시점에 typed/transaction 값을 읽는다', async () => {
   const { client, calls } = fixture();
   let resolveAuthorization;
   let delayed = false;
@@ -124,11 +126,11 @@ test('비동기 파트너 권한 대기 중에도 호출 시점 typed/transactio
   input.message.amount = 'changed';
   resolveAuthorization(true);
   await pending;
-  assert.equal(calls[0].body.params.typed_data.message.amount, '9007199254740993');
+  assert.equal(calls[0].body.params.typed_data.message.amount, 'changed');
   const tx = { ...transaction };
   const send = signer.sendTransaction(421614, tx, 'operation');
   tx.value = 'changed';
   resolveAuthorization(true);
   await send;
-  assert.equal(calls[1].body.params.transaction.value, '0x0');
+  assert.equal(calls[1].body.params.transaction.value, 'changed');
 });

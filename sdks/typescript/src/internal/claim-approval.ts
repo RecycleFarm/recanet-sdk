@@ -40,8 +40,8 @@ export async function approveClaim(context: OperationContext, operationId: strin
     DmrvnProtocol.verifyProvenance(stateMap(state.evidence), DmrvnJson.hash(state.evidence), operator.address);
     await methodology.verifyActive();
     const location = stateMap(state.evidenceLocation);
-    requireState((await storage.head(copyState(location), signal)).sealed, 'OBJECT_UNSEALED');
-    requireState(hexString(DmrvnJson.bytes(state.evidence)) === hexString(await storage.read(copyState(location), signal)), 'STORAGE_MISMATCH');
+    requireState((await storage.head(location, signal)).sealed, 'OBJECT_UNSEALED');
+    requireState(hexString(DmrvnJson.bytes(state.evidence)) === hexString(await storage.read(location, signal)), 'STORAGE_MISMATCH');
     const user = stateString(state.beneficiary);
     methodology.validate(stateMap(state.body), config.partnerId, user);
     const reservationKey = beneficiaryKey(context, user);
@@ -53,7 +53,7 @@ export async function approveClaim(context: OperationContext, operationId: strin
         if (deadline > 9223372036854775807n) throw new RangeError('승인 deadline이 int64 범위를 벗어났습니다');
         state.claimRequest = { claimId: state.claimId, beneficiary: user, partnerId: config.partnerId,
           activityId: methodology.activityId(), methodologyId: methodology.id(), methodologyVersion: methodology.version(),
-          evidenceHash: DmrvnJson.hash(state.evidence), methodologyHash: methodology.hash(), evidenceLocation: copyState(location),
+          evidenceHash: DmrvnJson.hash(state.evidence), methodologyHash: methodology.hash(), evidenceLocation: location,
           nonce, deadline: deadline.toString() };
         await context.save(key, state);
       }

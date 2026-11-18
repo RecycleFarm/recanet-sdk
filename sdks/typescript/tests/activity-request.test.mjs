@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ActivityRequest, DmrvnDecimal, DmrvnError, DmrvnJson } from '../dist/index.js';
+import { ActivityRequest, DmrvnDecimal, DmrvnError } from '../dist/index.js';
+
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 
 const invalid = error => error instanceof DmrvnError && error.code === 'INVALID_INPUT';
 test('활동 요청은 기본값과 원시 회원 ID를 보존하고 inputs를 생성/조회 시 독립 복사한다', () => {
@@ -27,7 +29,7 @@ test('회원·source·JSON 객체·gas·시간의 잘못된 값을 요청 생성
   for (const inputs of [null, [], new DmrvnDecimal('1.0')]) assert.throws(() => new ActivityRequest('u', 's', inputs), invalid);
   for (const options of [null, { gas: null }, { gas: 100000 }, { gas: '0100000' }, { gas: '99999' }, { gas: '2000001' },
     { claimId: 'x' }, { objectName: 3 }, { confirmationTimeoutMs: null }, { confirmationTimeoutMs: -1 }, { confirmationTimeoutMs: 600001 },
-    { confirmationTimeoutMs: 0.1 }, { pollIntervalMs: 0 }, { pollIntervalMs: 10001 }, { pollIntervalMs: NaN }]) {
+    { pollIntervalMs: 0 }, { pollIntervalMs: 10001 }, { pollIntervalMs: NaN }]) {
     assert.throws(() => new ActivityRequest('u', 's', {}, options), invalid);
   }
 });

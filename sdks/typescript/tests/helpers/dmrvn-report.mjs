@@ -1,5 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { DmrvnAbi, DmrvnJson, DmrvnReader } from '../../dist/index.js';
+import { DmrvnReader } from '../../dist/index.js';
+
+import { DmrvnAbi } from '../../dist/dmrvn-abi.js';
+import { DmrvnJson } from '../../dist/dmrvn-json.js';
 import { chainFixture } from './dmrvn-chain.mjs';
 import { eventLog } from './dmrvn-events.mjs';
 

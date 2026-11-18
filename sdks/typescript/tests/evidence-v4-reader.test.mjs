@@ -2,7 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Wallet } from 'ethers';
-import { DmrvnAbi, DmrvnCrypto, DmrvnJson, DmrvnProtocol, DmrvnReader } from '../dist/index.js';
+import { DmrvnProtocol, DmrvnReader } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { resolutionFixture } from './helpers/dmrvn-resolution.mjs';
 import { reportFixture } from './helpers/dmrvn-report.mjs';
 import { eventLog } from './helpers/dmrvn-events.mjs';

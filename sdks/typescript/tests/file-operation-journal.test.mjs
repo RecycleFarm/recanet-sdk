@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fork } from 'node:child_process';
 import { once } from 'node:events';
-import { DmrvnClient, DmrvnCrypto, DmrvnError, DmrvnJson, FileOperationJournal } from '../dist/index.js';
+import { DmrvnClient, DmrvnError, FileOperationJournal } from '../dist/index.js';
+
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { workflowFixture } from './helpers/dmrvn-workflow.mjs';
 
 const supported = ['darwin', 'linux'].includes(process.platform), options = { skip: !supported, timeout: 15000 };

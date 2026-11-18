@@ -138,8 +138,8 @@ export async function createQaClient(
     keyEnvironmentVariable: settings.storageKeyEnvironmentVariable,
     ...(settings.feeGranter ? { feeGranter: settings.feeGranter } : {}),
   });
-  const methodology = DeclaredMethodology.petV3(
-    settings.methodologyManifest, settings.methodologyWasm, settings.methodologyHash, registry,
+  const methodology = new DeclaredMethodology(
+    settings.methodologyManifest, settings.methodologyWasm, settings.methodologyHash, registry, 4,
   );
   const journal = new FileOperationJournal(settings.journalDirectory);
   const client = new DmrvnClient(config, rpc, operator, storage, methodology, journal);
@@ -353,7 +353,7 @@ errorCode 또는 reportError.code:
 
 개인키·appSecret·토큰·전체 서명 snapshot·private Evidence 본문은 결과 보고서에 넣지 않는다.
 식별자도 접근 통제된 QA 기록에 보존한다. bigint 값을 표시할 때 문자열로 변환하되,
-해시·서명용 Evidence bytes 생성에는 일반 JSON 변환 대신 `DmrvnJson`을 사용한다.
+해시·서명용 Evidence bytes 생성에는 일반 JSON 변환 대신 `Json`을 사용한다.
 
 ## 10. 상세 문서
 

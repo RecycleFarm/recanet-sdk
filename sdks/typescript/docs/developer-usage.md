@@ -146,33 +146,32 @@ do {
 Java와 같은 `listTransactions(address, limit, cursor)` 편의 호출도 제공합니다.
 이 호출의 범위는 genesis부터 첫 페이지의 latest까지이며, 취소 신호는 네 번째 인수로 전달합니다.
 
-DMRVN의 순수 계산 계층은 `DmrvnCrypto`, `DmrvnJson`, `DmrvnAbi`로 제공합니다.
-`DmrvnJson.parse`의 소수는 `DmrvnDecimal`이며 해시·복사에는 SDK의 JSON 함수를 사용하세요.
-최상위 객체가 필요한 입력은 `DmrvnJson.object(bytes)`로 파싱합니다. 객체 이외의 값은 `INVALID_INPUT`으로 거부합니다.
+DMRVN JSON 계산은 Java와 같은 공개 `Json` API로 제공합니다. 암호·ABI 구현 helper는 SDK 내부 경계입니다.
+`Json.parse`의 소수는 `DmrvnDecimal`이며 해시·복사에는 SDK의 JSON 함수를 사용하세요.
+최상위 객체가 필요한 입력은 `Json.object(bytes)`로 파싱합니다. 객체 이외의 값은 `INVALID_INPUT`으로 거부합니다.
 이 경로는 Java의 현재 바이트 규칙을 재현하며 전체 입력에서 표준 JCS와 동일하다는 뜻은 아닙니다.
 동봉 ABI는 필요한 타입의 부분집합만 인코딩하며, 실제 거래를 자동 제출하지 않습니다.
 
-`DmrvnProtocol`은 Claim·ForwardRequest·보고서의 EIP-712 digest, provenance 검증, committee/report hash와
+`DmrvnProtocol`은 Claim·ForwardRequest·보고서의 EIP-712 digest, provenance 검증과
 제출 calldata를 계산합니다. 이 계산만으로 signer 권한·quorum·DMRVN 최종 검증 성공을 판단하지 않습니다.
 
 `DeclaredMethodology`는 manifest와 원시 WASM hash를 확인하고, 호출자가 제공한 registry 함수로 활성을 조회합니다.
 Evidence 본문을 만들 때는 운영자와 확인한 `evidenceSchemaVersion`을 명시해야 합니다. SDK는 WASM을 실행하거나
 파트너 입력 프로필을 자동 선택하지 않습니다. 이번 연동의 확정 PET 계약은
-`DeclaredMethodology.petV3(manifestBytes, wasmBytes, expectedMethodologyHash, registry)`로 선택합니다.
-Evidence 버전은 4, partnerId=101/activityId=1003, 방법론은 2003/3이며 `inputs`는 `petBottleCount` 키 하나를 갖습니다.
+`new DeclaredMethodology(manifestBytes, wasmBytes, expectedMethodologyHash, registry, 4)`로 schema4를 명시합니다.
+해당 PET 운영 프로필은 Evidence4/partner101/activity1003/방법론2003/3 및 petBottleCount를 사용합니다. SDK 일반 생성자는 Java와 같이 partner나 input 키를 추가로 제한하지 않습니다.
 실제 승인된 v3 패키지와 hash를 주입해야 합니다. `PET_HASH`는 과거 패키지 값이며 v3 승인값이 아닙니다.
-값의 자료형/범위·공통 정규화 bytes·실환경 수용 등 남은 내용은 [후속 계약](docs/evidence-v4.md)에 정리했습니다.
+값의 자료형/범위·공통 정규화 bytes·실환경 수용 등 남은 내용은 [후속 계약](evidence-v4.md)에 정리했습니다.
 
 `DmrvnDeployment.fromManifest`는 승인된 배포 manifest를 정규화하고 `DmrvnConfig.fromDeployment`는
 RPC·파트너·저장소 prefix·비용 한도를 결속합니다. 동봉 testnet 자료는 고정 스냅샷이며 현재 체인 준비 상태가 아닙니다.
 과거 direct 배포는 읽기·복구용으로만 유지합니다.
 
-`DmrvnPreflight`는 배포·운영자 역할·방법론·명시 Evidence 버전·잔액을 읽기 전용으로 확인합니다.
-`ready=true`여도 Greenfield 쓰기/재읽기, 검증자 읽기 권한, 충분한 가스 잔액이나 Evidence 버전의 실제 수용을
-입증하지 않습니다. `checks`의 미시험 항목과 오류를 함께 확인하세요.
+`client.preflight()`는 배포·운영자 역할·방법론·명시 Evidence 버전·잔액을 읽기 전용으로 확인합니다.
+`ready=true`여도 실제 Greenfield 쓰기나 검증자 수용까지 보장하지 않습니다.
 
-`OperationJournal`은 선택적 단계 상태 경계이고 `MemoryOperationJournal`은 프로세스 내 휘발성 구현입니다.
-재시작·다중 프로세스 복구를 제공하지 않습니다. `withLock` 콜백 안의 모든 비동기 작업은 완료까지 await하세요.
+`OperationJournal`은 선택적 단계 상태 경계입니다. 휘발성 memory 구현은 SDK 내부이며
+영속 상태가 필요하면 FileOperationJournal 또는 adapter를 제공합니다. `withLock` 콜백은 완료까지 await하세요.
 영속 adapter는 저장 완료·작업자 간 잠금·소유권 상실 후 부작용 차단과 배포 전체 claim 검색을 제공해야 합니다.
 
 `FileOperationJournal(directory)`는 단일 호스트의 로컬 POSIX 파일에서 OS 잠금과 fsync·원자 교체로 상태를

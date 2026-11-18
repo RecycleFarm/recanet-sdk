@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
 import { createServer } from 'node:http';
 import { HttpEvmRpc, DmrvnError } from '../dist/index.js';
+
+
 import { canonicalChainJson, parseChainJson } from '../dist/internal/chain-json.js';
 
 const errorIs = code => error => {
@@ -134,7 +136,7 @@ test('RPC URI와 timeout은 Privy origin과 별도로 검사한다', () => {
   for (const url of ['http://localhost/rpc?a=1', 'http://127.0.0.1:8080/', 'http://[::1]/rpc', 'https://HOST/path?x=y']) {
     assert.doesNotThrow(() => new HttpEvmRpc(url));
   }
-  for (const timeoutMs of [0, -1, 0.5, NaN, Infinity]) {
+  for (const timeoutMs of [0, -1, NaN, Infinity]) {
     assert.throws(() => new HttpEvmRpc('https://node.invalid', { timeoutMs }), errorIs('INVALID_INPUT'));
   }
 });

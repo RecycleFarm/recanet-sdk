@@ -40,14 +40,14 @@ export async function submitSponsored(context: OperationContext, operationId: st
       const sender = normalizeAddress(operator.address);
       const estimate = { from: sender, to: config.forwarderAddress, value: '0x0',
         data: DmrvnProtocol.executeCalldata(forward, userSignature) };
-      const gas = DmrvnChain.number(await chain.call('eth_estimateGas', [copyState(estimate)], signal)) * 130n / 100n;
+      const gas = DmrvnChain.number(await chain.call('eth_estimateGas', [estimate], signal)) * 130n / 100n;
       const price = DmrvnChain.number(await chain.call('eth_gasPrice', [], signal)), cost = gas * price;
       requireState(cost <= config.maxRelayCostWei, 'INSUFFICIENT_FUNDS');
       requireState(DmrvnChain.number(await chain.call('eth_getBalance', [sender, 'pending'], signal)) >= cost, 'INSUFFICIENT_FUNDS');
       const nonce = DmrvnChain.number(await chain.call('eth_getTransactionCount', [sender, 'pending'], signal));
       requireState(nonce === DmrvnChain.number(await chain.call('eth_getTransactionCount', [sender, 'latest'], signal)), 'NONCE_CONFLICT');
-      const tx = { ...estimate, gas: DmrvnChain.quantity(gas), gasPrice: DmrvnChain.quantity(price), nonce: DmrvnChain.quantity(nonce) };
-      await chain.call('eth_call', [copyState(tx), 'pending'], signal);
+      const tx = Object.assign(estimate, { gas: DmrvnChain.quantity(gas), gasPrice: DmrvnChain.quantity(price), nonce: DmrvnChain.quantity(nonce) });
+      await chain.call('eth_call', [tx, 'pending'], signal);
       await context.reserve(context.relayKey(), operationId);
       state.forwardRequest = forward; state.userSignature = userSignature; state.forwardDigest = digest; state.submissionFingerprint = fingerprint;
       state.submitFromBlock = await chain.head(signal); state.phase = 'BROADCAST_INTENT'; state.relay = sender; state.relayTransaction = tx;

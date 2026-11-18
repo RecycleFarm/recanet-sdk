@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "referenceRevision": "06a9a560054b1154ce096839da3bfe9c6d7a67ff",
+  "environment": {
+    "system": "Darwin",
+    "machine": "arm64",
+    "node": "v22.23.5",
+    "javaStackBytes": 1048576,
+    "java": "openjdk version \"17.0.18\" 2026-01-20 LTS"
+  },
+  "sdkSourceSha256": "35b880eb122a6ab7989f327bc1ed8056ba4c36cba67ac3697046b29642a9235f",
+  "operations": {
+    "activity": 12,
+    "asset": 11,
+    "deployment": 4,
+    "double": 4084,
+    "duration": 8,
+    "errors": 31,
+    "float": 1503,
+    "json": 27,
+    "jwksUri": 8,
+    "jwt": 31,
+    "jwtJwks": 8,
+    "methodology": 6,
+    "numberJson": 26,
+    "numberWire": 26,
+    "privy": 20,
+    "privyOrigin": 17,
+    "protocol": 6,
+    "publicRead": 7,
+    "query": 8,
+    "reader": 8,
+    "transaction": 24,
+    "uri": 22,
+    "walletRequest": 5,
+    "workflow": 22
+  },
+  "journal": {
+    "crossRuntimeSnapshots": true,
+    "mixedProcesses": 6,
+    "increments": 120,
+    "directoryMode": "0700",
+    "fileMode": "0600"
+  },
+  "cases": 5924,
+  "passed": 5924,
+  "failed": 0,
+  "failures": []
+}

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { Wallet } from 'ethers';
-import { DeclaredMethodology, DmrvnClient, DmrvnCrypto, DmrvnJson, MemoryOperationJournal } from '../../dist/index.js';
+import { DeclaredMethodology, DmrvnClient } from '../../dist/index.js';
+
+import * as DmrvnCrypto from '../../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../../dist/dmrvn-json.js';
+import { MemoryOperationJournal } from '../../dist/memory-operation-journal.js';
 import { chainFixture, address } from './dmrvn-chain.mjs';
 import { petV3Methodology } from './evidence-v4.mjs';
 

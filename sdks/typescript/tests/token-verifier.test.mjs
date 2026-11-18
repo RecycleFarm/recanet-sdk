@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises';
 import { inspect } from 'node:util';
 import { PrivyClient, PrivyTokenVerifier, PrivyAuthenticationError } from '../dist/index.js';
 
+
+
 const keys = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
 const pem = keys.publicKey.export({ type: 'spki', format: 'pem' });
 const now = 1800000000000;
@@ -77,14 +79,14 @@ test('Bearer 구문과 입력 부재·길이의 처리 순서를 지킨다', asy
   assert.equal((await v.authenticateAuthorizationHeader('bEaReR   ' + jwt())).userId, base.sub);
 });
 
-test('NumericDate를 반올림 전에 검사하고 bigint 범위를 보존한다', async () => {
+test('NumericDate의 Java LONG_OR_DOUBLE 파싱과 bigint 범위를 보존한다', async () => {
   const raw = exp => JSON.stringify(base).replace('1800003600', exp);
   const v = verifier();
-  for (const exp of ['1800003600.0000000000000000001', '9223372036854776', '1e1000000',
+  for (const exp of ['9223372036854776', '1e1000000',
     '1800003600.5', '"1800003600"', 'null', '-1', '1e-1000000']) {
     await assert.rejects(v.verifyAccessToken(jwt(raw(exp))), errorIs('INVALID_TOKEN'), exp);
   }
-  for (const exp of ['1800003600.0', '180000360000e-2', '1.8000036e9', '1800003600e0']) {
+  for (const exp of ['1800003600.0000000000000000001', '1800003600.0', '180000360000e-2', '1.8000036e9', '1800003600e0']) {
     assert.equal((await v.verifyAccessToken(jwt(raw(exp)))).expiresAtMs, 1800003600000n);
   }
   assert.equal((await v.verifyAccessToken(jwt(raw('9223372036854775')))).expiresAtMs, 9223372036854775000n);
@@ -121,7 +123,7 @@ test('원시 JSON 중복 키·malformed 숫자·과도한 중첩은 정리된 �
   const v = verifier();
   for (const raw of [JSON.stringify(base).replace('"iss":"privy.io"', '"iss":"other","iss":"privy.io"'),
     JSON.stringify(base).replace('1800003600', '01800003600'), '{', '[]',
-    JSON.stringify(base).replace('"sid":"session-1"', '"sid":"session-1","extra":' + '['.repeat(130) + '0' + ']'.repeat(130))]) {
+    JSON.stringify(base).replace('"sid":"session-1"', '"sid":"session-1","extra":' + '['.repeat(1001) + '0' + ']'.repeat(1001))]) {
     const token = jwt(raw);
     await assert.rejects(v.verifyAccessToken(token), errorIs('INVALID_TOKEN', token));
   }
@@ -129,8 +131,8 @@ test('원시 JSON 중복 키·malformed 숫자·과도한 중첩은 정리된 �
 
 test('PrivyClient에 검증기를 구성하고 미설정은 구성 오류로 구분한다', async () => {
   const missing = new PrivyClient({ appId: 'app', appSecret: 'secret' });
-  assert.throws(() => missing.verifyAccessToken(jwt()), TypeError);
-  assert.throws(() => missing.authenticateAuthorizationHeader('Bearer ' + jwt()), TypeError);
+  assert.throws(() => missing.verifyAccessToken(jwt()), { name: 'IllegalStateException' });
+  assert.throws(() => missing.authenticateAuthorizationHeader('Bearer ' + jwt()), { name: 'IllegalStateException' });
   const client = new PrivyClient({ appId: 'app', appSecret: 'secret',
     tokenVerification: { publicKeyPem: pem, now: () => now },
     fetch: async () => { throw new Error('공개키 검증에서 네트워크 호출 금지'); } });

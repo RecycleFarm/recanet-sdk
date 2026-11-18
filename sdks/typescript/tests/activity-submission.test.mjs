@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Wallet } from 'ethers';
-import { DmrvnAbi, DmrvnCrypto, DmrvnError, DmrvnJson } from '../dist/index.js';
+import { DmrvnError } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { workflowFixture } from './helpers/dmrvn-workflow.mjs';
 import { resolutionFixture } from './helpers/dmrvn-resolution.mjs';
 
@@ -49,7 +53,7 @@ test('활동 조합은 Evidence→승인→beneficiary 서명→relay 전송을 
   await rejects(f.submit, 'SUBMISSION_UNRESOLVED'); assert.equal(f.b.counts.signed, 1); assert.equal(f.status.sends, 1);
 });
 
-test('회원 기반 명시 활동은 기존 signer 조회에 취소 신호를 전달하고 대기 중 본문 변경과 분리한다', async () => {
+test('회원 기반 명시 활동은 Java처럼 signer 조회를 마친 뒤 본문을 복사한다', async () => {
   const f = fixture(), original = DmrvnJson.copy(f.body), controller = new AbortController();
   let release;
   const waiting = new Promise(resolve => { release = resolve; });
@@ -60,7 +64,7 @@ test('회원 기반 명시 활동은 기존 signer 조회에 취소 신호를 �
   const pending = f.client.submitActivity(wallets, 'member-1', operation, f.claimId, f.objectName, f.body, '100000', controller.signal);
   f.body.inputs.changed = true; release();
   assert.equal((await pending).status, 'BROADCAST');
-  assert.deepEqual((await f.client.operation(operation)).body, original);
+  assert.deepEqual((await f.client.operation(operation)).body, DmrvnJson.copy(f.body));
   assert.equal(f.b.counts.signed, 1); assert.equal(f.status.sends, 1);
 });
 

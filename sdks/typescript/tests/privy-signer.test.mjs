@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { verify } from 'node:crypto';
 import { inspect } from 'node:util';
 import { BackendWalletRegistration, DmrvnError, PrivyClient } from '../dist/index.js';
+
+
 import { canonicalPrivy059 } from '../dist/internal/authorization.js';
 
 const registration = BackendWalletRegistration.generate();
@@ -136,14 +138,14 @@ test('typed data는 대기 중 호출자 변경과 분리하고 필드 배열 �
   assert.deepEqual(captured.params.typed_data.types.Test.map(field => field.name), ['amount', 'second']);
 });
 
-test('native fetch의 실제 idempotency header 값으로 승인 서명을 만든다', async () => {
+test('Java처럼 원래 idempotency key를 승인 payload에 결속한다', async () => {
   const client = makeClient(async (url, init) => {
     if (init.method === 'GET') return Response.json({ data: [wallet] });
     const request = new Request(url, init);
     const wireKey = request.headers.get('privy-idempotency-key');
     assert.equal(wireKey, 'operation');
     const payload = { version: 1, method: 'POST', url,
-      body: JSON.parse(await request.text()), headers: { 'privy-app-id': 'app', 'privy-idempotency-key': wireKey } };
+      body: JSON.parse(await request.text()), headers: { 'privy-app-id': 'app', 'privy-idempotency-key': ' operation \t' } };
     assert.ok(verify('sha256', Buffer.from(canonicalPrivy059(payload)), registration.publicKey,
       Buffer.from(request.headers.get('privy-authorization-signature'), 'base64')));
     return Response.json({ method: 'eth_sendTransaction', data: { hash: 'result' } });

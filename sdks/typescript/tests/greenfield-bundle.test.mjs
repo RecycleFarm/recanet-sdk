@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { NodeGreenfieldStorage } from '../dist/index.js';
 
+
+
 test('동봉 공식 worker는 고정 의존성을 실제 로드하고 키/주소 불일치 시 RPC 전에 정리된 protocol로 거부한다', async t => {
   const metadata = async path => JSON.parse(await readFile(new URL('../tools/greenfield/node_modules/' + path + '/package.json', import.meta.url), 'utf8'));
   assert.equal((await metadata('@bnb-chain/greenfield-js-sdk')).version, '2.2.2');

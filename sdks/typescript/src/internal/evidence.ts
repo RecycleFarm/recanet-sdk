@@ -48,12 +48,12 @@ export async function prepareEvidence(context: OperationContext, operationId: st
     const bytes = DmrvnJson.bytes(state.evidence);
     const location = { storageType: 1, chainId: config.greenfieldChainId, bucketName: config.bucketName, objectName };
     state.evidenceLocation = location; await context.save(key, state);
-    let head = await storage.head(copyState(location), signal);
+    let head = await storage.head(location, signal);
     if (!head.exists) {
       requireState(!Object.hasOwn(state, 'createIntent'), 'STORAGE_CREATE_UNRESOLVED');
       state.createIntent = true; await context.save(key, state);
       let hash: string;
-      try { hash = await storage.create(copyState(location), Uint8Array.from(bytes), signal); }
+      try { hash = await storage.create(location, bytes, signal); }
       catch (error) {
         if (error instanceof DmrvnError && (error.definitelyNotBroadcast || error.definitelyRejected)) {
           delete state.createIntent; state.lastStorageError = error.code; await context.save(key, state);
@@ -62,15 +62,15 @@ export async function prepareEvidence(context: OperationContext, operationId: st
       }
       requireState(typeof hash === 'string' && !isJavaBlank(hash), 'STORAGE_CREATE_UNRESOLVED');
       state.createTxHash = hash; state.phase = 'EVIDENCE_CREATE_BROADCAST'; await context.save(key, state);
-      head = await storage.head(copyState(location), signal);
+      head = await storage.head(location, signal);
     }
     if (head.exists) { state.objectExists = true; await context.save(key, state); }
     if (!head.sealed) {
       requireState(typeof state.createTxHash === 'string', 'STORAGE_CREATE_UNRESOLVED');
-      await storage.upload(copyState(location), Uint8Array.from(bytes), state.createTxHash, signal);
+      await storage.upload(location, bytes, state.createTxHash, signal);
     }
-    requireState((await storage.head(copyState(location), signal)).sealed, 'OBJECT_UNSEALED');
-    const stored = await storage.read(copyState(location), signal);
+    requireState((await storage.head(location, signal)).sealed, 'OBJECT_UNSEALED');
+    const stored = await storage.read(location, signal);
     requireState(hexString(bytes) === hexString(stored), 'STORAGE_MISMATCH');
     state.upload = { evidenceHash: DmrvnJson.hash(state.evidence), evidenceLocation: location,
       createTxHash: state.createTxHash ?? null, status: 'SEALED' };
@@ -85,7 +85,7 @@ export async function recoverCreateTransaction(context: OperationContext, operat
   await context.journal.withLock(key, async () => {
     const state = await context.required(key);
     requireState(Object.hasOwn(state, 'createIntent') && Object.hasOwn(state, 'evidenceLocation'), 'OPERATION_NOT_PREPARED');
-    requireState(await context.storage.matchesCreateTransaction(copyState(stateMap(state.evidenceLocation)), createTxHash, signal), 'STORAGE_MISMATCH');
+    requireState(await context.storage.matchesCreateTransaction(stateMap(state.evidenceLocation), createTxHash, signal), 'STORAGE_MISMATCH');
     if (Object.hasOwn(state, 'createTxHash')) requireState(createTxHash === stateString(state.createTxHash), 'OPERATION_INPUT_CHANGED');
     state.createTxHash = createTxHash;
     await context.save(key, state);

@@ -1,3 +1,5 @@
+> 이 문서는 이전 이관 조사 기록이다. 2026-11-17 공통 Contract 정렬로 아래의 미구현/보류/PET 전용 정책은 대체되었다. 현재 동작과 검증은 저장소 `contracts/recanet-sdk-contract.md`, `contracts/gaps.md`를 따른다.
+
 # Java SDK 기능 비교
 
 후속 갱신: 이 표는 Java 기준 commit과의 비교 기록이다. 이후 2026-11-05 Page 댓글의 확정 Evidence4/PET3를
@@ -66,7 +68,7 @@ TypeScript는 Promise, options 객체, readonly property/interface로 대응하�
 | NodeGreenfieldStorage | 별도 공식 SDK worker 기반 private 생성·업로드·읽기·생성 거래 확인 |
 | OperationJournal | 같은 이름의 async interface: withLock/load/store/findOperationsByClaimId |
 
-PrivyClient.listWalletsByAuthorizationKey는 TypeScript의 listBackendWallets로 이름을 달리한다.
+PrivyClient.listWalletsByAuthorizationKey는 TypeScript의 listWalletsByAuthorizationKey로 이름을 달리한다.
 Java의 토큰 정책 with 메서드는 새 options 객체 구성으로, HTTP client 주입은 fetch 주입으로 대응한다.
 PrivyClient.sdk()는 Java에서도 package-private이며 공개 API 누락으로 분류하지 않았다.
 Java DmrvnClient의 deprecated approver/relay 분리 생성자는 서로 다른 주소를 거부하는 이행용 호출이다.

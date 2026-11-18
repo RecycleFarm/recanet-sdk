@@ -1,3 +1,4 @@
+import { javaDouble } from './java-number.js';
 /** JSON 숫자의 원문을 보관해 검증 전에 부동소수점 반올림이 일어나지 않게 한다. */
 export class JsonNumber {
   constructor(readonly source: string) {}
@@ -7,7 +8,7 @@ export type JsonValue = null | boolean | string | JsonNumber | JsonValue[] | Jso
 export interface JsonObject { [key: string]: JsonValue; }
 
 /** 중복 필드와 과도한 중첩을 거부한다. 오류에 입력 원문을 넣지 않는다. */
-export function parseLosslessJson(source: string): JsonValue {
+export function parseLosslessJson(source: string, maxDepth = 1000): JsonValue {
   let offset = 0;
   const invalid = (): never => { throw new SyntaxError('JSON 형식이 올바르지 않습니다'); };
   const whitespace = () => {
@@ -25,11 +26,11 @@ export function parseLosslessJson(source: string): JsonValue {
     return invalid();
   };
   const value = (depth: number): JsonValue => {
-    if (depth > 128) return invalid();
     whitespace();
     const ch = source[offset];
     if (ch === '"') return string();
     if (ch === '{' || ch === '[') {
+      if (depth >= maxDepth) return invalid();
       offset++;
       const object: JsonObject = Object.create(null) as JsonObject;
       const array: JsonValue[] = [];
@@ -74,7 +75,14 @@ export function jsonObject(value: JsonValue): JsonObject {
 /** 음이 아닌 정수값을 정확하게 변환한다. 거대한 지수에 비례해 메모리를 할당하지 않는다. */
 export function numericDate(value: JsonValue | undefined): bigint {
   if (!(value instanceof JsonNumber)) throw new TypeError('NumericDate가 필요합니다');
-  const match = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(value.source)!;
+  let source = value.source;
+  // Nimbus Gson LONG_OR_DOUBLE parses decimal/exponent forms as binary64 first.
+  if (!/^-?\d+$/.test(source) || BigInt(source) < -(1n << 63n) || BigInt(source) >= 1n << 63n) {
+    const parsed = Number(source);
+    if (!Number.isFinite(parsed)) throw new TypeError('NumericDate range error');
+    source = javaDouble(parsed);
+  }
+  const match = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(source)!;
   let digits = (match[2]! + (match[3] ?? '')).replace(/^0+/, '');
   if (digits === '') return 0n;
   if (match[1] === '-') throw new TypeError('NumericDate 범위 오류');

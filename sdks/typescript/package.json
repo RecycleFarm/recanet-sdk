@@ -9,8 +9,7 @@
   },
   "files": [
     "dist",
-    "native/posix-lock.c",
-    "scripts/build-native.mjs",
+    "prebuilds",
     "THIRD_PARTY_NOTICES",
     "tools/greenfield/worker.cjs",
     "tools/greenfield/package.json",
@@ -19,7 +18,8 @@
     "tools/greenfield/vendor/elliptic/LICENSE",
     "tools/greenfield/vendor/elliptic/lib",
     "tools/greenfield/vendor/safe-set/package.json",
-    "tools/greenfield/vendor/safe-set/index.cjs"
+    "tools/greenfield/vendor/safe-set/index.cjs",
+    "scripts/install-native.mjs"
   ],
   "exports": {
     ".": {
@@ -34,7 +34,9 @@
     "check": "npm test && npm run test:greenfield",
     "test:greenfield": "npm --prefix tools/greenfield test",
     "check:package": "npm run build && node scripts/check-package.mjs",
-    "test:security": "npm --prefix tools/greenfield run test:security"
+    "test:security": "npm --prefix tools/greenfield run test:security",
+    "install": "node scripts/install-native.mjs",
+    "prepack": "node scripts/check-prebuilds.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
@@ -46,10 +48,12 @@
     "ethers": "6.17.0"
   },
   "os": [
-    "linux"
+    "linux",
+    "darwin"
   ],
   "cpu": [
-    "x64"
+    "x64",
+    "arm64"
   ],
   "repository": {
     "type": "git",

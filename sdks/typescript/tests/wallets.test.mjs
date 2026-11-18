@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createPrivateKey, createPublicKey, sign, verify } from 'node:crypto';
 import { inspect } from 'node:util';
-import { PrivyClient, BackendWalletRegistration, memberExternalId } from '../dist/index.js';
+import { PrivyClient, BackendWalletRegistration } from '../dist/index.js';
+
+import { memberExternalId } from '../dist/member-identity.js';
 
 const registration = new BackendWalletRegistration('public +/=\nkey', 'private-never-send');
 const createClient = fetch => new PrivyClient({ appId: 'app', appSecret: 'secret', fetch });
@@ -78,7 +80,7 @@ test('회원 조회는 빈 페이지를 넘어 끝까지 확인하고 query를 �
     assert.equal(query.get('authorization_key'), registration.publicKey);
     assert.equal(query.get('external_id'), memberExternalId('service', 'member'));
     assert.equal(query.get('include_archived'), 'false');
-    assert.equal(query.get('limit'), '100');
+    assert.equal(query.get('limit'), '100.0');
     assert.ok(!url.includes(registration.privateKey));
     assert.equal(init.method, 'GET');
     calls++;
@@ -104,7 +106,7 @@ test('회원 조회의 중복 지갑·다른 연결·다른 체인·반복 curso
   ]) {
     let calls = 0;
     const client = createClient(async () => Response.json(pages[calls++]));
-    await assert.rejects(client.userWallets(registration, 'service').findWallet('member'), errorIs('INVALID_RESPONSE'));
+    await assert.rejects(client.userWallets(registration, 'service').findWallet('member'), errorIs('INVALID_RESPONSE', pages[0].data === null || typeof pages[0].next_cursor === 'number' ? 200 : 0));
     assert.equal(calls, pages.length);
   }
 });
@@ -176,7 +178,7 @@ test('운영 지갑 목록은 모든 페이지를 누적하고 legacy 소유권 
     calls++;
     return Response.json({ data: [wallet({ chain_type: 'solana' })], next_cursor: calls === 1 ? 'next' : null });
   });
-  const result = await client.listBackendWallets(registration.publicKey);
+  const result = await client.listWalletsByAuthorizationKey(registration.publicKey);
   assert.equal(result.length, 2);
   assert.ok(Object.isFrozen(result));
   assert.equal(await client.isBackendWallet('wallet/id', registration), false);

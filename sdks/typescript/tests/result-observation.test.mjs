@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DmrvnCrypto, DmrvnError, DmrvnJson, DmrvnReader } from '../dist/index.js';
+import { DmrvnError, DmrvnReader } from '../dist/index.js';
+
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { resolutionFixture } from './helpers/dmrvn-resolution.mjs';
 const rejects = (fn, code) => assert.rejects(fn, error => error instanceof DmrvnError && error.code === code);
 

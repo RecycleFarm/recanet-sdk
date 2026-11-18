@@ -1,6 +1,6 @@
 import {
-  ActivityRequest, BackendWalletRegistration, DmrvnAbi, DmrvnCrypto, FileOperationJournal,
-  DeclaredMethodology, DmrvnClient, DmrvnJson, EvmTransactionClient, PrivyClient, memberExternalId, type UserWalletClient,
+  ActivityRequest, BackendWalletRegistration, FileOperationJournal,
+  DeclaredMethodology, DmrvnClient, Json, EvmTransactionClient, PrivyClient, PrivyClientConfig, Duration, EvmTransactionQuery, DmrvnProtocol, type UserWalletClient,
 } from '@recyclefarm/recanet-sdk';
 
 const client = new PrivyClient({ appId: 'offline-test', appSecret: 'offline-test' });
@@ -16,23 +16,20 @@ function memberActivityTypes(sdk: DmrvnClient, members: UserWalletClient, signal
   return outcome;
 }
 void memberActivityTypes;
-const petFactory: (manifest: Uint8Array, wasm: Uint8Array, hash: string,
-  registry: (activity: number, id: number, version: number, hash: string) => Promise<boolean>) => DeclaredMethodology
-  = DeclaredMethodology.petV3;
-void petFactory;
 const wasm = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
 // 합성 패키지 소비자용 manifest. 운영 PET 패키지가 아니다.
-const manifest = { activityId: 1003, methodology: { id: 2003, version: 3 }, wasmHash: DmrvnCrypto.keccak(wasm) };
-const pet = DeclaredMethodology.petV3(DmrvnJson.bytes(manifest), wasm, DmrvnJson.hash(manifest), () => true);
+const manifest = { activityId: 1003, methodology: { id: 2003, version: 3 }, wasmHash: '0xdca3676eb137c0de909fa86423cce7b2e91614ee6b739ee7514b1095382eee30' };
+const pet = new DeclaredMethodology(Json.bytes(manifest), wasm, Json.hash(manifest), () => true, 4);
 const body = pet.evidenceBody(101, '0x' + '11'.repeat(20), 'consumer', { petBottleCount: 3 });
 if (body.schemaVersion !== 4 || pet.version() !== 3) throw new Error('PET v3 profile');
-const object: Record<string, unknown> = DmrvnJson.object(Buffer.from('{"value":1}'));
+const object: Record<string, unknown> = Json.object(Buffer.from('{"value":1}'));
 if (object.value !== 1) throw new Error('object JSON parser');
 const request = new ActivityRequest('user', 'event', {});
 if (request.gas !== '900000') throw new Error('ActivityRequest defaults');
-if (memberExternalId('service', 'user').length === 0) throw new Error('member ID');
-if (DmrvnAbi.CLAIM.topic('submitClaim').length !== 66) throw new Error('ABI resource');
-if (DmrvnCrypto.textHash('value').length !== 66) throw new Error('Keccak');
+const config = new PrivyClientConfig('app','secret','https://api.privy.io',Duration.ofMillis(9223372036854775807n));
+if (new PrivyClient(config).config().requestTimeout().toMillis() !== 9223372036854775807n) throw new Error('duration/config parity');
+if (new EvmTransactionQuery(0n,null,20).withCursor('next').cursor !== 'next') throw new Error('query binding');
+if (DmrvnProtocol.ownerHash('0x'+'11'.repeat(20)).length !== 66) throw new Error('protocol');
 const journal = new FileOperationJournal('./journal');
 await journal.withLock('state', async () => { await journal.store('state', { value: 9007199254740991 }); });
 if ((await new FileOperationJournal('./journal').load('state'))?.value !== 9007199254740991) throw new Error('native journal');

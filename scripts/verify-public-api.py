@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare built Java public declarations and TypeScript declarations to source baselines."""
+"""Compare built Java public declarations and TypeScript declarations to the reviewed Contract baseline."""
 import argparse
 import hashlib
 import json
@@ -46,8 +46,10 @@ def main():
                         default=None)
     parser.add_argument('--typescript-dist', type=Path, default=ROOT / 'sdks/typescript/dist')
     parser.add_argument("--language", choices=("all", "java", "typescript"), default="all")
+    parser.add_argument('--baseline', type=Path, default=ROOT / 'contracts/public-api-baseline.json',
+                        help='Reviewed API baseline; use docs/migration/phase2-public-api-baseline.json for historical comparison')
     args = parser.parse_args()
-    baseline = json.loads((ROOT / 'docs/migration/phase2-public-api-baseline.json').read_text())
+    baseline = json.loads(args.baseline.read_text())
     jar = args.java_jar
     if jar is None and args.language in ('all', 'java'):
         pom = ET.parse(ROOT / 'sdks/java/build/publications/mavenJava/pom-default.xml').getroot()
@@ -55,11 +57,11 @@ def main():
         jar = ROOT / 'sdks/java/build/libs' / (pom.findtext('m:artifactId', namespaces=ns) + '-' + pom.findtext('m:version', namespaces=ns) + '.jar')
     actual = fingerprint(jar, args.typescript_dist, args.language)
     if actual != {language: baseline['fingerprints'][language] for language in actual}:
-        raise SystemExit('Public API/declarations differ from the original SDK baseline')
+        raise SystemExit('Public API/declarations differ from the reviewed SDK Contract baseline')
     if "java" in actual:
-        print(f'Java public declarations unchanged ({actual["java"]["class_count"]} class entries).')
+        print(f'Java public declarations match reviewed baseline ({actual["java"]["class_count"]} class entries).')
     if "typescript" in actual:
-        print(f'TypeScript declarations unchanged ({len(actual["typescript"])} files).')
+        print(f'TypeScript declarations match reviewed baseline ({len(actual["typescript"])} files).')
 
 
 if __name__ == '__main__':

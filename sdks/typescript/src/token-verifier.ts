@@ -1,3 +1,8 @@
+import { javaUtf8 } from './dmrvn-crypto.js';
+import { decodeJavaUtf8 } from './internal/java-utf8.js';
+import { javaHttpFetch } from './internal/java-http.js';
+import { Duration } from './duration.js';
+import { PrivyTokenVerificationConfig } from './privy-config.js';
 import { createPublicKey, verify, type KeyObject } from 'node:crypto';
 import { PrivyAuthenticationError } from './errors.js';
 import { jsonObject, numericDate, parseLosslessJson, type JsonObject } from './internal/lossless-json.js';
@@ -43,14 +48,14 @@ function publicKey(pem: string): KeyObject {
 }
 
 function decode(part: string): Buffer {
-  if (!/^[A-Za-z0-9_-]+$/.test(part) || part.length % 4 === 1) throw invalid();
-  return Buffer.from(part, 'base64url');
+  // Nimbus Base64URL accepts padding, either alphabet and ignorable non-alphabet bytes.
+  return Buffer.from(part, 'base64');
 }
 
 function object(part: string): JsonObject {
   const bytes = decode(part);
-  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  return jsonObject(parseLosslessJson(text));
+  const text = decodeJavaUtf8(bytes);
+  return jsonObject(parseLosslessJson(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text, 255));
 }
 
 /** 재사용 가능한 Privy access token 검증기. 로그인·실시간 철회 조회는 수행하지 않는다. */
@@ -61,7 +66,8 @@ export class PrivyTokenVerifier {
   #skewNs: bigint;
   #now: () => number;
 
-  constructor(appId: string, options: TokenVerificationOptions) {
+  constructor(appId: string, input: TokenVerificationOptions | PrivyTokenVerificationConfig) {
+    const options = input instanceof PrivyTokenVerificationConfig ? input.options() : input;
     if (typeof appId !== 'string' || isJavaBlank(appId)) throw new TypeError('appId는 비공백 문자열이어야 합니다');
     const skew = options.clockSkewMs ?? 0;
     if (!Number.isFinite(skew) || skew < 0 || skew > 60000) throw new TypeError('clockSkewMs는 0–60000 범위여야 합니다');
@@ -71,7 +77,7 @@ export class PrivyTokenVerifier {
     if (typeof this.#now !== 'function') throw new TypeError('now 함수가 필요합니다');
     if (options.publicKeyPem !== undefined && options.jwksUrl === undefined) this.#key = publicKey(options.publicKeyPem);
     else if (options.jwksUrl !== undefined && options.publicKeyPem === undefined) {
-      this.#jwks = new JwksSource(options.jwksUrl, options.jwksPolicy ?? {}, options.fetch ?? globalThis.fetch, this.#now);
+      this.#jwks = new JwksSource(options.jwksUrl, options.jwksPolicy ?? {}, options.fetch ?? javaHttpFetch(Duration.ofMillis(options.jwksPolicy?.timeoutMs ?? 5000), Duration.ofMillis(options.jwksPolicy?.timeoutMs ?? 5000), true), this.#now);
     } else throw new TypeError('고정 공개키와 JWKS 중 하나만 지정해야 합니다');
   }
 
@@ -101,7 +107,7 @@ export class PrivyTokenVerifier {
       const user = this.#claims(claims);
       const keys = this.#key ? [this.#key] : await this.#jwks!.keys(typeof header.kid === 'string' ? header.kid : undefined);
       const signature = decode(encodedSignature);
-      if (signature.length !== 64 || !keys.some(key => verify('sha256', Buffer.from(`${encodedHeader}.${encodedClaims}`, 'ascii'),
+      if (signature.length !== 64 || !keys.some(key => verify('sha256', javaUtf8(`${encodedHeader}.${encodedClaims}`),
         { key, dsaEncoding: 'ieee-p1363' }, signature))) throw invalid();
       this.#claims(claims);
       return user;

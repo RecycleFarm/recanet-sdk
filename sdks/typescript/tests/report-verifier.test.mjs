@@ -1,8 +1,11 @@
+import { DmrvnJson as json } from '../dist/dmrvn-json.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { Wallet } from 'ethers';
-import { DmrvnAbi, DmrvnCrypto as crypto, DmrvnError, DmrvnJson as json, DmrvnProtocol as protocol } from '../dist/index.js';
+import { DmrvnError, DmrvnProtocol as protocol } from '../dist/index.js';
+import * as crypto from '../dist/dmrvn-crypto.js';
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
 import { verifyReport } from '../dist/internal/report-verifier.js';
 import { chainFixture } from './helpers/dmrvn-chain.mjs';
 

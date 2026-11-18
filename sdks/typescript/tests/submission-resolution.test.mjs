@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DmrvnAbi, DmrvnCrypto, DmrvnError, DmrvnJson } from '../dist/index.js';
+import { DmrvnError } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 import { resolutionFixture } from './helpers/dmrvn-resolution.mjs';
 import { workflowFixture } from './helpers/dmrvn-workflow.mjs';
 import { eventLog } from './helpers/dmrvn-events.mjs';

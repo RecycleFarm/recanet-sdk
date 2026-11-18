@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { AssetClient, DmrvnError } from '../dist/index.js';
 
+
+
 const address = '0x' + 'aB'.repeat(20);
 const recipient = '0x' + 'Cd'.repeat(20);
 const hash = '0x' + 'aB'.repeat(32);

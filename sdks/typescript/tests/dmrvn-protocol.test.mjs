@@ -1,7 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { DmrvnAbi, DmrvnCrypto, DmrvnJson, DmrvnProtocol as protocol } from '../dist/index.js';
+import { DmrvnProtocol as protocol } from '../dist/index.js';
+
+import { DmrvnAbi } from '../dist/dmrvn-abi.js';
+import * as DmrvnCrypto from '../dist/dmrvn-crypto.js';
+import { DmrvnJson } from '../dist/dmrvn-json.js';
 
 const fixture = async name => JSON.parse(await readFile(new URL('./fixtures/' + name, import.meta.url), 'utf8'));
 const code = expected => error => { assert.equal(error.code, expected); return true; };

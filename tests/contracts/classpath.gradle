@@ -1,0 +1,5 @@
+allprojects {
+    tasks.register('contractClasspath') {
+        doLast { println sourceSets.main.runtimeClasspath.asPath }
+    }
+}

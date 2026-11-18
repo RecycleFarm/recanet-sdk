@@ -40,6 +40,23 @@ class DmrvnProtocolTest {
     }
 
     @Test
+    void canonicalizesSupportedJsonDepthWithoutStreamRecursion() {
+        for (int depth : new int[] {999, 1000}) {
+            for (String raw : new String[] {
+                    "[".repeat(depth) + "0" + "]".repeat(depth),
+                    "{\"value\":".repeat(depth) + "0" + "}".repeat(depth)}) {
+                var bytes = raw.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                assertEquals(raw, Json.canonical(Json.parse(bytes)));
+                assertArrayEquals(bytes, Json.bytes(Json.parse(bytes)));
+            }
+        }
+        String tooDeep = "[".repeat(1001) + "0" + "]".repeat(1001);
+        var error = assertThrows(DmrvnException.class,
+                () -> Json.parse(tooDeep.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        assertEquals(DmrvnException.Code.INVALID_INPUT, error.code());
+    }
+
+    @Test
     void rejectsUnsafeJsonAndDuplicateKeys() {
         for (Object value :
                 Arrays.asList(Double.NaN, Double.POSITIVE_INFINITY, 9007199254740992L, "\ud800", new Object()))

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { createHash, verify } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { BackendWalletRegistration } from '../dist/index.js';
+
+
 import { canonicalPrivy059, prepareAuthorization } from '../dist/internal/authorization.js';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/authorization.json', import.meta.url), 'utf8'));

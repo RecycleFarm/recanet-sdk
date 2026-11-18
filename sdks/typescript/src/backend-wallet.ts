@@ -1,3 +1,4 @@
+import { inspect } from 'node:util';
 import { generateKeyPairSync } from 'node:crypto';
 import { isJavaBlank } from './member-identity.js';
 
@@ -30,6 +31,10 @@ export class BackendWalletRegistration {
 
   get privateKey(): string { return this.#privateKey; }
 
+  static fromEnvironment(): BackendWalletRegistration {
+    return new BackendWalletRegistration(process.env.BACKEND_WALLET_PUBLIC_KEY!, process.env.BACKEND_WALLET_PRIVATE_KEY!);
+  }
+
   static generate(): BackendWalletRegistration {
     const pair = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
     return new BackendWalletRegistration(
@@ -45,3 +50,34 @@ export class BackendWalletRegistration {
 export function requireText(value: unknown, field: string): asserts value is string {
   if (typeof value !== 'string' || isJavaBlank(value)) throw new TypeError(`${field}는 비공백 문자열이어야 합니다`);
 }
+
+/** Java key-pair value; validation occurs when converting to a registration. */
+export class BackendWalletKeyPair {
+  readonly publicKey: string; #privateKey: string;
+  constructor(publicKey: string, privateKey: string) { this.publicKey=publicKey;this.#privateKey=privateKey;Object.freeze(this); }
+  get privateKey(): string { return this.#privateKey; }
+  [inspect.custom](): string { return this.toString(); }
+  static generate(): BackendWalletKeyPair {
+    const registration = BackendWalletRegistration.generate();
+    return new BackendWalletKeyPair(registration.publicKey, registration.privateKey);
+  }
+  static generateAndLog(): BackendWalletKeyPair {
+    const keys = this.generate();
+    console.warn('BACKEND_WALLET_PUBLIC_KEY=' + keys.publicKey);
+    console.warn('BACKEND_WALLET_PRIVATE_KEY=' + keys.privateKey);
+    return keys;
+  }
+  registration(): BackendWalletRegistration { return new BackendWalletRegistration(this.publicKey, this.privateKey); }
+  toString(): string { return `BackendWalletKeyPair[publicKey=${this.publicKey}, privateKey=[REDACTED]]`; }
+  toJSON(): { publicKey: string; privateKey: string } { return { publicKey: this.publicKey, privateKey: '[REDACTED]' }; }
+}
+
+export const BackendWalletCreateRequest = class {
+  readonly chainType: string; readonly displayName: string | null; readonly externalId: string | null;
+  constructor(chainType: string, displayName: string | null = null, externalId: string | null = null) {
+    requireText(chainType, 'chainType'); this.chainType = chainType;
+    this.displayName = displayName !== null && isJavaBlank(displayName) ? null : displayName;
+    this.externalId = externalId !== null && isJavaBlank(externalId) ? null : externalId;
+    Object.freeze(this);
+  }
+};

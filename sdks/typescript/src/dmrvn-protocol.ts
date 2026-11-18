@@ -34,6 +34,7 @@ function description(type: DmrvnStructType): string {
 
 /** v7 EIP-712/provenance/calldata 계산. 네트워크 호출·서명·거래 전송을 하지 않는다. */
 export class DmrvnProtocol {
+  private constructor() {}
   static domain(chainId: bigint | number, contract: string, forwarder = false): Record<string, unknown> {
     const chain = uint(chainId, 256);
     if (chain === 0n || chain > 9007199254740991n) return invalid();
@@ -41,11 +42,13 @@ export class DmrvnProtocol {
       chainId: Number(chain), verifyingContract: normalizeAddress(contract) };
   }
 
+  /** @internal */
   static encodeType(type: DmrvnStructType): string {
     if (!known(type)) return invalid();
     return description(type) + (type === 'ClaimRequest' ? description('EvidenceLocation') : '');
   }
 
+  /** @internal */
   static typeHash(type: DmrvnStructType): string { return textHash(this.encodeType(type)); }
 
   static typedData(type: DmrvnStructType, domain: Readonly<Record<string, unknown>>,
@@ -103,12 +106,14 @@ export class DmrvnProtocol {
     return DmrvnAbi.FORWARDER.encode('execute', { request: copy });
   }
 
+  /** @internal */
   static sortedAddresses(addresses: readonly string[]): readonly string[] {
     const sorted = addresses.map(normalizeAddress).sort();
     if (sorted.length === 0 || new Set(sorted).size !== sorted.length) throw new DmrvnError('REPORT_MISMATCH');
     return sorted;
   }
 
+  /** @internal */
   static committeeHash(assignment: Readonly<Record<string, unknown>>, committee: readonly string[]): string {
     const definitions = [field('taskId', 'bytes32'), field('claimId', 'bytes32'), field('quorumPolicyVersion', 'uint32'),
       field('committeeSize', 'uint8'), field('threshold', 'uint8'), field('deadline', 'uint64'), field('committee', 'address[]')];
@@ -117,6 +122,7 @@ export class DmrvnProtocol {
     return keccak(hexBytes(DmrvnAbi.encodeTuple(definitions, value)));
   }
 
+  /** @internal */
   static reportHash(assignment: Readonly<Record<string, unknown>>, observation: Readonly<Record<string, unknown>>,
     signers: readonly string[], domain: Readonly<Record<string, unknown>>): string {
     const definitions = [field('taskId', 'bytes32'), field('claimId', 'bytes32'), field('committeeHash', 'bytes32'),

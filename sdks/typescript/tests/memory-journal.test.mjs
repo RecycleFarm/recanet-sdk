@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MemoryOperationJournal } from '../dist/index.js';
+import { MemoryOperationJournal } from '../dist/memory-operation-journal.js';
 import { findClaimOperations } from '../dist/internal/journal.js';
 
 test('동시 작업을 단일 monitor로 직렬화하고 nested lock/load/store를 재진입시킨다', async () => {

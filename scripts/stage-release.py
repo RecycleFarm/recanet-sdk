@@ -85,16 +85,28 @@ def verify_npm_tarball(path, name, version):
                 raise ValueError('Internal documentation or source map is in npm candidate')
             if name_in_archive.endswith('.md') and name_in_archive != 'package/README.md':
                 raise ValueError('Unapproved documentation is in npm candidate')
-        if package.get('os') != ['linux'] or package.get('cpu') != ['x64']:
-            raise ValueError('PoC package must restrict installation to Linux x64')
-        if 'package/dist/native/posix-lock.node' not in archive.getnames():
-            raise ValueError('Native module is missing')
-        native = archive.extractfile('package/dist/native/posix-lock.node')
-        header = native.read(20) if native else b''
-        if len(header) != 20 or header[:6] != b'\x7fELF\x02\x01' or struct.unpack('<H', header[18:20])[0] != 62:
-            raise ValueError('Native module is not a Linux x64 ELF binary')
-        required = {'package/dist/index.js' , 'package/dist/index.d.ts',
-                    'package/dist/native/posix-lock.node', 'package/native/posix-lock.c'}
+        if package.get('os') != ['linux', 'darwin'] or package.get('cpu') != ['x64', 'arm64']:
+            raise ValueError('Package must allow Linux x64 and macOS ARM64 installation')
+        if package.get('scripts', {}).get('install') != 'node scripts/install-native.mjs':
+            raise ValueError('Package must check supported platform pairs on installation')
+        required = {'package/dist/index.js', 'package/dist/index.d.ts', 'package/scripts/install-native.mjs'}
+        for target in ('linux-x64', 'darwin-arm64'):
+            filename = f'package/prebuilds/{target}/posix-lock.node'
+            required.update({filename, f'package/prebuilds/{target}/build.json'})
+            native = archive.extractfile(filename) if filename in archive.getnames() else None
+            binary = native.read() if native else b''
+            if target == 'linux-x64':
+                valid = len(binary) >= 20 and binary[:6] == b'\x7fELF\x02\x01' and struct.unpack('<H', binary[18:20])[0] == 62
+            else:
+                valid = len(binary) >= 8 and struct.unpack('<II', binary[:8]) == (0xfeedfacf, 0x0100000c)
+            if not valid:
+                raise ValueError(f'Missing or wrong native binary: {target}')
+            metadata_file = f'package/prebuilds/{target}/build.json'
+            if metadata_file not in archive.getnames():
+                raise ValueError(f'Missing native build metadata: {target}')
+            metadata = json.load(archive.extractfile(metadata_file))
+            if metadata.get('binarySha256') != hashlib.sha256(binary).hexdigest():
+                raise ValueError(f'Native binary digest mismatch: {target}')
         if not required.issubset(set(archive.getnames())):
             raise ValueError('Packed package is missing its runtime, types, or native files')
 
@@ -173,8 +185,7 @@ def stage(language, version, output):
         tarball = destination / packed[0]['filename']
         verify_npm_tarball(tarball, package['name'], version)
         package = {key: package.get(key) for key in ('name', 'version', 'private', 'engines', 'exports')}
-        blockers = ['Actual publication has not been approved',
-                    'Native tarball is specific to the recorded build OS/architecture']
+        blockers = ['Actual publication has not been approved']
         if package.get('private'):
             blockers.append('package.json is private; publication requires a separate approved change')
         if not package['name'].startswith('@recyclefarm/'):
@@ -187,7 +198,7 @@ def stage(language, version, output):
         'runAttempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
         'buildPlatform': {'os': platform.system(), 'architecture': platform.machine(),
                           'node': subprocess.check_output(['node', '--version'], text=True).strip()},
-        'package': package, 'security': security, 'pocPlatforms': ['linux-x64'], 'sourceJarIncluded': False, 'internalDocumentationIncluded': False, 'sourceMapsIncluded': False, 'published': False, 'publishReady': False, 'blockers': blockers,
+        'package': package, 'security': security, 'pocPlatforms': ['linux-x64', 'darwin-arm64'] if language == 'typescript' else ['linux-x64'], 'sourceJarIncluded': False, 'internalDocumentationIncluded': False, 'sourceMapsIncluded': False, 'published': False, 'publishReady': False, 'blockers': blockers,
     }
     (destination / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     checksums = []

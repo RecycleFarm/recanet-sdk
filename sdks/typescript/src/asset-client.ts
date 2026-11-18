@@ -31,7 +31,8 @@ export class AssetClient {
   async transfer(signer: EvmSigner, recipient: string, amountWei: bigint, idempotencyKey: string,
     signal?: AbortSignal): Promise<string> {
     if (!signer || typeof signer.sendTransaction !== 'function') throw new TypeError('서명자가 필요합니다');
-    const address = evmHex(signer.address, 20);
+    evmHex(signer.address, 20);
+    const address = signer.address;
     evmHex(recipient, 20);
     if (typeof amountWei !== 'bigint' || amountWei <= 0n || amountWei >= 1n << 256n) {
       throw new TypeError('금액은 양의 uint256 정수 wei여야 합니다');
@@ -48,7 +49,7 @@ export class AssetClient {
     let hash: unknown;
     try { hash = await signer.sendTransaction(AssetClient.CHAIN_ID, transaction, idempotencyKey, signal); }
     catch { throw new DmrvnError('SUBMISSION_UNRESOLVED'); }
-    try { return evmHex(hash, 32); }
+    try { evmHex(hash, 32); return hash as string; }
     catch { throw new DmrvnError('SUBMISSION_UNRESOLVED'); }
   }
 

@@ -1,4 +1,4 @@
-import { DmrvnError, PrivyApiError } from '../errors.js';
+import { DmrvnError, PrivyApiError, IllegalStateError } from '../errors.js';
 import { type BackendWallet, type BackendWalletCreateRequest, BackendWalletRegistration, requireText } from '../backend-wallet.js';
 import { isJavaBlank, memberExternalId } from '../member-identity.js';
 import type { EvmSigner, EvmTransactionInput, EvmTypedData } from '../evm-signer.js';
@@ -33,12 +33,6 @@ export interface BeneficiaryWallets {
 
 type SignerFactory = (walletId: string, registration: BackendWalletRegistration, signal?: AbortSignal) => Promise<EvmSigner>;
 
-function snapshotTypedData(input: EvmTypedData): EvmTypedData {
-  if (input == null) throw new TypeError('typedData가 필요합니다');
-  try { return JSON.parse(JSON.stringify(input)) as EvmTypedData; }
-  catch { throw new DmrvnError('RPC_UNAVAILABLE'); }
-}
-
 const CHAINS = new Set(['ethereum', 'solana', 'cosmos', 'stellar', 'sui', 'aptos', 'movement', 'tron',
   'bitcoin-segwit', 'bitcoin-taproot', 'pearl', 'near', 'ton', 'starknet', 'xrpl', 'spark']);
 const invalid = () => new PrivyApiError('INVALID_RESPONSE');
@@ -48,17 +42,21 @@ function object(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function decodeObject(value: unknown): Record<string, unknown> {
+  try { return object(value); } catch { throw new PrivyApiError('INVALID_RESPONSE', 200); }
+}
+
 function metadata(value: unknown): BackendWallet {
-  const wallet = object(value);
+  const wallet = decodeObject(value);
   if (typeof wallet.id !== 'string' || typeof wallet.address !== 'string' || typeof wallet.chain_type !== 'string'
-    || (wallet.public_key != null && typeof wallet.public_key !== 'string')) throw invalid();
+    || (wallet.public_key != null && typeof wallet.public_key !== 'string')) throw new PrivyApiError('INVALID_RESPONSE', 200);
   return Object.freeze({ id: wallet.id, address: wallet.address,
     chainType: wallet.chain_type, publicKey: wallet.public_key as string | null | undefined ?? null });
 }
 
 function page(value: unknown): { data: unknown[]; next: string | null } {
-  const response = object(value);
-  if (!Array.isArray(response.data) || (response.next_cursor != null && typeof response.next_cursor !== 'string')) throw invalid();
+  const response = decodeObject(value);
+  if (!Array.isArray(response.data) || (response.next_cursor != null && typeof response.next_cursor !== 'string')) throw new PrivyApiError('INVALID_RESPONSE', 200);
   const next = response.next_cursor;
   return { data: response.data, next: typeof next === 'string' && !isJavaBlank(next) ? next : null };
 }
@@ -85,7 +83,7 @@ export async function listWallets(request: WalletRequest, publicKey: string, sig
   const wallets: BackendWallet[] = [];
   let cursor: string | null = null;
   do {
-    const query = new URLSearchParams({ authorization_key: publicKey, limit: '100' });
+    const query = new URLSearchParams({ authorization_key: publicKey, limit: '100.0' });
     if (cursor !== null) query.set('cursor', cursor);
     const response = page(await request('/v1/wallets?' + query, 'GET', undefined, signal));
     wallets.push(...response.data.map(metadata));
@@ -117,7 +115,7 @@ export function memberWallets(request: WalletRequest, registration: BackendWalle
     const seen = new Set<string>();
     do {
       const query = new URLSearchParams({ external_id: externalId, authorization_key: registration.publicKey,
-        include_archived: 'false', limit: '100' });
+        include_archived: 'false', limit: '100.0' });
       if (cursor !== null) query.set('cursor', cursor);
       const response = page(await request('/v1/wallets?' + query, 'GET', undefined, signal));
       for (const item of response.data) {
@@ -135,7 +133,7 @@ export function memberWallets(request: WalletRequest, registration: BackendWalle
 
   const signerFor = async (userId: string, signal?: AbortSignal): Promise<EvmSigner> => {
     const wallet = await find(userId, signal);
-    if (!wallet) throw new DmrvnError('UNAUTHORIZED_SIGNER');
+    if (!wallet) throw new IllegalStateError('No backend-controlled wallet exists for this member');
     return signerFactory(wallet.id, registration, signal);
   };
 
@@ -147,16 +145,15 @@ export function memberWallets(request: WalletRequest, registration: BackendWalle
       return (await signerFor(userId, signal)).signMessage(message, signal);
     },
     async signTypedData(userId: string, typedData: EvmTypedData, signal?: AbortSignal): Promise<string> {
-      const snapshot = snapshotTypedData(typedData);
-      return (await signerFor(userId, signal)).signTypedData(snapshot, signal);
+      if (typedData == null) throw new TypeError('typedData required');
+      return (await signerFor(userId, signal)).signTypedData(typedData, signal);
     },
     async sendTransaction(userId: string, chainId: bigint | number, transaction: EvmTransactionInput,
       idempotencyKey: string, signal?: AbortSignal): Promise<string> {
       const chain = chainNumber(chainId, true);
       if (transaction == null) throw new TypeError('transaction이 필요합니다');
       requireText(idempotencyKey, 'idempotencyKey');
-      const snapshot = { ...transaction };
-      return (await signerFor(userId, signal)).sendTransaction(chain, snapshot, idempotencyKey, signal);
+      return (await signerFor(userId, signal)).sendTransaction(chain, transaction, idempotencyKey, signal);
     },
     forPartner(partner: number, authorization: WalletAuthorization): BeneficiaryWallets {
       memberExternalId(namespace, 'validation', partner);
@@ -180,15 +177,13 @@ export function memberWallets(request: WalletRequest, registration: BackendWalle
               return delegate.signMessage(message, signal);
             },
             async signTypedData(typedData: EvmTypedData, signal?: AbortSignal): Promise<string> {
-              const snapshot = snapshotTypedData(typedData);
               await authorize();
-              return delegate.signTypedData(snapshot, signal);
+              return delegate.signTypedData(typedData, signal);
             },
             async sendTransaction(chainId: bigint | number, transaction: EvmTransactionInput,
               idempotencyKey?: string | null, signal?: AbortSignal): Promise<string> {
-              const snapshot = { ...transaction };
               await authorize();
-              return delegate.sendTransaction(chainId, snapshot, idempotencyKey, signal);
+              return delegate.sendTransaction(chainId, transaction, idempotencyKey, signal);
             },
           });
         },
