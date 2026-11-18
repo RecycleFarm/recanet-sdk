@@ -1,6 +1,6 @@
 # Recanet Java SDK
 
-Privy 공식 Java server SDK를 기반으로 하는 서버 라이브러리입니다. 서버 자격 증명·사용자 access token 검증, 백엔드·회원 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공합니다. 현재 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.1`이며 Registry에는 아직 발행하지 않았습니다.
+Privy 공식 Java server SDK를 기반으로 하는 서버 라이브러리입니다. 서버 자격 증명·사용자 access token 검증, 백엔드·회원 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공합니다. 현재 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.1`입니다. 기존 파트너용 패키지는 비공개 GitHub Packages에서 제공하며, Maven Central 공개 발행은 프로젝트 라이선스 확정 후 진행합니다.
 
 ## 환경
 
@@ -181,7 +181,7 @@ cd sdks/java
 ./gradlew clean build generatePomFileForMavenJavaPublication
 ```
 
-라이브러리 JAR와 Javadoc JAR는 `build/libs/`에 생성됩니다. Java 후보는 POM과 Gradle module metadata를 포함하는 Maven 디렉터리 구조로 보관합니다. 현재 Registry 발행 전이므로 위 좌표로 공개 저장소에서 바로 설치할 수 있다고 가정하지 마세요. 이 JAR는 의존성을 포함하지 않으므로 단일 파일만 복사하는 설치 방식으로는 충분하지 않습니다. 내부 Maven 저장소에 후보를 제공할 때는 POM·module metadata 및 참조하는 JAR를 함께 제공해야 합니다.
+라이브러리 JAR와 Javadoc JAR는 `build/libs/`에 생성됩니다. Java 후보는 POM과 Gradle module metadata를 포함하는 Maven 디렉터리 구조로 보관합니다. Maven Central 공개 발행이 완료되면 위 좌표를 Gradle 또는 Maven의 의존성으로 선언하면 됩니다. 내부 Maven 저장소에 후보를 제공할 때는 POM·module metadata 및 참조하는 JAR를 함께 제공해야 합니다.
 
 아래 문서의 `./gradlew` 및 `tools/greenfield` 상대 경로는 `sdks/java`를 기준으로 합니다. 기본 `test`는 `live-dmrvn` 태그를 제외합니다.
 
@@ -282,7 +282,7 @@ JWKS cache TTL 안에 이미 확보된 키는 네트워크 호출 없이 사용�
 
 테스트에서는 생성한 P-256 키와 로컬 HTTP 서버를 사용해 위조·만료·잘못된 claim, 인증 헤더, 키 교체, 캐시 공유, JWKS 장애, 서버 인증 오류, 429, 본문 timeout/크기 제한, interrupt를 검증합니다. 실제 Privy 계정의 자격 증명 확인이나 실제 로그인은 수행하지 않습니다.
 
-현재 빌드는 `recanet-java-0.1.0-rc.1.jar`와 `recanet-java-0.1.0-rc.1-javadoc.jar`를 생성하며 sources JAR는 생성하지 않습니다. `maven-publish` 설정은 내부 후보용 메타데이터를 생성하며 자동 발행하지 않습니다. 오래된 빌드 파일은 `./gradlew clean`으로 제거할 수 있습니다.
+기본 빌드는 `recanet-java-0.1.0-rc.1.jar`와 `recanet-java-0.1.0-rc.1-javadoc.jar`를 생성합니다. 공개 발행용 빌드는 `-PpublicRelease`로 sources JAR도 생성합니다. 오래된 빌드 파일은 `./gradlew clean`으로 제거할 수 있습니다.
 
 설계 판단과 문서 검토 내용은 [docs/BACKEND_AUTH.md](docs/BACKEND_AUTH.md)를 참고하세요. `PrivyEvmSigner`와 wallet private key export는 이미 공식 SDK의 `AuthorizationContext`를 내부에서 구성합니다. 이 승인은 사용자 access token 검증과 별도입니다.
 

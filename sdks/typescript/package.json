@@ -57,9 +57,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/RecycleFarm/recanet-sdk-distribution.git"
+    "url": "git+https://github.com/RecycleFarm/recanet-sdk.git",
+    "directory": "sdks/typescript"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   }
 }

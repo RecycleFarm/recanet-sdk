@@ -177,9 +177,37 @@ class JavaStaging(unittest.TestCase):
         with self.assertRaises(ValueError):
             release.stage('java', '0.1.0-rc.1', self.root / 'out')
 
+    def test_public_candidate_requires_license_and_includes_sources_and_worker(self):
+        output = self.root / 'out'
+        with self.assertRaisesRegex(ValueError, 'repository LICENSE'):
+            release.stage('java', '0.1.0-rc.1', output, public=True)
+        self.assertFalse(output.exists())
+
+        license_file = self.root / 'LICENSE'
+        license_file.write_text('Fixture license\n')
+        pom = self.metadata / 'pom-default.xml'
+        pom.write_text(pom.read_text().replace('</project>',
+                       '<licenses><license><name>MIT</name></license></licenses></project>'))
+        module = self.metadata / 'module.json'
+        metadata = json.loads(module.read_text())
+        sources = 'recanet-java-0.1.0-rc.1-sources.jar'
+        (self.sdk / 'build/libs' / sources).write_bytes(b'sources')
+        metadata['variants'] = [{'attributes': {'org.gradle.docstype': 'sources'}, 'files': [{'url': sources}]}]
+        module.write_text(json.dumps(metadata))
+
+        result = release.stage('java', '0.1.0-rc.1', output, public=True)
+        manifest = json.loads((result / 'manifest.json').read_text())
+        self.assertTrue(manifest['publishReady'])
+        self.assertTrue(manifest['sourceJarIncluded'])
+        self.assertTrue(list(result.rglob(sources)))
+        worker, = (result / 'maven').rglob('*-greenfield-worker-linux-x64.tar.gz')
+        with tarfile.open(worker) as archive:
+            self.assertEqual(archive.extractfile('greenfield/LICENSE').read(), license_file.read_bytes())
+
 
 class NpmTarball(unittest.TestCase):
-    def pack(self, directory, version='0.1.0', missing=None, wrong_arch=False, bad_digest=False, install_script=True):
+    def pack(self, directory, version='0.1.0', missing=None, wrong_arch=False,
+             bad_digest=False, install_script=True, license_text=None):
         path = Path(directory) / 'fixture.tgz'
         package = {'name': '@recyclefarm/recanet-sdk', 'version': version,
                    'os': ['linux', 'darwin'], 'cpu': ['x64', 'arm64'],
@@ -187,6 +215,8 @@ class NpmTarball(unittest.TestCase):
         entries = {'package/package.json': json.dumps(package).encode(),
                    'package/dist/index.js': b'export {};', 'package/dist/index.d.ts': b'export {};',
                    'package/scripts/install-native.mjs': b'/* fixture */'}
+        if license_text is not None:
+            entries['package/LICENSE'] = license_text
         for target in ('linux-x64', 'darwin-arm64'):
             if target == missing:
                 continue
@@ -209,6 +239,16 @@ class NpmTarball(unittest.TestCase):
                             {'wrong_arch': True}, {'bad_digest': True}, {'install_script': False}):
                 with self.subTest(options=options), self.assertRaises(ValueError):
                     release.verify_npm_tarball(self.pack(directory, **options), '@recyclefarm/recanet-sdk', '0.1.0')
+
+    def test_public_tarball_requires_matching_license(self):
+        with tempfile.TemporaryDirectory() as directory:
+            license_file = Path(directory) / 'LICENSE'
+            license_file.write_bytes(b'Fixture license\n')
+            release.verify_npm_tarball(self.pack(directory, license_text=license_file.read_bytes()),
+                                       '@recyclefarm/recanet-sdk', '0.1.0', license_file)
+            with self.assertRaisesRegex(ValueError, 'npm LICENSE differs'):
+                release.verify_npm_tarball(self.pack(directory, license_text=b'Wrong license'),
+                                           '@recyclefarm/recanet-sdk', '0.1.0', license_file)
 
 
 if __name__ == '__main__':

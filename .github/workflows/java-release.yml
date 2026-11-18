@@ -1,13 +1,17 @@
-name: Java Release Candidate
+name: Java Release
 on:
   push:
     tags: ['java-v*']
   workflow_dispatch:
     inputs:
       version:
-        description: Exact package version to stage; no publication
+        description: Exact package version
         required: true
         type: string
+      publish:
+        description: Publish to Maven Central from main after all checks pass
+        type: boolean
+        default: false
 permissions:
   contents: read
 defaults:
@@ -21,6 +25,8 @@ jobs:
     name: Validate and stage Java
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      candidate-id: ${{ steps.candidate.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -41,9 +47,20 @@ jobs:
       - name: Verify public API
         run: python3 scripts/verify-public-api.py --language java
       - name: Generate Gradle module metadata
-        run: cd sdks/java && ./gradlew generateMetadataFileForMavenJavaPublication --console=plain
+        env:
+          PUBLISH: ${{ inputs.publish }}
+        working-directory: sdks/java
+        run: |
+          args=()
+          if [[ "$PUBLISH" == true ]]; then args+=(-PpublicRelease); fi
+          ./gradlew assemble generatePomFileForMavenJavaPublication generateMetadataFileForMavenJavaPublication --console=plain "${args[@]}"
       - name: Stage versioned artifacts and SHA256 checksums
-        run: python3 scripts/stage-release.py --language java
+        env:
+          PUBLISH: ${{ inputs.publish }}
+        run: |
+          args=()
+          if [[ "$PUBLISH" == true ]]; then args+=(--public); fi
+          python3 scripts/stage-release.py --language java "${args[@]}"
       - name: Save security evidence separately from the candidate
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -51,12 +68,59 @@ jobs:
           path: reports/security/java.json
           if-no-files-found: error
           retention-days: 14
-      - name: Save internal release candidate
+      - name: Save release candidate
+        id: candidate
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: java-candidate-${{ github.run_id }}-${{ github.run_attempt }}
           path: staging/java/
           if-no-files-found: error
           retention-days: 14
-      - name: Summarize publication state
-        run: echo 'Internal candidate only. No package publication was performed.' >> "$GITHUB_STEP_SUMMARY"
+  publish:
+    if: github.repository == 'RecycleFarm/recanet-sdk' && github.ref == 'refs/heads/main' && inputs.publish
+    needs: stage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: maven-central
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          artifact-ids: ${{ needs.stage.outputs.candidate-id }}
+          path: candidate
+      - name: Sign and publish the verified Maven bundle
+        env:
+          VERSION: ${{ inputs.version }}
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          CENTRAL_GPG_PRIVATE_KEY: ${{ secrets.CENTRAL_GPG_PRIVATE_KEY }}
+          CENTRAL_GPG_PASSPHRASE: ${{ secrets.CENTRAL_GPG_PASSPHRASE }}
+        run: bash scripts/publish-central.sh "candidate/$VERSION"
+  verify-public-install:
+    needs: [stage, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          artifact-ids: ${{ needs.stage.outputs.candidate-id }}
+          path: candidate
+      - name: Resolve the Java SDK and its worker from Maven Central
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          cd "candidate/$VERSION"
+          group=$(jq -er '.package.groupId' manifest.json)
+          artifact=$(jq -er '.package.artifactId' manifest.json)
+          cache=$(mktemp -d)
+          mvn --batch-mode --no-transfer-progress -Dmaven.repo.local="$cache" \
+            org.apache.maven.plugins:maven-dependency-plugin:3.9.0:get -Dartifact="$group:$artifact:$VERSION"
+          layout="${group//./\/}/$artifact/$VERSION"
+          cmp "maven/$layout/$artifact-$VERSION.jar" "$cache/$layout/$artifact-$VERSION.jar"
+          for path in "maven/$layout/"*; do
+            curl --fail --silent --show-error --max-time 30 \
+              "https://repo.maven.apache.org/maven2/$layout/${path##*/}" -o "$cache/published"
+            cmp "$path" "$cache/published"
+          done

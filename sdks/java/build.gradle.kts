@@ -6,9 +6,15 @@ plugins {
 group = "com.youngminkim.recanet"
 version = "0.1.0-rc.1"
 
+val publicRelease = providers.gradleProperty("publicRelease").isPresent
+val releaseLicense = providers.gradleProperty("recanetLicense")
+val repositoryUrl = "https://github.com/RecycleFarm/recanet-sdk"
+val projectLicenseFile = rootProject.file("../../LICENSE")
+
 java {
     toolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
     withJavadocJar()
+    if (publicRelease) withSourcesJar()
 }
 
 dependencies {
@@ -42,6 +48,32 @@ publishing {
         create<MavenPublication>("mavenJava") {
             artifactId = "recanet-java"
             from(components["java"])
+            pom {
+                name.set("Recanet Java SDK")
+                description.set("Recanet backend Java SDK")
+                url.set(repositoryUrl)
+                developers {
+                    developer {
+                        id.set("RecycleFarm")
+                        name.set("RecycleFarm")
+                        url.set("https://github.com/RecycleFarm")
+                    }
+                }
+                scm {
+                    url.set(repositoryUrl)
+                    connection.set("scm:git:$repositoryUrl.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/RecycleFarm/recanet-sdk.git")
+                }
+                releaseLicense.orNull?.let { spdx ->
+                    licenses {
+                        license {
+                            name.set(spdx)
+                            url.set("https://spdx.org/licenses/$spdx.html")
+                            distribution.set("repo")
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -67,4 +99,7 @@ tasks.register<JavaExec>("dmrvnPet") {
     args(providers.gradleProperty("dmrvnAction").getOrElse("read"))
 }
 
-tasks.withType<Jar>().configureEach { archiveBaseName.set("recanet-java") }
+tasks.withType<Jar>().configureEach {
+    archiveBaseName.set("recanet-java")
+    from(projectLicenseFile) { into("META-INF") }
+}
