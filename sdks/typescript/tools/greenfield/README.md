@@ -1,11 +1,11 @@
 # 고정 Greenfield worker
 
-설치와 오프라인 시험:
+TypeScript SDK 소스 디렉터리(`sdks/typescript`)에서 의존성 설치와 외부 서비스 호출 없는 시험을 실행한다. 의존성 다운로드에는 Registry 접근이 필요하다:
 
     npm ci --prefix tools/greenfield --ignore-scripts
     npm run test:greenfield
 
-Node 22+를 사용한다. 이 worker는 한 프로세스에서 stdin JSON 한 건을 처리하고 stdout protocol JSON을
+worker의 최소 버전은 Node 22이며, 이 저장소 SDK의 지원·CI 기준은 Node 22다. 이 worker는 한 프로세스에서 stdin JSON 한 건을 처리하고 stdout protocol JSON을
 반환한다. 저장소 키는 GREENFIELD_STORAGE_PRIVATE_KEY 환경 하나로 받는다.
 키를 CLI 인자·request JSON·파일에 넣지 않는다.
 

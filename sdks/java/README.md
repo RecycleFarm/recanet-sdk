@@ -1,28 +1,44 @@
-# RecanetJava
+# Recanet Java SDK
 
-Privy 공식 Java server SDK를 감싸는 Java backend 라이브러리입니다. 서버 API 자격 증명 확인과 사용자 access token 인증을 제공합니다.
+Privy 공식 Java server SDK를 기반으로 하는 서버 라이브러리입니다. 서버 자격 증명·사용자 access token 검증, 백엔드·회원 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공합니다. 현재 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.1`이며 Registry에는 아직 발행하지 않았습니다.
 
 ## 환경
 
 - Java 17
 - Gradle 8.10.2
-- Gradle `java-library` plugin
 - Privy Java server SDK `io.privy.api:privy-java:0.59.0`
 - Nimbus JOSE + JWT `10.10`
-- JUnit 5
+- JUnit 5(테스트)
 
-공식 SDK는 `implementation` 의존성으로 사용합니다. 서버 요청 생성, Basic Auth, JSON 처리는 공식 SDK에 위임합니다. Java SDK `0.59.0`의 실제 API에는 access token 검증 메서드가 없어 해당 기능은 Nimbus로 구현했습니다. 공개 API에는 Privy/Nimbus 타입을 노출하지 않습니다.
+Gradle wrapper를 저장소에 포함합니다. Java 라이브러리 자체에는 C compiler나 Node headers가 필요 없습니다. Greenfield 어댑터를 사용하는 경우에만 Node worker와 별도 의존성이 필요하며, 현재 공통 CI에서는 Node 22를 사용합니다. Java CI는 Linux x64에서 실행하며 로컬 macOS·JDK 17의 빌드·테스트도 확인했습니다. TypeScript 패키지의 macOS ARM64 지원과 Java 전체 배포 인수는 구분합니다.
 
-이 라이브러리는 서버 요청을 인증하고 전달된 Privy access token을 검증합니다. 사용자의 로그인 시작, OTP 전송, refresh token 처리는 구현하지 않았습니다. 공개키를 Privy wallet owner로 등록하는 백엔드 지갑 생성과, wallet의 공개키가 등록된 백엔드 키와 일치하는지 확인하는 기능을 제공합니다. 개인키는 Privy 등록 요청에 포함하지 않으며 호출자 측에서 안전하게 보관해야 합니다.
+공식 SDK는 `implementation` 의존성으로 사용하며 Privy 서버 요청과 지갑 승인을 위임합니다. 사용자 access token 검증은 Nimbus로 구현했습니다. 공개 API에는 Privy/Nimbus 타입을 노출하지 않습니다.
+
+이 라이브러리는 서버 요청을 인증하고 전달된 Privy access token을 검증합니다. 사용자의 로그인 시작, OTP 전송, refresh token 처리는 구현하지 않았습니다. P-256 authorization 공개키를 Privy wallet owner로 등록하고, `authorization_key`로 해당 키에 연결된 지갑을 조회합니다. 블록체인 wallet의 `public_key`와 authorization 공개키는 서로 다른 용도입니다. 개인키는 Privy 등록 요청에 포함하지 않으며 호출자 측에서 안전하게 보관해야 합니다.
+
+## 클라이언트와 백엔드 지갑
+
+다음 예제는 서버 애플리케이션 코드의 일부입니다. SDK는 `.env` 파일을 자동 로드하지 않으므로 환경변수를 호스트에서 주입합니다. 기본 클라이언트 생성은 외부 요청을 실행하지 않습니다. 아래 지갑 생성·조회·서명 예제는 실제 API를 호출하며, 회원 ID·수신 주소·요청 ID 등은 애플리케이션이 제공해야 합니다.
+
+```java
+import com.youngminkim.recanet.*;
+
+var client = new PrivyClient(new PrivyClientConfig(
+    System.getenv("PRIVY_APP_ID"),
+    System.getenv("PRIVY_APP_SECRET")));
+```
 
 ```java
 var key = new BackendWalletRegistration(
     System.getenv("BACKEND_WALLET_PUBLIC_KEY"),
     System.getenv("BACKEND_WALLET_PRIVATE_KEY"));
 var wallet = client.registerBackendWallet(key, new BackendWalletCreateRequest("ethereum"));
-boolean backendOwned = client.isBackendWallet(wallet.id(), key);
 var wallets = client.listWalletsByAuthorizationKey(key.publicKey());
+boolean linkedToAuthorizationKey = wallets.stream()
+    .anyMatch(candidate -> candidate.id().equals(wallet.id()));
 ```
+
+`isBackendWallet(...)`는 기존 `wallet.public_key` 문자열 비교 API이므로 authorization owner 권한의 증거로 사용하지 않습니다. authorization 연결은 위 목록 조회로 확인하며, `PrivyEvmSigner`도 이 방식으로 지갑 ID와 체인을 확인합니다.
 
 운영 환경에서는 키를 로그로 출력하지 말고 secret manager 또는 환경변수로 주입합니다.
 
@@ -40,7 +56,7 @@ var registration = generated.registration();
 
 초기 파트너 설정 단계에서 로그 출력을 명시적으로 허용하려면 `BackendWalletKeyPair.generateAndLog()`를 사용합니다. 이 메서드는 private key도 로그에 출력하므로 운영 환경의 일반 시작 코드에서 호출하면 안 됩니다.
 
-환경설정이 비어 있을 때 자동 초기화하려면 다음 메서드를 사용합니다. 설정값이 있으면 authorization key로 기존 wallet을 조회하고, 없으면 키쌍 생성 및 wallet 생성을 수행합니다.
+`ensureBackendWallet(...)`는 먼저 서버 자격 증명을 확인합니다. 환경변수의 두 backend 키가 모두 있으면 해당 authorization key로 조회한 첫 지갑을 재사용하고, 목록이 비어 있으면 새 지갑을 생성합니다. **두 키 중 하나라도 없거나 비어 있으면 새 키쌍을 생성하고 개인키까지 로그로 출력한 뒤 지갑을 생성합니다.** 이 메서드는 누락된 키를 자동 영속 보관하지 않습니다. 운영의 일반 시작 경로에서는 두 키를 명시적으로 준비하고, 자동 초기화 동작을 알고 선택한 경우에만 사용합니다.
 
 ```java
 var wallet = client.ensureBackendWallet(new BackendWalletCreateRequest("ethereum"));
@@ -62,7 +78,7 @@ Privy app secret은 실행 환경의 환경변수 또는 secret manager에서 �
 
 ## 서비스 회원별 지갑과 자동 서명
 
-`UserWalletClient`는 서비스 회원마다 EVM 지갑을 만들고 서버 authorization key로 자동 서명합니다. 사용자 Privy 계정 생성, Privy 로그인, 사용자 JWT는 필요하지 않습니다. Privy상의 제어 권한은 서버 키가 가집니다. `APP_ID / APP_SECRET`은 API 인증, `BACKEND_WALLET_PRIVATE_KEY`는 지갑 작업 승인에 사용합니다.
+`UserWalletClient`는 서비스 회원마다 EVM 지갑을 만들고 서버 authorization key로 자동 서명합니다. 사용자 Privy 계정 생성, Privy 로그인, 사용자 JWT는 필요하지 않습니다. Privy상의 제어 권한은 서버 키가 가집니다. `PRIVY_APP_ID / PRIVY_APP_SECRET`은 API 인증, `BACKEND_WALLET_PRIVATE_KEY`는 지갑 작업 승인에 사용합니다.
 
 ```java
 var memberWallets = new UserWalletClient(
@@ -156,11 +172,18 @@ if (page.nextCursor() != null) {
 
 조회 프로토콜은 [Ethereum JSON-RPC 명세](https://ethereum.org/en/developers/docs/apis/json-rpc/)의 `eth_getTransactionByHash`, `eth_getTransactionReceipt`, `eth_getBlockByNumber`를 따릅니다.
 
-## 빌드
+## 소스 빌드와 배포 형태
 
-```bash
-./gradlew clean build
+이 저장소의 루트에서 실행합니다.
+
+```sh
+cd sdks/java
+./gradlew clean build generatePomFileForMavenJavaPublication
 ```
+
+라이브러리 JAR와 Javadoc JAR는 `build/libs/`에 생성됩니다. Java 후보는 POM과 Gradle module metadata를 포함하는 Maven 디렉터리 구조로 보관합니다. 현재 Registry 발행 전이므로 위 좌표로 공개 저장소에서 바로 설치할 수 있다고 가정하지 마세요. 이 JAR는 의존성을 포함하지 않으므로 단일 파일만 복사하는 설치 방식으로는 충분하지 않습니다. 내부 Maven 저장소에 후보를 제공할 때는 POM·module metadata 및 참조하는 JAR를 함께 제공해야 합니다.
+
+아래 문서의 `./gradlew` 및 `tools/greenfield` 상대 경로는 `sdks/java`를 기준으로 합니다. 기본 `test`는 `live-dmrvn` 태그를 제외합니다.
 
 ## 서버 인증과 사용자 요청 인증
 
@@ -259,15 +282,15 @@ JWKS cache TTL 안에 이미 확보된 키는 네트워크 호출 없이 사용�
 
 테스트에서는 생성한 P-256 키와 로컬 HTTP 서버를 사용해 위조·만료·잘못된 claim, 인증 헤더, 키 교체, 캐시 공유, JWKS 장애, 서버 인증 오류, 429, 본문 timeout/크기 제한, interrupt를 검증합니다. 실제 Privy 계정의 자격 증명 확인이나 실제 로그인은 수행하지 않습니다.
 
-빌드하면 `build/libs/`에 라이브러리 JAR, sources JAR, Javadoc JAR가 생성됩니다. `maven-publish` 설정도 포함되어 있습니다. 이 JAR는 의존성을 포함하지 않으므로 배포 시 Maven/Gradle 메타데이터와 함께 제공해야 합니다.
+현재 빌드는 `recanet-java-0.1.0-rc.1.jar`와 `recanet-java-0.1.0-rc.1-javadoc.jar`를 생성하며 sources JAR는 생성하지 않습니다. `maven-publish` 설정은 내부 후보용 메타데이터를 생성하며 자동 발행하지 않습니다. 오래된 빌드 파일은 `./gradlew clean`으로 제거할 수 있습니다.
 
-설계 판단과 문서 검토 내용은 [docs/BACKEND_AUTH.md](docs/BACKEND_AUTH.md)를 참고하세요. 소유자가 있는 wallet 작업은 별도의 authorization 문제이며, 향후 wallet API에서 공식 SDK의 `AuthorizationContext`를 내부에서 구성하도록 확장합니다.
+설계 판단과 문서 검토 내용은 [docs/BACKEND_AUTH.md](docs/BACKEND_AUTH.md)를 참고하세요. `PrivyEvmSigner`와 wallet private key export는 이미 공식 SDK의 `AuthorizationContext`를 내부에서 구성합니다. 이 승인은 사용자 access token 검증과 별도입니다.
 
 ## 공식 문서
 
-- [Java SDK 설치](https://docs.privy.io/basics/java/installation)
-- [Java SDK 설정](https://docs.privy.io/basics/java/setup)
-- [Java SDK Quickstart](https://docs.privy.io/basics/java/quickstart)
+- [기반 Privy Java SDK 설치](https://docs.privy.io/basics/java/installation)
+- [기반 Privy Java SDK 설정](https://docs.privy.io/basics/java/setup)
+- [기반 Privy Java SDK Quickstart](https://docs.privy.io/basics/java/quickstart)
 - [AuthorizationContext 사용](https://docs.privy.io/controls/authorization-keys/using-owners/sign/signing-on-the-server)
 - [Access token 검증](https://docs.privy.io/authentication/user-authentication/access-tokens)
 - [통합 최적화](https://docs.privy.io/recipes/dashboard/optimizing)
@@ -291,4 +314,10 @@ var result = sdk.submitActivity(beneficiaries,
 
 명세에서 새 Evidence wire 버전과 Privy 매핑·권한 방식은 미결이다. 고수준 API는 Evidence 버전을 명시하지 않으면 중단하며 파트너 권한 어댑터를 반드시 받는다. 제공된 `forPartner` 매핑은 명시적으로 선택하는 어댑터이며 기존 지갑을 자동 연결하지 않는다. 과거 QA는 새 계약의 실환경 인수 증거가 아니다.
 
-Greenfield 쓰기 어댑터는 Node 22+와 `tools/greenfield`의 공식 JS SDK 설치가 필요하다. [DMRVN 연동 안내](docs/DMRVN.md)와 [검증 기록](docs/DMRVN_VALIDATION.md)을 참고한다.
+`NodeGreenfieldStorage`는 읽기·쓰기 모두 Node worker를 실행한다. Node 22와 별도 worker 의존성이 필요하며 `sdks/java`에서 다음과 같이 설치한다.
+
+```sh
+npm ci --prefix tools/greenfield --omit=dev --ignore-scripts
+```
+
+Greenfield 주소·체인·RPC·전용 서명키 환경변수는 어댑터에 명시적으로 제공한다. [DMRVN 연동 안내](docs/DMRVN.md)와 [검증 기록](docs/DMRVN_VALIDATION.md)을 참고한다.

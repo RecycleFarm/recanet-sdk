@@ -9,11 +9,14 @@ Java를 기준 동작으로 삼아 Java·TypeScript가 동일하게 제공해야
 - [불일치 해소·인수 기준](gaps.md): GAP-01~12 해소와 공통 검증 근거
 
 ```sh
-# 저장소 루트. Java 빌드 산출물/TS 의존성이 필요하다.
-make contract-check
+# 저장소 루트. JDK 17, Node 22, C compiler와 Node headers가 필요하다.
+make install
 make contract-test
+make contract-check
 make verify-api
 ```
+
+`contract-test`는 두 SDK를 먼저 빌드한다. 이 명령들을 위 순서로 실행하면 API 검사에 필요한 산출물도 준비된다. 패키지 설치 검사는 별도이며 두 플랫폼 native 산출물이 필요하다(루트 README 참고).
 
 `contract-check`는 공개 API 누락을 검사하고 `contract-test`는 실제 양쪽 구현의 값·오류·호출 순서·재시도를 비교한다. 유한한 테스트 통과는 모든 가능한 입력의 수학적 동등성 증명이나 실서비스 인수를 뜻하지 않는다. 기존 fixture는 각 SDK에 유지한다. 확인되지 않은 OpenAPI나 외부 Evidence/PET 운영 프로필을 새로 확정하지 않는다. [과거 58개 JSON 교차 실행](../docs/migration/cross-json-results.json)은 전체 계약 conformance suite와 별개다.
 
