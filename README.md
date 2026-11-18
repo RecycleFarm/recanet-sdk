@@ -2,7 +2,7 @@
 
 Privy 기반 서버 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공하는 Java·TypeScript SDK 모노레포다. 사용자 토큰 검증, 회원별 지갑 조회·생성·서명, Evidence 저장과 Claim 제출·조회 기능을 제공한다. 공통 입력·결과·오류 계약은 [공통 Contract](contracts/recanet-sdk-contract.md)에 정의한다.
 
-현재 버전은 두 SDK 모두 `0.1.0-rc.1`이다. Registry에는 아직 발행하지 않았으며, 릴리스 워크플로는 검증과 내부 산출물 보관까지만 수행한다.
+현재 버전은 두 SDK 모두 `0.1.0-rc.1`이다. TypeScript는 GitHub Packages에 비공개로 발행했으며 Java는 내부 후보로 제공한다.
 
 ## SDK 설치와 사용
 
@@ -96,8 +96,8 @@ Phase 2 보존 검사는 고정 import commit의 원본 tree와 legacy refs·조
 
 ## 배포 상태
 
-Java 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.1`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.1`이다. 이 좌표가 Registry에 공개되어 있다는 뜻은 아니다. npm은 `private: true`이며 실제 발행 step은 비활성 상태다.
+Java 좌표는 `com.youngminkim.recanet:recanet-java:0.1.0-rc.1`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.1`이다. TypeScript 패키지는 [GitHub Packages](https://github.com/orgs/RecycleFarm/packages/npm/package/recanet-sdk)에서 패키지 읽기 권한을 받은 계정으로 설치한다. SDK 소스의 `private: true`는 소스 디렉터리에서의 직접 발행을 막는다. 배포 저장소의 수동 workflow가 검증된 후보를 비공개로 발행한다.
 
 Java 후보는 라이브러리 JAR·Javadoc JAR·POM·Gradle module metadata와 별도 Greenfield worker를 포함한다. sources JAR는 생성·배포하지 않는다. npm 후보는 runtime JS·타입·resources·두 플랫폼 네이티브 바이너리·Greenfield worker를 포함하며 source map과 내부 문서는 제외한다. npm README와 필수 라이선스 고지는 포함한다.
 
-파트너 Registry 설치, distribution 저장소 권한, 실제 발행은 별도 미완료 범위다. 현재 `.tgz` 설치 검증은 Registry 발행이나 운영 서비스 인수 완료를 뜻하지 않는다.
+TypeScript Registry 설치와 로컬 journal 실행은 [Linux x64·macOS ARM64에서 검증했다](https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44219967674). 파트너 계정별 읽기 권한은 배포 담당자가 부여한다.

@@ -1,10 +1,25 @@
 # @recyclefarm/recanet-sdk
 
-Recanet 파트너용 서버 SDK의 0.1.0-rc.1 PoC 후보다. 아직 Registry에 발행하지 않았으며 private=true로 발행을 막고 있다.
+Recanet 파트너용 서버 SDK의 `0.1.0-rc.1`은 GitHub Packages에 비공개로 발행되어 있다.
 
 지원 런타임은 Node 22(`>=22 <23`)이며 ESM JavaScript와 TypeScript 선언을 제공한다. CI 검증 기준은 Ubuntu 24.04 Linux x64와 macOS 15 ARM64(Apple Silicon)다. 설치 허용 조합은 `linux/x64`와 `darwin/arm64`이며 Linux ARM64·Intel Mac·Windows는 지원하지 않는다. 다른 Linux 배포판·libc 또는 macOS 버전의 호환성은 별도 확인이 필요하다.
 
 배포 패키지에는 Linux x64와 macOS ARM64용 Node-API v8 네이티브 바이너리를 모두 포함한다. 실행 시 OS·CPU에 맞는 파일을 선택한다. **패키지 사용자는 C compiler, Xcode Command Line Tools, Node headers가 필요 없다.** 설치 시 컴파일하거나 외부 바이너리를 다운로드하지 않으며 `--ignore-scripts`로 설치해도 지원 플랫폼에서 영속 journal을 사용할 수 있다.
+
+## GitHub Packages에서 설치
+
+패키지 읽기 권한이 있는 계정의 classic PAT(`read:packages`)를 `GITHUB_PACKAGES_TOKEN` 환경변수에 설정한다. 프로젝트의 `.npmrc`에 다음 두 줄을 추가한다.
+
+```ini
+@recyclefarm:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
+```
+
+```sh
+npm install @recyclefarm/recanet-sdk@0.1.0-rc.1
+```
+
+토큰 원문은 환경변수 또는 CI Secrets로 제공한다. 파트너의 계정 권한과 인증에 관한 자세한 절차는 [배포 저장소의 설치 안내](https://github.com/RecycleFarm/recanet-sdk-distribution/blob/main/docs/typescript-installation.md)를 참고한다.
 
 ## .tgz 패키지 설치
 
@@ -29,7 +44,7 @@ npm ls @recyclefarm/recanet-sdk
 npm install --ignore-scripts ./recyclefarm-recanet-sdk-0.1.0-rc.1.tgz
 ```
 
-이 설치 방식은 로컬 `.tgz` 파일을 참조하므로, 프로젝트를 다른 머신이나 CI로 옮길 때도 `package.json`/`package-lock.json`이 참조하는 위치에 같은 파일을 제공해야 한다. 현재 Registry 발행 전이므로 패키지 이름만 지정하는 `npm install @recyclefarm/recanet-sdk`는 이 후보의 설치 방법이 아니다.
+이 설치 방식은 로컬 `.tgz` 파일을 참조하므로, 프로젝트를 다른 머신이나 CI로 옮길 때도 `package.json`/`package-lock.json`이 참조하는 위치에 같은 파일을 제공해야 한다. Registry에서 설치하는 프로젝트는 위의 GitHub Packages 설정을 사용한다.
 
 ## 설치 후 동작 확인
 
@@ -136,4 +151,4 @@ mkdir -p staging/typescript
 
 패키지에는 내부 문서와 source map을 포함하지 않는다. 두 플랫폼의 native 바이너리와 필요한 runtime JS·타입·resources·worker를 포함한다. 영속 journal은 단일 호스트 로컬 파일시스템을 전제로 한다.
 
-파트너 배포를 준비하는 [distribution 저장소](https://github.com/RecycleFarm/recanet-sdk-distribution)는 별도 접근 권한이 필요할 수 있다. 현재 이 문서에서 검증한 설치 경로는 배포받은 로컬 `.tgz`이며, 파트너 Registry 발행·설치 검증은 미완료다.
+파트너 배포를 준비하는 [distribution 저장소](https://github.com/RecycleFarm/recanet-sdk-distribution)는 별도 접근 권한이 필요할 수 있다. Registry에서의 이름 기반 설치와 journal 실행은 [Linux x64·macOS ARM64에서 검증했다](https://github.com/RecycleFarm/recanet-sdk-distribution/actions/runs/44219967674).
