@@ -1,6 +1,6 @@
 # Recanet Java SDK
 
-Privy 공식 Java server SDK를 기반으로 하는 서버 라이브러리입니다. 서버 자격 증명·사용자 access token 검증, 백엔드·회원 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공합니다. 현재 좌표는 `com.youngminkim.recanet:recanet-sdk-java:0.1.0-rc.2`입니다.
+Privy 공식 Java server SDK를 기반으로 하는 서버 라이브러리입니다. 서버 자격 증명·사용자 access token 검증, 백엔드·회원 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공합니다. 현재 좌표는 `com.youngminkim.recanet:recanet-sdk-java:0.1.0-rc.3`입니다.
 
 ## 환경
 
@@ -31,7 +31,7 @@ Maven 소비자 프로젝트의 `pom.xml`에 저장소와 의존성을 추가합
   <dependency>
     <groupId>com.youngminkim.recanet</groupId>
     <artifactId>recanet-sdk-java</artifactId>
-    <version>0.1.0-rc.2</version>
+    <version>0.1.0-rc.3</version>
   </dependency>
 </dependencies>
 ```
@@ -314,7 +314,7 @@ JWKS cache TTL 안에 이미 확보된 키는 네트워크 호출 없이 사용�
 
 테스트에서는 생성한 P-256 키와 로컬 HTTP 서버를 사용해 위조·만료·잘못된 claim, 인증 헤더, 키 교체, 캐시 공유, JWKS 장애, 서버 인증 오류, 429, 본문 timeout/크기 제한, interrupt를 검증합니다. 실제 Privy 계정의 자격 증명 확인이나 실제 로그인은 수행하지 않습니다.
 
-기본 빌드는 `recanet-sdk-java-0.1.0-rc.2.jar`와 `recanet-sdk-java-0.1.0-rc.2-javadoc.jar`를 생성합니다. 공개 발행용 빌드는 `-PpublicRelease`로 sources JAR도 생성합니다. 오래된 빌드 파일은 `./gradlew clean`으로 제거할 수 있습니다.
+기본 빌드는 `recanet-sdk-java-0.1.0-rc.3.jar`와 `recanet-sdk-java-0.1.0-rc.3-javadoc.jar`를 생성합니다. 공개 발행용 빌드는 `-PpublicRelease`로 sources JAR도 생성합니다. 오래된 빌드 파일은 `./gradlew clean`으로 제거할 수 있습니다.
 
 설계 판단과 문서 검토 내용은 [docs/BACKEND_AUTH.md](docs/BACKEND_AUTH.md)를 참고하세요. `PrivyEvmSigner`와 wallet private key export는 이미 공식 SDK의 `AuthorizationContext`를 내부에서 구성합니다. 이 승인은 사용자 access token 검증과 별도입니다.
 

@@ -16,9 +16,10 @@ test('raw proxy/direct 및 정규 metadata를 손실 없이 정규화하고 원�
   const snapshot = deployment.snapshot();
   assert.equal(snapshot.chainId, 421614);
   assert.equal(snapshot.deploymentKind, 'proxy');
-  assert.equal(snapshot.contractVersion, '1.0.1');
-  assert.equal(snapshot.approvedReleases.length, 2);
-  assert.equal(snapshot.approvedReleases[0].contractVersion, '1.0.0');
+  assert.equal(snapshot.contractVersion, '1.0.2');
+  assert.deepEqual(snapshot.approvedReleases.map(release => release.contractVersion), ['1.0.0', '1.0.1', '1.0.2']);
+  assert.deepEqual({ ...snapshot.approvedReleases.at(-1) }, { address: snapshot.implementationAddress,
+    codeHash: snapshot.approvedImplementationHash, contractVersion: '1.0.2' });
   assert.equal(snapshot.contractAddress, input.proxy.toLowerCase());
   assert.equal(Object.hasOwn(snapshot, 'network'), false);
   assert.equal(snapshot.deployment.blockNumber, input.deployment.blockNumber);
@@ -38,11 +39,11 @@ test('manifest 버전·영값·주소 충돌·승인 릴리스 충돌을 DEPLOYM
   const input = await raw('deployment-testnet.json');
   for (const changed of [
     { ...input, chainId: 0 }, { ...input, chainId: '9007199254740992' }, { ...input, domainVersion: 7 },
-    { ...input, forwarderDomainVersion: '7' }, { ...input, contractVersion: '1.0.2' },
+    { ...input, forwarderDomainVersion: '7' }, { ...input, contractVersion: '1.0.3' },
     { ...input, proxy: '0x' + '00'.repeat(20) }, { ...input, implementation: input.proxy },
     { ...input, codeHashes: { ...input.codeHashes, proxy: DmrvnCrypto.ZERO_BYTES32 } },
     { ...input, approvedReleases: [{ ...input.approvedReleases[0], address: input.forwarder }] },
-    { ...input, approvedReleases: [{ ...input.approvedReleases[1], codeHash: input.approvedReleases[0].codeHash }] },
+    { ...input, approvedReleases: [{ ...input.approvedReleases.at(-1), codeHash: input.approvedReleases[0].codeHash }] },
   ]) assert.throws(() => DmrvnDeployment.fromManifest(changed), code('DEPLOYMENT_NOT_READY'));
   const normalized = DmrvnDeployment.testnet().snapshot();
   assert.throws(() => DmrvnDeployment.fromManifest({ ...normalized, approvedImplementationHash: DmrvnCrypto.ZERO_BYTES32 }), code('DEPLOYMENT_NOT_READY'));
@@ -59,9 +60,10 @@ test('저장된 배포 호환은 identity와 승인 릴리스에 결속하며 �
   assert.throws(() => deployment.assertCompatible({ ...saved, chainId: 1 }), code('DEPLOYMENT_COLLISION'));
   assert.throws(() => deployment.assertCompatible({ ...saved, approvedImplementationHash: DmrvnCrypto.ZERO_BYTES32 }), code('UNAPPROVED_IMPLEMENTATION'));
   assert.doesNotThrow(() => deployment.assertCompatible({ ...saved, owner: 'changed-field-not-checked' }));
-  const older = saved.approvedReleases[0];
-  assert.doesNotThrow(() => deployment.assertCompatible({ ...saved, implementationAddress: older.address,
-    approvedImplementationHash: older.codeHash, contractVersion: older.contractVersion }));
+  for (const older of saved.approvedReleases.slice(0, -1)) {
+    assert.doesNotThrow(() => deployment.assertCompatible({ ...saved, implementationAddress: older.address,
+      approvedImplementationHash: older.codeHash, contractVersion: older.contractVersion }));
+  }
 });
 
 test('config는 배포 identity와 파트너·저장소·비용을 검증하고 양의 큰 비용 상한을 허용한다', () => {

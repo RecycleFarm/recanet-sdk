@@ -63,7 +63,7 @@ export class DmrvnDeployment {
           const release = map(raw);
           const addr = deploymentAddress(release.address);
           const version = str(release.contractVersion);
-          requireValue(['1.0.0', '1.0.1'].includes(version) && ![target, fwd, admin].includes(addr));
+          requireValue(['1.0.0', '1.0.1', '1.0.2'].includes(version) && ![target, fwd, admin].includes(addr));
           const value = { address: addr, codeHash: codeHash(release.codeHash), contractVersion: version };
           requireValue(!approved.has(addr) || DmrvnJson.canonical(approved.get(addr)) === DmrvnJson.canonical(value));
           approved.set(addr, value);

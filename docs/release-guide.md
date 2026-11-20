@@ -19,8 +19,8 @@ Java 소스 변경은 Java, TS 소스 변경은 TS를 실행한다. contracts, s
 
 | 워크플로 | 태그 이벤트 | 현재 수동 실행 버전 |
 | --- | --- | --- |
-| Java Release | java-vX.Y.Z 또는 SemVer prerelease | 0.1.0-rc.2 |
-| TypeScript Release | typescript-vX.Y.Z 또는 SemVer prerelease | 0.1.0-rc.2 |
+| Java Release | java-vX.Y.Z 또는 SemVer prerelease | 0.1.0-rc.3 |
+| TypeScript Release | typescript-vX.Y.Z 또는 SemVer prerelease | 0.1.0-rc.3 |
 
 GitHub의 Actions에서 해당 릴리스 워크플로를 선택하고 **Run workflow**에서 `main`과 정확한 package version을 지정한다. 수동 실행을 위해 태그를 만들 필요는 없다. 태그 이벤트는 언어별 prefix와 package version이 일치해야 한다. 숫자만 바꾸거나 다른 언어 태그를 사용하면 후보가 생성되지 않는다. 현재 package version을 사용자 승인 없이 바꾸지 않았다.
 
@@ -51,8 +51,8 @@ make check
 
 # Java 후보를 만들기 전 module metadata 생성
 (cd sdks/java && ./gradlew generateMetadataFileForMavenJavaPublication)
-python3 scripts/stage-release.py --language java --version 0.1.0-rc.2
-python3 scripts/stage-release.py --language typescript --version 0.1.0-rc.2
+python3 scripts/stage-release.py --language java --version 0.1.0-rc.3
+python3 scripts/stage-release.py --language typescript --version 0.1.0-rc.3
 ```
 
 로컬 후보는 staging/ 아래에 생성되고 Git에서 제외한다. 이미 같은 출력 디렉터리가 있으면 덮어쓰지 않는다. 새 시험에는 --output으로 별도 경로를 사용한다. 로컬 후보의 존재는 워크플로의 원격 검증 완료를 뜻하지 않는다.

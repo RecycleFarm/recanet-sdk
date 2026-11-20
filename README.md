@@ -2,7 +2,7 @@
 
 Privy 기반 서버 지갑, EVM 자산·트랜잭션 조회, DMRVN 연동을 제공하는 Java·TypeScript SDK 모노레포다. 사용자 토큰 검증, 회원별 지갑 조회·생성·서명, Evidence 저장과 Claim 제출·조회 기능을 제공한다. 공통 입력·결과·오류 계약은 [공통 Contract](contracts/recanet-sdk-contract.md)에 정의한다.
 
-두 SDK의 GitHub Packages 릴리스 버전은 `0.1.0-rc.2`다.
+두 SDK의 GitHub Packages 릴리스 버전은 `0.1.0-rc.3`다.
 
 ## SDK 설치와 사용
 
@@ -98,6 +98,6 @@ Phase 2 보존 검사는 고정 import commit의 원본 tree와 legacy refs·조
 
 ## 배포 상태
 
-GitHub Packages의 Java 좌표는 `com.youngminkim.recanet:recanet-sdk-java:0.1.0-rc.2`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.2`다. [릴리스 가이드](docs/release-guide.md#github-packages-발행)
+GitHub Packages의 Java 좌표는 `com.youngminkim.recanet:recanet-sdk-java:0.1.0-rc.3`, npm 패키지명은 `@recyclefarm/recanet-sdk@0.1.0-rc.3`다. [릴리스 가이드](docs/release-guide.md#github-packages-발행)
 
 Java 후보는 라이브러리 JAR·Javadoc JAR·POM·Gradle module metadata와 별도 Greenfield worker를 포함한다. sources JAR는 생성·배포하지 않는다. npm 후보는 runtime JS·타입·resources·두 플랫폼 네이티브 바이너리·Greenfield worker를 포함하며 source map과 내부 문서는 제외한다. npm README와 필수 라이선스 고지는 포함한다.

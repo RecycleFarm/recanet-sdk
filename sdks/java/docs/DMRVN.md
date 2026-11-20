@@ -39,7 +39,7 @@
 - 사용자 beneficiary: `0xeA9ecC2F4D32E075e961Afffd522bbf88BBA40a9`
 - EVM: Arbitrum Sepolia `421614`
 - 신규 Claim proxy: `0x5984B6C7773031497AcA9BF0C7C1155bdeAEd24e`
-- 현재 구현: `0x9433EA187E38f9c7328cCDc2c229ED12E8746776`, `contractVersion=1.0.1`
+- 현재 구현: `0xc7b8A061cA38c33dD8B74dC441e8c63e70340F5c`, `contractVersion=1.0.2` ([테스트넷 업그레이드 거래](https://sepolia.arbiscan.io/tx/0x099144c331ce1e070da4d891b00fc55abc27e5ff3f5288d437a229fbf440594c))
 - 과거 직접 배포(조회·receipt 복구 전용): `0x10615cB528FE09c73819f8F3345efb8024A81d15`
 - Forwarder: `0x8A5CF02d9c8855d8dcdBb75b8ABd6d3e0C4e6c7c`
 - Greenfield: testnet `5600`, bucket `dmrvn`, prefix `partners/101/`
@@ -48,11 +48,11 @@
 
 ## Proxy 준비 검증과 호환 upgrade
 
-`petTestnet()`은 JAR에 포함된 `deployment-testnet.json`의 승인 proxy manifest를 읽는다. Claim 승인 domain.verifyingContract, 직접 거래 `to`, `ForwardRequest.to` 모두 proxy다. EIP-712 Claim/Task/Observation version은 `7`, Forwarder는 `1`이며 구현 버전 `1.0.1`과 구분한다. 구현 또는 ProxyAdmin 주소로 업무 호출을 보내지 않는다.
+`petTestnet()`은 JAR에 포함된 `deployment-testnet.json`의 승인 proxy manifest를 읽는다. Claim 승인 domain.verifyingContract, 직접 거래 `to`, `ForwardRequest.to` 모두 proxy다. EIP-712 Claim/Task/Observation version은 `7`, Forwarder는 `1`이다. 구현 또는 ProxyAdmin 주소로 업무 호출을 보내지 않는다.
 
 `preflight()`의 `ready`와 `verifiedMetadata`로 현재 준비 상태를 확인한다. 동일한 블록 번호에 고정하여 chainId, proxy/Forwarder/ProxyAdmin/구현 code hash, ERC1967 구현·admin slot, ProxyAdmin owner, `contractVersion()`, 두 domain, trusted Forwarder를 검증하고 블록 hash도 재확인한다. 현재 manifest 구현 및 `approvedReleases`에 승인된 주소·hash·버전이 모두 맞아야 통과한다. 현재 활성 표시는 실제 slot에 따른다.
 
-파트너가 제공한 승인 manifest는 `DmrvnDeployment.fromManifest(Json.object(manifestBytes))`와 `DmrvnConfig.fromDeployment(...)`로 명시적으로 선택한다. 사전 승인 release를 보완할 때는 갱신된 설정과 같은 journal로 클라이언트를 재구성한다. 원래 snapshot의 구현도 승인 목록에 남아 있어야 한다. 현재 지원하는 구현 버전은 명세의 `1.0.0`/`1.0.1`이다. 다른 버전은 명세·SDK 검토 후 추가한다.
+파트너가 제공한 승인 manifest는 `DmrvnDeployment.fromManifest(Json.object(manifestBytes))`와 `DmrvnConfig.fromDeployment(...)`로 명시적으로 선택한다. 사전 승인 release를 보완할 때는 갱신된 설정과 같은 journal로 클라이언트를 재구성한다. 원래 snapshot의 구현도 승인 목록에 남아 있어야 한다. 지원하는 구현 버전은 `1.0.0`, `1.0.1`, `1.0.2`이다. 다른 버전은 명세·SDK 검토 후 추가한다.
 
 operation의 최초 `deployment`는 불변이며 `verifiedMetadata`만 재검증 후 갱신한다. `deploymentId=chainId:contractAddress`와 입력 fingerprint에는 구현 버전을 넣지 않는다. 실패하면 `ready=false`와 `deploymentError`를 기록하고 이전 `verifiedMetadata`를 제거한다. 원본·ClaimRequest·승인·사용자 서명은 유지한다. `DEPLOYMENT_NOT_READY`, `UNAPPROVED_IMPLEMENTATION`, `DEPLOYMENT_COLLISION`은 자동 fallback이나 서명 재생성으로 해결하지 않는다.
 
