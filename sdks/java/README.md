@@ -332,7 +332,8 @@ JWKS cache TTL 안에 이미 확보된 키는 네트워크 호출 없이 사용�
 공유 명세 [`6da7d02`](https://github.com/RecycleFarm/specifications/tree/6da7d029ca9a9dad71e5b2928de0f3c06cc5b499/dmrvn/backend-sdk) 기준이다. 운영 지갑 하나로 provenance·Claim 승인·Relay를 수행하고, durable journal 없이 다음 단일 요청을 사용할 수 있다.
 
 ```java
-// methodology는 운영자와 확인한 Evidence 버전을 명시하여 설정한다.
+// methodology의 방법론 버전은 승인 manifest에서 읽는다.
+// Evidence 스키마 버전은 5인자 DeclaredMethodology 생성자의 마지막 인자로 별도 명시한다.
 var sdk = new DmrvnClient(config, rpc, operatingSigner, storage, methodology);
 var beneficiaries = memberWallets.forPartner(config.partnerId(), (partnerId, userId) ->
     accessPolicy.isWalletUseAuthorized(authenticatedPartnerCredentials, partnerId, userId));
@@ -344,7 +345,9 @@ var result = sdk.submitActivity(beneficiaries,
 
 `CONFIRMED`는 제출 receipt와 Claim을 확인했다는 뜻이며 `chainStatus=PENDING`은 최종 VALID가 아니다. 실패·미확인 응답에는 확인된 단계와 식별자를 반환한다. `UNKNOWN`을 근거로 안전한 재전송을 추정하지 않는다. 기록 보존·조사·복구와 여러 프로세스의 운영 지갑 nonce 관리는 소비자 책임이며 journal은 선택 사항이다. 기존 직접 가스비 납부·단계별 조회 기능은 유지한다.
 
-명세에서 새 Evidence wire 버전과 Privy 매핑·권한 방식은 미결이다. 고수준 API는 Evidence 버전을 명시하지 않으면 중단하며 파트너 권한 어댑터를 반드시 받는다. 제공된 `forPartner` 매핑은 명시적으로 선택하는 어댑터이며 기존 지갑을 자동 연결하지 않는다. 과거 QA는 새 계약의 실환경 인수 증거가 아니다.
+SDK는 방법론 v1에 고정되어 있지 않다. 방법론 버전은 승인 manifest의 `methodology.version`에서 읽고, Evidence 본문의 `schemaVersion`은 별도의 `evidenceSchemaVersion` 설정으로 정한다. [후속 PET 계약](../typescript/docs/evidence-v4.md)은 방법론 `2003/3`과 Evidence 스키마 `4`를 사용한다. 해당 승인 manifest/WASM/hash를 공급해야 하며, 과거 `DeclaredMethodology.PET_HASH`는 PET v3 승인값이 아니다. 자세한 설정과 과거 호환 경로는 [버전 구분 안내](docs/DMRVN.md#방법론-버전과-evidence-스키마-버전)를 따른다.
+
+고수준 API는 Evidence 스키마 버전을 명시하지 않으면 중단하며 파트너 권한 어댑터를 반드시 받는다. Privy 매핑·권한 방식의 미결 사항은 별도로 확인해야 한다. 제공된 `forPartner` 매핑은 명시적으로 선택하는 어댑터이며 기존 지갑을 자동 연결하지 않는다. 과거 QA는 새 계약의 실환경 인수 증거가 아니다.
 
 `NodeGreenfieldStorage`는 읽기·쓰기 모두 Node worker를 실행한다. Node 22와 별도 worker 의존성이 필요하며 `sdks/java`에서 다음과 같이 설치한다.
 
