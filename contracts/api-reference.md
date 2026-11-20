@@ -243,7 +243,7 @@ objectName은 prefix로 시작하고 더 길어야 하며 Java UTF-8 1024 bytes 
 
 Manifest 정규화 필드: chainId,contractAddress,forwarderAddress,protocolVersion='7',domainVersion='7',forwarderDomainVersion='1',deploymentKind=proxy/direct,contractVersion(nullable),contractVersionSupported,codeHashes. proxy는 implementationAddress,proxyAdminAddress,owner,approvedImplementationHash,approvedReleases도 가진다. 선택 deployment map을 복사한다. raw proxy는 proxy/implementation/forwarder/proxyAdmin를 사용하고 raw direct는 contract/forwarder의 address/runtimeCodeHash/domainVersion을 사용한다.
 
-배포 주소/hash는 zero 금지. proxy/forwarder/implementation/admin은 서로 달라야 한다. codeHashes는 proxy/implementation/forwarder/proxyAdmin 또는 direct의 contract/forwarder다. approvedImplementationHash는 implementation hash와 같다. approvedReleases에 현재 manifest 구현도 포함하고 같은 주소의 충돌 metadata를 거부한다. 지원 버전은 1.0.0/1.0.1이다. direct는 contractVersion/implementationAddress가 null이며 신규 쓰기 금지다.
+배포 주소/hash는 zero 금지. proxy/forwarder/implementation/admin은 서로 달라야 한다. codeHashes는 proxy/implementation/forwarder/proxyAdmin 또는 direct의 contract/forwarder다. approvedImplementationHash는 implementation hash와 같다. approvedReleases에 현재 manifest 구현도 포함하고 같은 주소의 충돌 metadata를 거부한다. 지원 버전은 1.0.0/1.0.1/1.0.2이다. direct는 contractVersion/implementationAddress가 null이며 신규 쓰기 금지다.
 
 <a id="methodology"></a>
 ## 9. 방법론

@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.youngminkim.recanet"
-version = "0.1.0-rc.2"
+version = "0.1.0-rc.3"
 
 val publicRelease = providers.gradleProperty("publicRelease").isPresent
 val releaseLicense = providers.gradleProperty("recanetLicense")

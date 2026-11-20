@@ -1,29 +1,30 @@
 {
   "chainId": 421614,
   "network": "arbitrum-sepolia",
-  "capturedAt": "2026-10-09",
+  "capturedAt": "2026-11-20",
   "verificationScope": "Public deployment snapshot, not a live readiness check",
   "deploymentKind": "transparent-proxy",
   "proxy": "0x5984B6C7773031497AcA9BF0C7C1155bdeAEd24e",
-  "implementation": "0x9433EA187E38f9c7328cCDc2c229ED12E8746776",
+  "implementation": "0xc7b8A061cA38c33dD8B74dC441e8c63e70340F5c",
   "proxyAdmin": "0x5Fce12e1ED83cbC32b84D39Ad634bDD07b5b04f1",
   "owner": "0x820DE82A2683D3eF3e58Bfaf05F55a37bA7B14F0",
   "forwarder": "0x8A5CF02d9c8855d8dcdBb75b8ABd6d3e0C4e6c7c",
   "domainVersion": "7",
   "forwarderDomainVersion": "1",
-  "contractVersion": "1.0.1",
+  "contractVersion": "1.0.2",
   "deployment": {
     "blockNumber": 316999184,
     "transactionHash": "0x57f863fbd1d7d1a0f1d4af76210cea6a56c585584a60322bbe4e909829159d16"
   },
   "codeHashes": {
     "proxy": "0x88ed6029c47db2419f15f3e239d6222545861e7f4bbd3fbe2a118cbab7b16c7e",
-    "implementation": "0x4c52da3726d8dd045c20e0c5e5cffbad869bf9958b94facf3be550cd2dfb283d",
+    "implementation": "0x1b427ab7cb91007feb9dbf4be708313de0341153fae0801af77c8a56b63e1bd6",
     "forwarder": "0x25bfc54e782045aa7768ae32ccb616841fb3141d36c811b53915ad373ca3442e",
     "proxyAdmin": "0xef59f2d3e8dcc41ead25439da61240a782788788c5d76b5cd8093a094775af96"
   },
   "approvedReleases": [
     { "address": "0x21869B9bA36dB65E4a0ABE885F9050F4790D1447", "codeHash": "0xc73de1cbb3ce9b11dd7734e6b61b94338428031f7901244a8c51c30eeed5066a", "contractVersion": "1.0.0" },
-    { "address": "0x9433EA187E38f9c7328cCDc2c229ED12E8746776", "codeHash": "0x4c52da3726d8dd045c20e0c5e5cffbad869bf9958b94facf3be550cd2dfb283d", "contractVersion": "1.0.1" }
+    { "address": "0x9433EA187E38f9c7328cCDc2c229ED12E8746776", "codeHash": "0x4c52da3726d8dd045c20e0c5e5cffbad869bf9958b94facf3be550cd2dfb283d", "contractVersion": "1.0.1" },
+    { "address": "0xc7b8A061cA38c33dD8B74dC441e8c63e70340F5c", "codeHash": "0x1b427ab7cb91007feb9dbf4be708313de0341153fae0801af77c8a56b63e1bd6", "contractVersion": "1.0.2" }
   ]
 }

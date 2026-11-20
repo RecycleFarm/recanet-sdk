@@ -119,7 +119,7 @@ public final class DmrvnDeployment {
                     var release = Json.map(raw);
                     String addr = address(release.get("address"));
                     String version = Json.str(release.get("contractVersion"));
-                    require(Set.of("1.0.0", "1.0.1").contains(version), Code.INVALID_INPUT);
+                    require(Set.of("1.0.0", "1.0.1", "1.0.2").contains(version), Code.INVALID_INPUT);
                     require(!List.of(target, fwd, admin).contains(addr), Code.INVALID_INPUT);
                     var value =
                             Json.obj(

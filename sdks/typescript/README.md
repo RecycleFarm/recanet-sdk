@@ -1,6 +1,6 @@
 # @recyclefarm/recanet-sdk
 
-Recanet 서버 SDK의 GitHub Packages 릴리스 버전은 `0.1.0-rc.2`다.
+Recanet 서버 SDK의 GitHub Packages 릴리스 버전은 `0.1.0-rc.3`다.
 
 지원 런타임은 Node 22(`>=22 <23`)이며 ESM JavaScript와 TypeScript 선언을 제공한다. CI 검증 기준은 Ubuntu 24.04 Linux x64와 macOS 15 ARM64(Apple Silicon)다. 설치 허용 조합은 `linux/x64`와 `darwin/arm64`이며 Linux ARM64·Intel Mac·Windows는 지원하지 않는다. 다른 Linux 배포판·libc 또는 macOS 버전의 호환성은 별도 확인이 필요하다.
 
@@ -18,7 +18,7 @@ GitHub Packages에서 설치하려면 GitHub 인증이 필요하다.
 ```
 
 ```sh
-npm install @recyclefarm/recanet-sdk@0.1.0-rc.2
+npm install @recyclefarm/recanet-sdk@0.1.0-rc.3
 npm ls @recyclefarm/recanet-sdk
 ```
 
@@ -26,25 +26,25 @@ npm ls @recyclefarm/recanet-sdk
 
 ## .tgz 패키지 설치
 
-배포 담당자에게 받은 `recyclefarm-recanet-sdk-0.1.0-rc.2.tgz`를 사용할 Node 프로젝트 디렉터리에 복사한다. 아래 명령은 그 프로젝트 디렉터리에서 실행한다. 새 프로젝트라면 먼저 `npm init -y`로 `package.json`을 만든다. `.tgz`를 직접 풀거나 SDK 소스를 빌드할 필요는 없다.
+배포 담당자에게 받은 `recyclefarm-recanet-sdk-0.1.0-rc.3.tgz`를 사용할 Node 프로젝트 디렉터리에 복사한다. 아래 명령은 그 프로젝트 디렉터리에서 실행한다. 새 프로젝트라면 먼저 `npm init -y`로 `package.json`을 만든다. `.tgz`를 직접 풀거나 SDK 소스를 빌드할 필요는 없다.
 
 ```sh
 # Node 22와 지원 OS·CPU인지 확인한다.
 node -p 'JSON.stringify({ node: process.version, os: process.platform, cpu: process.arch })'
 
 # 프로젝트 디렉터리에 복사한 패키지를 설치한다.
-npm install ./recyclefarm-recanet-sdk-0.1.0-rc.2.tgz
+npm install ./recyclefarm-recanet-sdk-0.1.0-rc.3.tgz
 
 # 설치된 버전을 확인한다.
 npm ls @recyclefarm/recanet-sdk
 ```
 
-환경 출력은 `node`가 `v22.*`, `os`/`cpu`가 `linux`/`x64` 또는 `darwin`/`arm64`여야 한다. 설치 버전은 `@recyclefarm/recanet-sdk@0.1.0-rc.2`이다. 다른 디렉터리에 있는 파일은 `npm install /패키지/절대경로/recyclefarm-recanet-sdk-0.1.0-rc.2.tgz`처럼 경로를 지정한다. npm은 SDK의 JavaScript 의존성을 설치하므로 해당 의존성을 받을 수 있는 Registry 접근이 필요하다.
+환경 출력은 `node`가 `v22.*`, `os`/`cpu`가 `linux`/`x64` 또는 `darwin`/`arm64`여야 한다. 설치 버전은 `@recyclefarm/recanet-sdk@0.1.0-rc.3`이다. 다른 디렉터리에 있는 파일은 `npm install /패키지/절대경로/recyclefarm-recanet-sdk-0.1.0-rc.3.tgz`처럼 경로를 지정한다. npm은 SDK의 JavaScript 의존성을 설치하므로 해당 의존성을 받을 수 있는 Registry 접근이 필요하다.
 
 보안 정책으로 lifecycle scripts를 실행하지 않는 프로젝트는 다음 명령으로 설치해도 된다. 두 설치 방법 모두 컴파일 도구 없이 영속 journal을 사용할 수 있다.
 
 ```sh
-npm install --ignore-scripts ./recyclefarm-recanet-sdk-0.1.0-rc.2.tgz
+npm install --ignore-scripts ./recyclefarm-recanet-sdk-0.1.0-rc.3.tgz
 ```
 
 이 설치 방식은 로컬 `.tgz` 파일을 참조하므로, 프로젝트를 다른 머신이나 CI로 옮길 때도 `package.json`/`package-lock.json`이 참조하는 위치에 같은 파일을 제공해야 한다. Registry에서 설치하는 프로젝트는 위의 GitHub Packages 설정을 사용한다.
