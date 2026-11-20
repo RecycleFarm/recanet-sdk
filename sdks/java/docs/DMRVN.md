@@ -1,10 +1,23 @@
 # DMRVN Java SDK 연동
 
-현재 구현은 Claim v7과 PET `activityId=1003`, `methodologyId=2003`, `version=1`을 사용한다. 신고 입력 `petBottleCount=3`의 예상 노드 계산 결과는 `estimated_co2e={value:"60",unit:"gCO2e",scale:0}`이다. Java SDK는 계산하거나 노드 합의를 대신하지 않는다. 승인 WASM의 실행은 오프라인 테스트에서만 한다.
+현재 구현은 Claim v7을 사용하며, 방법론은 v1에 고정되어 있지 않다. `DeclaredMethodology`는 호출자가 공급한 승인 manifest에서 `activityId`, `methodology.id`, `methodology.version`을 읽고 manifest/WASM hash를 검증한다. 활성 여부는 주입한 `Registry.isActive(activityId, id, version, hash)`로 확인한다. Java SDK는 방법론을 계산하거나 노드 합의를 대신하지 않는다. 승인 WASM의 실행은 오프라인 테스트에서만 한다.
 
 반영 기준은 [공유 명세 `6da7d02`](https://github.com/RecycleFarm/specifications/tree/6da7d029ca9a9dad71e5b2928de0f3c06cc5b499/dmrvn/backend-sdk)의 2026-11-04 파트너 단일 요청 계약이다. `source.kind` 제거, 파트너 입력 보존, journal 선택화, 수혜자 지갑 생성·서명, 단일 운영 지갑, 단일 요청을 반영한다. Claim ABI/domain 및 WASM ABI는 유지한다.
 
-공유 명세의 새 Evidence 버전·정확한 wire 규격, Privy 매핑/권한 정책, 결과 미확인 재시도 규칙은 아직 미결이다. 구현은 기존 공통 필드와 JCS/provenance 결속을 바탕으로 하며 새 버전을 임의로 정하지 않는다. 신규 고수준 API와 preflight는 명시한 `evidenceSchemaVersion`이 없으면 `EVIDENCE_CONTRACT_UNCONFIGURED`로 중단한다. 운영자가 합의한 공통 필드·JCS·버전 및 검증자 지원을 확인하고 설정해야 한다. 버전 설정만으로 새 wire 규격이나 실제 DMRVN 공동 인수가 완료되지는 않는다. 4인자 `DeclaredMethodology`는 기존 버전 값 3의 호환 경로이며 신규 고수준 API에는 사용할 수 없다. 과거 fixture·서명·저장 객체는 다시 쓰거나 재해시하지 않는다.
+후속 PET 계약은 [Evidence v4 / PET 방법론 v3](../../typescript/docs/evidence-v4.md)에 정리되어 있다. Privy 매핑/권한 정책과 결과 미확인 재시도 규칙의 미결 사항은 별도로 확인해야 한다.
+
+## 방법론 버전과 Evidence 스키마 버전
+
+| 구분 | 설정 원천과 SDK 동작 | PET 후속 계약 |
+| --- | --- | --- |
+| 방법론 버전 | 승인 manifest의 `methodology.version`을 읽는다. Evidence의 `methodology.version`과 ClaimRequest의 `methodologyVersion`에 사용하고 registry 활성 확인에도 전달한다. | `activityId=1003`, `methodology.id=2003`, `methodology.version=3` |
+| Evidence 스키마 버전 | 5인자 `DeclaredMethodology` 생성자의 `evidenceSchemaVersion`으로 명시한다. Evidence 본문의 `schemaVersion`에 사용한다. | `schemaVersion=4` |
+
+두 버전은 독립된 값이다. 생성자의 마지막 인자 `4`는 Evidence 스키마 버전이며 방법론 버전을 변경하지 않는다. 방법론 v3을 사용하려면 해당 승인 manifest/WASM과 기대 hash를 공급해야 한다. PET 후속 계약은 `partnerId=101`, `inputs.petBottleCount`를 사용하지만 SDK 일반 생성자는 해당 partner나 input 키로 제한하지 않는다.
+
+신규 고수준 API와 preflight는 명시한 `evidenceSchemaVersion`이 없으면 `EVIDENCE_CONTRACT_UNCONFIGURED`로 중단한다. 4인자 생성자는 Evidence 스키마 `3`을 사용하는 과거 호환 경로이며 신규 고수준 API에는 사용할 수 없다. 이 기본값은 방법론 v3을 뜻하지 않는다. 운영자가 승인한 공통 필드·JCS·스키마와 실제 검증자 지원을 확인해야 하며, 버전 설정만으로 DMRVN 실환경 공동 인수가 완료되지는 않는다.
+
+기존 Java PET fixture·검증 기록의 방법론 `2003/1`과 `petBottleCount=3`에 대한 `estimated_co2e={value:"60",unit:"gCO2e",scale:0}` 결과는 해당 과거 패키지의 사례다. 다른 방법론 버전의 계산 결과를 보장하지 않는다. `DeclaredMethodology.PET_HASH`도 동봉 과거 패키지의 hash이며 PET v3 승인 hash로 사용하지 않는다. 과거 fixture·서명·저장 객체는 다시 쓰거나 재해시하지 않는다.
 
 ## 어디에 무엇을 저장하는가
 
@@ -82,9 +95,11 @@ var storage = new NodeGreenfieldStorage(
 
 // 승인된 public package bytes를 읽고 manifest hash와 WASM hash를 검증한다.
 // registry는 운영자의 현재 ACTIVE 확인을 제공하는 파트너 어댑터다.
-// 운영자와 확인한 새 Evidence 버전. SDK가 기본값으로 추정하지 않는다.
+// expectedMethodologyHash는 공급한 승인 방법론 패키지의 기대 hash다.
+// 방법론 버전은 manifest에서 읽고, Evidence 스키마 버전은 별도로 명시한다.
+// PET 후속 계약은 방법론 2003/3의 승인 패키지와 confirmedEvidenceSchemaVersion=4를 사용한다.
 var methodology = new DeclaredMethodology(
-    manifestBytes, wasmBytes, DeclaredMethodology.PET_HASH, registry, confirmedEvidenceSchemaVersion);
+    manifestBytes, wasmBytes, expectedMethodologyHash, registry, confirmedEvidenceSchemaVersion);
 var sdk = new DmrvnClient(config, rpc, signer, storage, methodology); // journal 불필요
 // 필요하면 마지막 인자에 소비자 소유 OperationJournal을 명시적으로 추가한다.
 var readiness = sdk.preflight();
